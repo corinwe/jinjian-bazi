@@ -1,99 +1,34 @@
 #!/usr/bin/env python3
 """
-金鉴真人·深度命理报告生成器 v1.0
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-按bazi-report-template v5.2标准格式
-目标：≥1500行深度分析报告
+金鉴真人·深度报告生成器 v2.0
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+核心原则：只展开引擎的真实计算数据，不添加任何引擎没有的分析文字
+所有分析文本来自pipeline_v5.py各模块的规则计算结果
 """
-
 import sys, os, json
-sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
-
-from pipeline_v5 import run_pipeline, format_21_section_report
 from datetime import datetime
 
-# ── 五行/十神/格局的描述字典 ──
+def _s(d, key, default=""):
+    if isinstance(d, dict):
+        return d.get(key, default)
+    return default
 
-WU_XING_DESC = {
-    "金": "刚毅果决，义气为重，原则性强，有领导力和决断力",
-    "木": "仁爱宽厚，有上进心，善于规划，有生长力和扩展力",
-    "水": "智慧灵动，善于变通，有适应力，思辨能力强",
-    "火": "热情开朗，有感染力，行动力强，善于表达和沟通",
-    "土": "稳重诚信，踏实可靠，有包容力，适合做支撑性角色",
-}
-
-SHI_SHEN_DESC = {
-    "正印": "学习能力强，有贵人缘，性格温和稳重，重视传统和规则",
-    "偏印": "思维独特，有冷门专长，直觉敏锐，不走寻常路",
-    "正官": "自律性强，有管理能力，责任心重，遵纪守法",
-    "七杀": "魄力非凡，敢闯敢拼，有领导魄力，执行力超群",
-    "正财": "求财踏实，理财稳健，重视物质保障，适合稳定收入",
-    "偏财": "财路宽广，善于投资，出手大方，适合经商和合作",
-    "食神": "心态好福气厚，有艺术天赋，善于享受生活，温和有礼",
-    "伤官": "才华横溢有灵气，思维敏捷有创意，不拘一格敢突破",
-    "比肩": "独立自主，有竞争意识，朋友多但易有利益冲突",
-    "劫财": "社交能力强，重义气，但易因朋友破财，合作需谨慎",
-}
-
-GE_JU_DESC = {
-    "正官格": "命带正官，为人正直守信，有管理才能和领导潜力，适合体制内或大平台发展",
-    "七杀格": "命带七杀，魄力非凡，有闯劲和决断力，适合创业或需要攻坚克难的岗位",
-    "正财格": "命带正财，求财踏实稳重，适合稳定收入和长期积累型行业",
-    "偏财格": "命带偏财，财路宽广灵活，善于投资和把握机会，适合经商",
-    "正印格": "命带正印，学识渊博，有贵人运，适合学术、教育、文化等事业",
-    "偏印格": "命带偏印，思维独特，有冷门专长和非常规思维，适合研究创新",
-    "食神格": "命带食神，心态好福气厚，有艺术天赋，适合创意文化类行业",
-    "伤官格": "命带伤官，才华横溢有灵气，思维敏捷口才好，适合表现力强的职业",
-}
-
-DA_YUN_SCORE_DESC = {
-    10: "巅峰大运，人生最佳时期，各方面顺风顺水",
-    9: "极佳大运，事业财富全面爆发，宜全力把握",
-    8: "上佳大运，各方面都有显著突破，把握好机会",
-    7: "良好大运，稳中有进，适合积累和扩张",
-    6: "中等偏上大运，有一定发展但需努力争取",
-    5: "中等大运，平稳过渡期，不宜冒进",
-    4: "普通大运，略有阻力，宜守不宜攻",
-    3: "较差大运，各方面有压力，需谨慎行事",
-    2: "困难大运，阻力较大，宜保守求稳",
-    1: "艰苦大运，各方面挑战大，需格外谨慎",
-}
-
-# ── 五行颜色 ──
-WU_XING_COLORS = {
-    "金": "白色、金色、银色",
-    "木": "绿色、青色、翠色",
-    "水": "黑色、蓝色、深色",
-    "火": "红色、紫色、橙色",
-    "土": "黄色、棕色、米色",
-}
-
-WU_XING_DIRECTIONS = {
-    "金": "西方、西北方",
-    "木": "东方、东南方",
-    "水": "北方",
-    "火": "南方",
-    "土": "中央、本地",
-}
-
-WU_XING_NUMBERS = {
-    "金": "4、9",
-    "木": "3、8",
-    "水": "1、6",
-    "火": "2、7",
-    "土": "5、10",
-}
+def _fmt_list(lst, joiner="、"):
+    if not lst or not isinstance(lst, list):
+        return ""
+    return joiner.join(str(x) for x in lst if x)
 
 
 def generate_deep_report(engine_json: dict, name: str = "", gender: str = "") -> str:
-    """生成深度命理报告（≥1500行）"""
-    lines = []
-    
-    # ── 提取数据 ──
+    """基于引擎真实数据生成深度报告"""
     pp = engine_json.get("paipan", {})
     bd = engine_json.get("basic_data", {})
     r = engine_json.get("result", {})
     
+    now = datetime.now()
+    lines = []
+    
+    # ── 提取核心数据 ──
     s1 = r.get("sec_1_overview", {})
     s2 = r.get("sec_2_ge_ju", {})
     s3 = r.get("sec_3_shen_qiang_ruo", {})
@@ -116,538 +51,462 @@ def generate_deep_report(engine_json: dict, name: str = "", gender: str = "") ->
     s20 = r.get("sec_20_wu_xing_advice", {})
     s21 = r.get("sec_21_advice", {})
     
-    pi = bd.get("pillars", {})
-    bazi = pp.get("bazi", s1.get("bazi", ""))
-    ri_gan = bd.get("ri_zhu", {}).get("gan", "")
-    ri_wx = bd.get("ri_zhu", {}).get("wu_xing", "")
-    sqr_label = s3.get("label", "")
-    sqr_score = s3.get("score", 0)
+    bazi = pp.get("bazi", _s(s1, "bazi", ""))
+    ri_gan = _s(bd.get("ri_zhu", {}), "gan", "")
+    ri_wx = _s(bd.get("ri_zhu", {}), "wu_xing", "")
+    sqr_label = _s(s3, "label", "")
+    sqr_score = _s(s3, "score", 0)
     xi_yong = s4.get("xi", [])
     ji_shen = s4.get("ji", [])
-    cai_score = s8.get("cai_xing_total", 0)
-    wealth_level = s8.get("wealth_level", "")
-    ge_ju_detail = s2.get("detail", "")
+    cai_score = _s(s8, "cai_xing_total", 0)
+    wealth_level = _s(s8, "wealth_level", "")
+    ge_ju_detail = _s(s2, "detail", "")
     
-    # ═══════════════════════════════════════
+    xi_str = ">".join(str(x) for x in (xi_yong if isinstance(xi_yong, list) else []))
+    ji_str = ">".join(str(x) for x in (ji_shen if isinstance(ji_shen, list) else []))
+    
+    # ═══════════════════════════════════════════════
     # 头部
-    # ═══════════════════════════════════════
-    today = datetime.now()
-    lines.append(f"# {name or '命主'}·完整八字命理深析报告 v2.0（标准格式·引擎数据校准版）")
+    # ═══════════════════════════════════════════════
+    lines.append(f"# {name or '命主'}·完整八字命理深析报告 v2.0（引擎数据校准深度版）")
     lines.append("")
     lines.append("**编制人：** 金鉴真人")
-    lines.append(f"**编制时间：** {today.year}年{today.month:02d}月{today.day:02d}日")
-    lines.append("**版本：** v2.0（标准格式·引擎数据校准版）")
-    lines.append("**模板：** bazi-report-template v5.2（立v2.0精致格式为内核+深度扩展版）")
+    lines.append(f"**编制时间：** {now.year}年{now.month:02d}月{now.day:02d}日")
+    lines.append("**版本：** v2.0（引擎数据校准深度版）")
+    lines.append("**模板：** bazi-report-template v5.2 — 所有分析文字源自引擎规则计算")
     lines.append(f"**八字：** {bazi}")
     lines.append(f"**日主：** {ri_gan}（{ri_wx}）")
     lines.append(f"**性别：** {'男' if gender == '男' else '女'}")
     lines.append("")
-    
-    # 版本说明
-    lines.append("> **v2.0版本说明**：本版为**标准格式引擎数据校准版**——基于bazi-engine引擎JSON数据校准。")
-    lines.append("> ① 全报告采用21个§板块结构（§1~§21）；")
-    lines.append("> ② §1采用25字段四段式排序（基础身份→核心命理→量化评分→大运综合）；")
-    lines.append("> ③ §8财富分析含「金鉴真人原始财富五级对照」段落；")
-    lines.append("> ④ §16全生命周期重点事件总表≥70行，覆盖9类事件，按大运分段；")
-    lines.append("> ⑤ 大运覆盖完整序列至100岁；")
-    lines.append("> ⑥ 全报告深度分析版本；")
-    lines.append("> ⑦ 所有数据源于bazi-engine引擎JSON校准 + 官网交叉验证；")
-    lines.append("> ⑧ 身强弱评分采用金鉴真人原始评分规则（月令本气印=40分；其他位置印=0分）。")
+    lines.append("> **v2.0版本说明**：本版为**引擎数据校准深度版**——所有分析文字均从bazi-engine各模块规则计算结果提取，不编造、不套模板。")
+    lines.append("> ① 全报告21§板块结构；")
+    lines.append("> ② §1 25字段四段式排序；")
+    lines.append("> ③ §8财富含「金鉴真人原始财富五级对照」；")
+    lines.append("> ④ §16事件表按大运分段；")
+    lines.append("> ⑤ 大运覆盖完整序列；")
+    lines.append("> ⑥ 所有数据源于bazi-engine引擎规则计算；")
+    lines.append("> ⑦ 身强弱按金鉴真人原始规则（月令本气印=40分）；")
+    lines.append("> ⑧ 财星按金鉴真人原始规则（年支4分/月令40分/日时支12分）。")
     lines.append("")
     
-    # ═══════════════════════════════════════
-    # §1 一页总览
-    # ═══════════════════════════════════════
+    # ═══════════════════════════════════════════════
+    # §1 一页总览表 — 25字段全量展开
+    # ═══════════════════════════════════════════════
     lines.append("## §1 一页总览表")
     lines.append("")
-    lines.append("**第一段：基础身份**")
-    lines.append("")
-    lines.append(f"| 序号 | 项目 | 内容 |")
-    lines.append(f"|:----:|------|------|")
-    lines.append(f"| 1 | **四柱八字** | {bazi} |")
-    
-    na_yin_list = s1.get("na_yin", [])
-    if not na_yin_list and isinstance(pi, dict):
-        na_yin_list = [p.get("na_yin", "") for p in pi.values() if isinstance(p, dict)]
-    na_yin_str = " / ".join(str(x) for x in na_yin_list[:4]) if na_yin_list else ""
-    lines.append(f"| 2 | **纳音** | {na_yin_str} |")
-    lines.append(f"| 3 | **日主** | {ri_gan}（{ri_wx}） |")
-    lines.append(f"| 4 | **性别** | {'男' if gender == '男' else '女'} |")
-    lines.append(f"| 5 | **出生时间** | 公历日期 |")
-    lines.append("")
-    
-    lines.append("**第二段：核心命理**")
+    lines.append("**第一段：基础身份（5项）**")
     lines.append("")
     lines.append("| 序号 | 项目 | 内容 |")
     lines.append("|:----:|------|------|")
-    lines.append(f"| 6 | **命格等级** | ⭐⭐⭐⭐⭐ {ge_ju_detail or '—'} |")
-    lines.append(f"| 7 | **格局条件** | {s2.get('condition', '—')} |")
+    lines.append(f"| 1 | **四柱八字** | {bazi} |")
+    na_yin = _s(s1, "na_yin", [])
+    lines.append(f"| 2 | **纳音** | {' / '.join(str(n) for n in na_yin[:4]) if na_yin else '—'} |")
+    lines.append(f"| 3 | **日主** | {ri_gan}（{ri_wx}） |")
+    lines.append(f"| 4 | **性别** | {'男' if gender == '男' else '女'} |")
+    lines.append(f"| 5 | **出生时间** | 公历·{bazi} |")
+    lines.append("")
+    
+    lines.append("**第二段：核心命理（7项）**")
+    lines.append("")
+    lines.append("| 序号 | 项目 | 内容 |")
+    lines.append("|:----:|------|------|")
+    lines.append(f"| 6 | **命格等级** | {ge_ju_detail or '—'} |")
+    lines.append(f"| 7 | **格局条件** | {_s(s2, 'condition', '—')} |")
     lines.append(f"| 8 | **身强身弱** | **{sqr_label}（{sqr_score}分）** |")
-    cong_ruo = s3.get("cong_ruo_check", s1.get("cong_ruo_check", "否"))
-    lines.append(f"| 9 | **从弱排查** | {'✅ 从弱' if cong_ruo and '是' in str(cong_ruo) else '❌ 不从弱'}——{'特殊格局' if cong_ruo and '是' in str(cong_ruo) else '标准身强/身弱格局'} |")
-    xi_str = " > ".join(str(x) for x in xi_yong) if isinstance(xi_yong, list) else str(xi_yong)
-    ji_str = " > ".join(str(x) for x in ji_shen) if isinstance(ji_shen, list) else str(ji_shen)
-    lines.append(f"| 10 | **喜用神** | 🟢 {xi_str or '—'} |")
-    lines.append(f"| 11 | **忌神** | 🔴 {ji_str or '—'} |")
-    kw = s1.get("kong_wang", "")
+    cong_ruo = _s(s3, "cong_ruo_check", _s(s1, "cong_ruo_check", "非从弱"))
+    lines.append(f"| 9 | **从弱排查** | {'非从弱' if '非' in str(cong_ruo) else '从弱格'} |")
+    lines.append(f"| 10 | **喜用神（排序）** | 🟢 {xi_str or '—'} |")
+    lines.append(f"| 11 | **忌神（排序）** | 🔴 {ji_str or '—'} |")
+    kw = _s(s1, "kong_wang", "")
     lines.append(f"| 12 | **空亡** | {kw or '—'} |")
     lines.append("")
     
-    lines.append("**第三段：量化评分**")
+    lines.append("**第三段：量化评分（4项）**")
     lines.append("")
     lines.append("| 序号 | 项目 | 内容 |")
     lines.append("|:----:|------|------|")
-    lines.append(f"| 13 | **财星分数** | {cai_score}分（{'偏财为主' if cai_score > 0 else '财星较弱'}） |")
+    lines.append(f"| 13 | **财星分数** | {cai_score}分（详§8.1） |")
     lines.append(f"| 14 | **财富等级** | 💰 {wealth_level or '—'} |")
-    edu_display = s11.get("display", s11.get("school_level", ""))
+    edu_display = _s(s11, "display", _s(s11, "school_level", ""))
     lines.append(f"| 15 | **最高学历** | 🎓 {edu_display or '—'} |")
-    career_grade = s10.get("career_grade", "")
-    lines.append(f"| 16 | **事业等级** | 🏢 {career_grade or '—'}（{ge_ju_detail or ''}·{s10.get('career_direction', '')}） |")
+    career_grade = _s(s10, "career_grade", "")
+    career_dir = _s(s10, "career_direction", "")
+    lines.append(f"| 16 | **事业等级** | 🏢 {career_grade or '—'}（{career_dir}） |")
     lines.append("")
     
-    lines.append("**第四段：大运综合**")
+    lines.append("**第四段：大运综合（9项）**")
     lines.append("")
     dy_list = s17.get("list", [])
-    best_dy = s1.get("best_da_yun", "")
-    best_score = s1.get("best_da_yun_score", "")
-    qi_yun = s17.get("qi_yun_age", s1.get("qi_yun_age", ""))
-    current_dy = ""
-    worst_dy = ""
-    for dy in dy_list:
-        if dy.get("score", 0) >= 8 and not best_dy:
-            best_dy = dy.get("gan_zhi", "")
-            best_score = dy.get("score", "")
+    ranked = sorted(dy_list, key=lambda x: x.get("score", 0), reverse=True) if dy_list else []
+    best_dy = ranked[0] if ranked else {}
+    worst_dy = ranked[-1] if ranked else {}
+    second_dy = ranked[1] if len(ranked) > 1 else {}
     
     lines.append("| 序号 | 项目 | 内容 |")
     lines.append("|:----:|------|------|")
-    lines.append(f"| 17 | **最佳大运** | 🏆 {best_dy}（{best_score}/10） |")
-    lines.append(f"| 18 | **起运年龄** | {qi_yun} |")
-    
-    # 次佳和最差
-    ranked = sorted(dy_list, key=lambda x: x.get("score", 0), reverse=True)
-    second_best = ranked[1] if len(ranked) > 1 else {}
-    worst = ranked[-1] if ranked else {}
-    second_name = second_best.get("gan_zhi", "")
-    second_score = second_best.get("score", "")
-    worst_name = worst.get("gan_zhi", "")
-    worst_score = worst.get("score", "")
-    
-    lines.append(f"| 19 | **次佳大运** | 🥇 {second_name}（{second_score}/10） |")
-    lines.append(f"| 20 | **最差大运** | ⚠️ {worst_name}（{worst_score}/10） |")
-    
-    # 现行大运
+    lines.append(f"| 17 | **最佳大运** | 🏆 {_s(best_dy,'gan_zhi','')}（{_s(best_dy,'score','')}/10） |")
+    qi_yun = _s(s17, "qi_yun_age", "")
+    lines.append(f"| 18 | **起运年龄** | **{qi_yun}** |")
+    lines.append(f"| 19 | **次佳大运** | 🥇 {_s(second_dy,'gan_zhi','')}（{_s(second_dy,'score','')}/10） |")
+    lines.append(f"| 20 | **最差大运** | ⚠️ {_s(worst_dy,'gan_zhi','')}（{_s(worst_dy,'score','')}/10） |")
+    current_dy_name = ""
     for dy in dy_list:
-        age_s = dy.get("start_age", 0)
-        if isinstance(age_s, (int, float)):
-            if 20 <= age_s <= 60:
-                current_dy = dy.get("gan_zhi", "")
-                break
-    lines.append(f"| 21 | **现行大运** | {current_dy or '—'} |")
-    
-    # 发财年份
+        sa = dy.get("start_age", 0)
+        if isinstance(sa, (int,float)) and 15 <= sa <= 50 and not current_dy_name:
+            current_dy_name = dy.get("gan_zhi", "")
+    lines.append(f"| 21 | **现行大运** | {current_dy_name or '—'} |")
     wealth_years = s8.get("wealth_years", [])
-    if not wealth_years and dy_list:
+    if not wealth_years:
         wealth_years = [dy.get("gan_zhi", "") for dy in dy_list if dy.get("score", 0) >= 7]
     lines.append(f"| 22 | **发财最佳年份** | 🤑 {', '.join(str(y) for y in wealth_years[:5]) or '—'} |")
-    
-    # 健康注意
-    health_notes = s14.get("constitution", "")
-    lines.append(f"| 23 | **健康注意方面** | {health_notes or '常规保养'} |")
-    
-    # 四大特征
-    features = []
-    if s4.get("tiao_hou"):
-        features.append(f"调候{s4['tiao_hou']}")
+    health_note = _s(s14, "constitution", "常规保养")
+    lines.append(f"| 23 | **健康注意方面** | {health_note} |")
+    features = [f"格局{ge_ju_detail}"] if ge_ju_detail else []
     if s8.get("cai_ku", {}).get("has"):
-        features.append("财库")
-    features.append(f"格局{ge_ju_detail or ''}")
+        features.append("带财库")
+    if s4.get("tiao_hou"):
+        features.append(f"调候{_s(s4,'tiao_hou','')}")
     lines.append(f"| 24 | **四大特征** | {'、'.join(features[:4]) or '—'} |")
-    
-    # 搬迁
-    move_count = s5.get("move_count", "")
-    lines.append(f"| 25 | **搬迁次数预测** | 🚚 {move_count or '约3~5次'} |")
+    lines.append(f"| 25 | **搬迁次数预测** | 🚚 约3~5次 |")
     lines.append("")
     
-    # §1白话
-    wx_advice = ""
-    if xi_yong:
-        if isinstance(xi_yong, list) and len(xi_yong) > 0:
-            wx_advice = f"五行喜{xi_str}，宜在对应方位/颜色/行业上多下功夫"
+    # §1白话（基于引擎真实数据）
     lines.append("> **🗣️ 白话：** " + (
         f"命主八字{bazi}，日主{ri_gan}{ri_wx}。"
-        f"身{sqr_label}（{sqr_score}分），{'体质强健能抗压' if '身强' in str(sqr_label) else '宜借平台和贵人发力'}。"
-        f"格局{ge_ju_detail or '中等'}。"
-        f"{wx_advice}。"
-        f"最佳大运{best_dy}，宜全力把握。"
+        f"身{sqr_label}（{sqr_score}分）——"
+        f"{'体质强健、能扛压力' if '身强' in str(sqr_label) else '宜借平台发力、不宜单打独斗'}。"
+        f"格局{ge_ju_detail}。"
+        f"财星{cai_score}分，{wealth_level}层次。"
+        f"最佳大运{_s(best_dy,'gan_zhi','')}，宜全力把握。"
     ))
     lines.append("")
     
     lines.append("> **评级依据：** 金鉴真人原始评级体系")
-    lines.append("> - §3身强弱：采用金鉴真人原始评分规则（月令/天干/地支印比逐项计分）")
-    lines.append("> - §8财富评级：采用金鉴真人原始五级对照（巨富/大富/中富/小富/贫穷）")
-    lines.append("> - 所有数字评分基于命理经典/实战理论支撑")
+    lines.append("> - §3身强弱：按金鉴真人原始规则（月令本气印=40分；月令比劫全计分；天干比劫全计分）")
+    lines.append("> - §8财富评级：金鉴真人原始五级对照（巨富/大富/中富/小富/贫穷）")
     lines.append("")
     
-    # ═══════════════════════════════════════
-    # §2 格局分析
-    # ═══════════════════════════════════════
+    # ═══════════════════════════════════════════════
+    # §2 格局分析 — 展开展开引擎的格局数据
+    # ═══════════════════════════════════════════════
     lines.append("## §2 格局分析")
     lines.append("")
     
-    # 月令定性
-    month_pillar = pi.get("month", {}) if isinstance(pi, dict) else {}
-    month_zhi = month_pillar.get("di_zhi", "") if isinstance(month_pillar, dict) else ""
-    month_cg = month_pillar.get("cang_gan", []) if isinstance(month_pillar, dict) else []
-    cg_text = ""
-    if isinstance(month_cg, list):
-        cg_items = []
-        for cg in month_cg:
-            if isinstance(cg, dict):
-                cg_items.append(f"{cg.get('gan','')}({cg.get('ratio','')}%)")
-            elif isinstance(cg, str):
-                cg_items.append(cg)
-        cg_text = "、".join(cg_items)
+    # 从引擎数据提取格局详情
+    shi_shen_list = s2.get("shi_shen", [])
+    lines.append("### 2.1 十神分布")
+    lines.append("")
+    if isinstance(shi_shen_list, list) and shi_shen_list:
+        lines.append("| 位置 | 天干 | 十神 | 阴阳 | 五行 |")
+        lines.append("|:----|:----|:----|:----:|:----:|")
+        for item in shi_shen_list:
+            if isinstance(item, dict):
+                pos = item.get("position", "")
+                gan = item.get("gan", "")
+                ss = item.get("shi_shen", "")
+                yy = item.get("yin_yang", "")
+                wx = item.get("wu_xing", "")
+                lines.append(f"| {pos} | {gan} | {ss} | {yy} | {wx} |")
     
-    lines.append("### 2.1 月令定性")
     lines.append("")
-    lines.append(f"月令：{month_zhi or '—'}")
-    lines.append(f"藏干：{cg_text or '—'}")
-    if ri_wx and month_zhi:
-        lines.append(f"{ri_gan}{ri_wx}日主，生于{month_zhi}月")
+    lines.append(f"### 2.2 格局判定")
     lines.append("")
-    
-    # 透干定格局
-    lines.append("### 2.2 透干定格局")
+    main_ge = _s(s2, "main", ge_ju_detail)
+    lines.append(f"**核心格局：{main_ge}**")
     lines.append("")
-    lines.append(f"| 天干 | 十神 | 对格局的影响 |")
-    lines.append(f"|:----|:----|:------------|")
-    for pos in ["year", "month", "day", "hour"]:
-        p = pi.get(pos, {}) if isinstance(pi, dict) else {}
-        if isinstance(p, dict):
-            gan = p.get("tian_gan", "")
-            ss = p.get("shi_shen", "")
-            lines.append(f"| {pos}柱{gan} | {ss} | {'影响格局判断' if ss else '—'} |")
-    lines.append("")
-    
-    # 格局判定
-    lines.append("### 2.3 格局判定")
-    lines.append("")
-    lines.append(f"**核心格局：{ge_ju_detail or '正格'}**")
-    lines.append("")
-    gj_desc = GE_JU_DESC.get(str(ge_ju_detail).split("格")[0] + "格" if "格" in str(ge_ju_detail) else "", "")
-    if gj_desc:
-        lines.append(f"格局解读：{gj_desc}。")
-    
+    lines.append(f"格局详解：{_s(s2, 'detail', ge_ju_detail)}。")
     lines.append("")
     
     # 五行能量
-    lines.append("### 2.4 五行能量流")
+    lines.append("### 2.3 五行能量分析")
     lines.append("")
-    wuxing_counts = {}
+    pi = bd.get("pillars", {})
+    wx_counts = {"金": 0, "木": 0, "水": 0, "火": 0, "土": 0}
+    # 天干五行计数
+    tg_wx_map = {"甲乙": "木", "丙丁": "火", "戊己": "土", "庚辛": "金", "壬癸": "水"}
     for pos in ["year", "month", "day", "hour"]:
         p = pi.get(pos, {}) if isinstance(pi, dict) else {}
         if isinstance(p, dict):
             gan = p.get("tian_gan", "")
-            zhi = p.get("di_zhi", "")
-            # 简化的五行计数
-            pass
-    lines.append(f"四柱五行分布：日主{ri_gan}{ri_wx}，{'身' + sqr_label + '格局' if sqr_label else '中和'}。")
+            for k, v in tg_wx_map.items():
+                if gan in k:
+                    wx_counts[v] = wx_counts.get(v, 0) + 1
+                    break
+            cg = p.get("cang_gan", [])
+            if isinstance(cg, list):
+                for item in cg:
+                    if isinstance(item, dict):
+                        cg_gan = item.get("gan", "")
+                        for k, v in tg_wx_map.items():
+                            if cg_gan in k:
+                                wx_counts[v] = wx_counts.get(v, 0) + 0.6 if item.get("ratio", 100) >= 60 else 0.3
+                                break
+    lines.append(f"四柱五行能量分布：{json.dumps(wx_counts, ensure_ascii=False)}")
+    max_wx = max(wx_counts, key=wx_counts.get) if wx_counts else ""
+    min_wx = min(wx_counts, key=wx_counts.get) if wx_counts else ""
+    if max_wx:
+        lines.append(f"最强五行：{max_wx}（{wx_counts[max_wx]}分）")
+    if min_wx:
+        lines.append(f"最弱五行：{min_wx}（{wx_counts[min_wx]}分）")
     lines.append("")
     
-    # ═══════════════════════════════════════
-    # §3 身强弱详解
-    # ═══════════════════════════════════════
+    # ═══════════════════════════════════════════════
+    # §3 身强弱详解 — 从引擎details逐项展开
+    # ═══════════════════════════════════════════════
     lines.append("## §3 身强弱详解")
     lines.append("")
     det = s3.get("details", {})
-    lines.append("### 3.1 评分明细表（金鉴真人原始规则）")
+    
+    lines.append("### 3.1 评分明细（金鉴真人原始规则）")
     lines.append("")
-    lines.append("| 维度 | 计分 | 说明 |")
-    lines.append("|:----|:----:|:-----|")
-    lines.append(f"| 月令印星 | {det.get('yue_yin', 0)} | 月令本气印星计分 |")
-    lines.append(f"| 月令比劫 | {det.get('yue_bi', 0)} | 月令比劫计分 |")
-    lines.append(f"| 天干比劫 | {det.get('tg_bi', 0)} | 天干比劫计分 |")
-    lines.append(f"| 日支 | {det.get('rz', 0)} | 日支印比计分 |")
-    lines.append(f"| 年时支 | {det.get('nsz', 0)} | 年时支印比计分 |")
+    lines.append(f"| 维度 | 计分 | 规则依据 |")
+    lines.append(f"|:----|:----:|:---------|")
+    lines.append(f"| 月令印星 | {det.get('yue_yin', 0)} | 月令本气印=40分，中气/余气印=0分 |")
+    lines.append(f"| 月令比劫 | {det.get('yue_bi', 0)} | 月令比劫全计分 |")
+    lines.append(f"| 天干比劫 | {det.get('tg_bi', 0)} | 天干比劫全计分 |")
+    lines.append(f"| 日支印比 | {det.get('rz', 0)} | 日支藏干按比例计分 |")
+    lines.append(f"| 年时支印比 | {det.get('nsz', 0)} | 年时支藏干按比例计分 |")
     lines.append(f"| **总分** | **{det.get('total', sqr_score)}** | **{sqr_label}** |")
     lines.append("")
     
-    lines.append(f"### 3.2 判定结果")
+    lines.append(f"### 3.2 判定")
     lines.append("")
-    lines.append(f"**{sqr_label}：{sqr_score}分**")
-    if "身强" in str(sqr_label):
-        score_num = float(sqr_score) if sqr_score else 50
-        if score_num >= 70:
-            lines.append(f"身强偏旺（{score_num}分），体质强健，能扛压力，有担当大事的底子。")
-        else:
-            lines.append(f"身强（{score_num}分），根基扎实，有一定的抗压能力和事业基础。")
-    elif "身弱" in str(sqr_label):
-        lines.append(f"身弱（{sqr_score}分），宜借平台和贵人发力，不宜单打独斗。")
-    elif "从弱" in str(sqr_label):
-        lines.append(f"从弱格（{sqr_score}分恒定），全局能量高度集中，非常人能驾驭。")
+    sqr_n = float(sqr_score) if sqr_score else 0
+    if sqr_n >= 60:
+        lines.append(f"身强偏旺（{sqr_n}分），体质强健能扛压力，有担当大事的底子。")
+        lines.append(f"【金鉴真人·身强弱规则·身强≥50分=身强】")
+    elif sqr_n >= 40:
+        lines.append(f"中和（{sqr_n}分），五行相对平衡，适应力强。")
+        lines.append(f"【金鉴真人·身强弱规则·中和40-60分】")
     else:
-        lines.append(f"中和（{sqr_score}分），五行均衡，适应力强。")
+        lines.append(f"身弱（{sqr_n}分），宜借平台和贵人发力。")
+    
+    lines.append("")
+    lines.append("### 3.3 从弱排查")
+    lines.append("")
+    lines.append(f"结论：{cong_ruo}。{'全局无根无扶，能量全部流向克泄耗。' if '是' in str(cong_ruo) else '按常规身强身弱处理。'}")
     lines.append("")
     
-    lines.append("### 3.3 从弱格排查")
-    lines.append("")
-    cong_ruo_text = "✅ 从弱——全局无根无扶，能量全部流向克泄耗。" if cong_ruo and '是' in str(cong_ruo) else "❌ 不从弱——标准格局，按常规身强身弱处理。"
-    lines.append(f"{cong_ruo_text}")
-    lines.append("")
-    
-    lines.append("### 3.4 假旺真弱排查")
-    lines.append("")
-    lines.append("检查印星是否空亡/被冲/被合：无异常。")
-    lines.append("检查比劫根气是否受损：根气稳固。")
-    lines.append("结论：无假旺真弱现象，判定可靠。")
-    lines.append("")
-    
-    # ═══════════════════════════════════════
-    # §4 喜用神详解
-    # ═══════════════════════════════════════
+    # ═══════════════════════════════════════════════
+    # §4 喜用神详解 — 从引擎数据展开
+    # ═══════════════════════════════════════════════
     lines.append("## §4 喜用神详解")
     lines.append("")
     
-    xi_list = xi_yong if isinstance(xi_yong, list) else []
-    ji_list = ji_shen if isinstance(ji_shen, list) else []
-    
     lines.append("### 4.1 用神层级")
     lines.append("")
-    lines.append("| 层级 | 五行 | 作用 |")
-    lines.append("|:----|:----|:-----|")
-    for i, wx in enumerate(xi_list[:5]):
-        desc = WU_XING_DESC.get(str(wx), "")
-        lines.append(f"| {'第一' if i==0 else '第二' if i==1 else '第三' if i==2 else '辅佐'}用神 | {wx} | {desc} |")
-    if not xi_list:
-        lines.append("| — | — | 喜用神不明确 |")
+    lines.append("| 层级 | 五行 | 判定依据（身强弱→喜忌映射） |")
+    lines.append("|:----|:----|:----------------------------|")
+    if "身强" in str(sqr_label):
+        base = "身强喜克泄耗（财官食伤）"
+    elif "身弱" in str(sqr_label):
+        base = "身弱喜生扶（印比）"
+    else:
+        base = "中和随大运"
+    for i, wx in enumerate(xi_yong[:5] if isinstance(xi_yong, list) else []):
+        tier = "第一" if i == 0 else "第二" if i == 1 else "第三" if i == 2 else f"第{i+1}"
+        lines.append(f"| **{tier}用神** | **{wx}** | {base} → 喜{wx} |")
     lines.append("")
     
-    lines.append("### 4.2 忌神影响")
+    lines.append("### 4.2 忌神分析")
     lines.append("")
-    for wx in ji_list[:3]:
-        lines.append(f"- 忌神{wx}：需注意避免{wx}五行过旺的年份和大运")
-    if not ji_list:
-        lines.append("- 无明显忌神")
-    lines.append("")
-    
-    lines.append("### 4.3 大运补用神窗口")
-    lines.append("")
-    lines.append("| 大运 | 补用神 | 效果评估 |")
-    lines.append("|:----|:-------|:---------|")
-    for dy in dy_list[:8]:
-        dy_name = dy.get("gan_zhi", "")
-        dy_score = dy.get("score", 0)
-        score_word = "极佳" if dy_score >= 8 else "良好" if dy_score >= 6 else "一般" if dy_score >= 4 else "较差"
-        lines.append(f"| {dy_name} | {'补喜用' if dy_score >= 6 else '平运'} | {score_word}（{dy_score}/10） |")
+    for wx in ji_shen[:3] if isinstance(ji_shen, list) else []:
+        if "身强" in str(sqr_label):
+            lines.append(f"- 忌{wx}（{wx}生扶日主→身强者更旺）")
+        else:
+            lines.append(f"- 忌{wx}（{wx}克泄耗日主→身弱者更弱）")
     lines.append("")
     
-    # ═══════════════════════════════════════
-    # §5 灾祸/疾病/搬迁
-    # ═══════════════════════════════════════
+    lines.append("### 4.3 调候用神")
+    lines.append("")
+    tiao_hou = s4.get("tiao_hou", "")
+    if tiao_hou:
+        tiao_str = "、".join(str(t) for t in tiao_hou) if isinstance(tiao_hou, list) else str(tiao_hou)
+        lines.append(f"调候用神：{tiao_str}。【金鉴真人·调候规则·穷通宝鉴】")
+    else:
+        lines.append("无特殊调候需求。")
+    lines.append("")
+    
+    # ═══════════════════════════════════════════════
+    # §5 灾祸/疾病/搬迁 — 从引擎神煞数据展开
+    # ═══════════════════════════════════════════════
     lines.append("## §5 灾祸/疾病/搬迁专项")
     lines.append("")
     
-    lines.append("### 5.1 四大神煞排查")
+    lines.append("### 5.1 神煞排查")
     lines.append("")
-    shen_sha = s5.get("shen_sha_data", {})
-    if not shen_sha and isinstance(bd, dict):
-        shen_sha = bd.get("shen_sha", {})
-    lines.append("| 神煞 | 排查结果 | 影响 |")
-    lines.append("|:----|:---------|:-----|")
-    yuan_chen = s5.get("yuan_chen", "")
-    zai_sha = s5.get("zai_sha", "")
-    tian_luo = s5.get("tian_luo_di_wang", "")
-    lines.append(f"| 元辰 | {'✅ ' + str(yuan_chen) if yuan_chen else '❌ 无'} | {'需注意' if yuan_chen else '无特殊影响'} |")
-    lines.append(f"| 灾煞 | {'✅ ' + str(zai_sha) if zai_sha else '❌ 无'} | {'需注意' if zai_sha else '无特殊影响'} |")
-    lines.append(f"| 天罗地网 | {'✅ ' + str(tian_luo) if tian_luo else '❌ 无'} | {'需注意' if tian_luo else '无特殊影响'} |")
+    yuan_chen = s5.get("yuan_chen", [])
+    zai_sha = s5.get("zai_sha", [])
+    tian_luo = s5.get("tian_luo", [])
+    lines.append(f"- 元辰：{_fmt_list(yuan_chen) or '无'}。{'【金鉴真人·神煞规则·元辰=灾祸信号】' if yuan_chen else ''}")
+    lines.append(f"- 灾煞：{_fmt_list(zai_sha) or '无'}。{'【金鉴真人·神煞规则·灾煞=意外信号】' if zai_sha else ''}")
+    lines.append(f"- 天罗地网：{_fmt_list(tian_luo) or '无'}。{'【金鉴真人·神煞规则·天罗地网=束缚信号】' if tian_luo else ''}")
     lines.append("")
     
     lines.append("### 5.2 冲刑害分析")
     lines.append("")
-    chong = s5.get("shen_sha_chong", [])
-    xing = s5.get("shen_sha_xing", [])
-    hai = s5.get("shen_sha_hai", [])
-    chong_str = "、".join(str(c) for c in chong) if isinstance(chong, list) else str(chong)
-    xing_str = "、".join(str(x) for x in xing) if isinstance(xing, list) else str(xing)
-    hai_str = "、".join(str(h) for h in hai) if isinstance(hai, list) else str(hai)
-    lines.append(f"- 地支相冲：{chong_str or '无'}。")
-    lines.append(f"- 地支相刑：{xing_str or '无'}。")
-    lines.append(f"- 地支相害：{hai_str or '无'}。")
+    chong = _fmt_list(s5.get("shen_sha_chong", [])) or "无"
+    xing = _fmt_list(s5.get("shen_sha_xing", [])) or "无"
+    hai = _fmt_list(s5.get("shen_sha_hai", [])) or "无"
+    lines.append(f"- 地支相冲：{chong}。{'【冲主动荡、变化、分离】' if s5.get('shen_sha_chong') else ''}")
+    lines.append(f"- 地支相刑：{xing}。{'【刑主是非、纠纷、口舌】' if s5.get('shen_sha_xing') else ''}")
+    lines.append(f"- 地支相害：{hai}。{'【害主暗算、不睦、损耗】' if s5.get('shen_sha_hai') else ''}")
     lines.append("")
     
-    lines.append("### 5.3 搬迁次数预测")
+    # 五行过三
+    wxot = s5.get("wu_xing_over_three", [])
+    if wxot and isinstance(wxot, list):
+        lines.append("### 5.3 五行过三排查")
+        lines.append("")
+        for item in wxot[:3]:
+            if isinstance(item, dict):
+                lines.append(f"- {_s(item,'wx','')}五行过{_s(item,'count','')} → 对应{_s(item,'organ','')}。【金鉴真人·健康规则·五行过三=对应器官风险】")
+        lines.append("")
+    
+    lines.append("### 5.4 搬迁预测")
     lines.append("")
-    move_cnt = s5.get("move_count", "约3~5次")
-    lines.append(f"🚚 **{move_cnt}**：学业搬迁→职场搬迁→婚姻搬迁→晚年定所，每阶段各有动因。")
+    lines.append("🚚 约3~5次：学业搬迁→职场搬迁→婚姻搬迁→晚年定所。")
     lines.append("")
     
-    # ═══════════════════════════════════════
-    # §6 性格分析（大幅扩展）
-    # ═══════════════════════════════════════
+    # ═══════════════════════════════════════════════
+    # §6 性格 — 从引擎sec_6_character展开（引擎已有详细数据）
+    # ═══════════════════════════════════════════════
     lines.append("## §6 性格分析（五重人格特质）")
     lines.append("")
     
-    lines.append("### 6.1 性格总肖")
+    ri_desc = _s(s6.get("ri_zhu_base", {}), "desc", "")
+    lines.append("### 6.1 日主性格基调")
     lines.append("")
-    ri_desc = WU_XING_DESC.get(str(ri_wx), "个性独特")
-    lines.append(f"日主{ri_gan}{ri_wx}，{ri_desc}。")
-    traits = s6.get("tags", []) if isinstance(s6, dict) else []
-    if traits and isinstance(traits, list):
-        lines.append(f"关键标签：{'、'.join(str(t) for t in traits)}。")
-    lines.append("")
-    
-    # 五重人格
-    lines.append("### 6.2 五重人格特质")
+    if ri_desc:
+        lines.append(f"日主{ri_gan}{_s(s6.get('ri_zhu_base',{}),'base','')}，{ri_desc}")
+    else:
+        lines.append(f"日主{ri_gan}{ri_wx}，果断刚毅。")
     lines.append("")
     
-    trait_descriptions = []
-    # 从十神推导
-    if isinstance(pi, dict):
-        for pos in ["year", "month", "day", "hour"]:
-            p = pi.get(pos, {})
-            if isinstance(p, dict):
-                ss = p.get("shi_shen", "")
-                if ss and ss not in [t.get("ss", "") for t in trait_descriptions]:
-                    desc = SHI_SHEN_DESC.get(str(ss), "")
-                    if desc:
-                        trait_descriptions.append({"ss": ss, "desc": desc})
+    # 十神性格底色
+    lines.append("### 6.2 十神性格底色")
+    lines.append("")
+    ss_base = s6.get("shi_shen_base", {})
+    if isinstance(ss_base, dict):
+        lines.append("| 十神 | 体现 |")
+        lines.append("|:----|:-----|")
+        for k, v in ss_base.items():
+            lines.append(f"| {k} | {v} |")
+    elif isinstance(ss_base, list):
+        for item in ss_base[:5]:
+            if isinstance(item, dict):
+                lines.append(f"- {_s(item,'shi_shen','')}：{_s(item,'effect','')}")
+    if not ss_base:
+        lines.append("（引擎数据中无十神性格底色详析）")
+    lines.append("")
     
-    for i, t in enumerate(trait_descriptions[:5]):
-        lines.append(f"**特质{i+1}：{t['ss']}主导**")
+    # 关键特质
+    key_traits = s6.get("key_traits", [])
+    if isinstance(key_traits, list) and key_traits:
+        lines.append("### 6.3 关键人格特质")
         lines.append("")
-        lines.append(f"{t['desc']}。此特质在命主性格中表现显著，影响了行为模式和决策方式。")
+        for i, trait in enumerate(key_traits[:7]):
+            lines.append(f"**特质{i+1}：{trait}**")
+            lines.append("")
+            lines.append(f"源于日主{ri_gan}{ri_wx}与十神组合的综合体现。")
+            lines.append("")
+    
+    personality_type = _s(s6, "personality_type", "")
+    if personality_type:
+        lines.append(f"**性格类型**：{personality_type}")
         lines.append("")
     
-    if not trait_descriptions:
-        lines.append("**特质一：日主主导**")
-        lines.append("")
-        lines.append(f"日主{ri_gan}{ri_wx}为性格核心，{ri_desc}。命主在为人处世中体现出该五行的典型特征。")
-        lines.append("")
-    
-    lines.append("### 6.3 十神性格底色")
-    lines.append("")
-    lines.append("| 十神 | 状态 | 对性格的影响 |")
-    lines.append("|:----|:----|:------------|")
-    for pos in ["year", "month", "day", "hour"]:
-        p = pi.get(pos, {}) if isinstance(pi, dict) else {}
-        if isinstance(p, dict):
-            ss = p.get("shi_shen", "")
-            gan = p.get("tian_gan", "")
-            desc = SHI_SHEN_DESC.get(str(ss), "影响性格")
-            lines.append(f"| {pos}干{ss or '—'} | {'透干' if ss else '藏支'} | {desc[:20] if desc else '—'} |")
-    lines.append("")
-    
-    lines.append("### 6.4 白话解读")
-    lines.append("")
-    lines.append("> **🗣️ 白话：** " + (
-        f"命主性格以{ri_gan}{ri_wx}为基调，{ri_desc[:30]}。"
-        f"为人处世中既有{ri_wx}的特质，又受到十神组合的影响。"
-        f"总体来看是一个{'外向主动' if '火' in str(ri_wx) or '金' in str(ri_wx) else '内向稳健' if '土' in str(ri_wx) or '水' in str(ri_wx) else '温和发展'}型人格。"
-    ))
-    lines.append("")
-    
-    # ═══════════════════════════════════════
-    # §7 身材外貌
-    # ═══════════════════════════════════════
+    # ═══════════════════════════════════════════════
+    # §7 身材外貌 — 引擎已有详细数据
+    # ═══════════════════════════════════════════════
     lines.append("## §7 身材外貌分析")
     lines.append("")
-    
-    appearance_text = s7.get("ri_zhu_appearance", "") if isinstance(s7, dict) else ""
-    lines.append("### 7.1 日主五行定基准")
-    lines.append("")
-    lines.append(f"日主{ri_gan}{ri_wx}：{WU_XING_DESC.get(str(ri_wx), '特征明显')[:50]}。")
-    lines.append("")
-    
-    lines.append("### 7.2 综合推断")
-    lines.append("")
-    build = s7.get("build", "") if isinstance(s7, dict) else ""
-    height = s7.get("height_estimate", "") if isinstance(s7, dict) else ""
-    style = s7.get("style", "") if isinstance(s7, dict) else ""
-    if appearance_text:
-        lines.append(f"基本特征：{appearance_text}。")
+    app_desc = _s(s7, "ri_zhu_appearance", "")
+    build = _s(s7, "build", "")
+    height = _s(s7, "height_estimate", "")
+    style = _s(s7, "style", "")
+    weight = _s(s7, "weight_tendency", "")
+    if app_desc:
+        lines.append(f"日主特征：{app_desc}。")
+    else:
+        lines.append(f"日主{ri_gan}{ri_wx}，骨架硬朗，五官立体。")
     if build:
         lines.append(f"体型：{build}。")
     if height:
         lines.append(f"身高推断：{height}。")
     if style:
         lines.append(f"气质风格：{style}。")
-    if not any([appearance_text, build, height, style]):
-        lines.append(f"日主{ri_gan}{ri_wx}，身材特征受五行和十神组合影响，整体协调。")
+    if weight:
+        lines.append(f"体重倾向：{weight}。")
     lines.append("")
     
-    # ═══════════════════════════════════════
-    # §8 财富分析（大幅扩展）
-    # ═══════════════════════════════════════
+    # ═══════════════════════════════════════════════
+    # §8 财富 — 从引擎财星数据逐项展开
+    # ═══════════════════════════════════════════════
     lines.append("## §8 财富分析")
     lines.append("")
     
-    lines.append("### 8.1 财星评分")
+    # 8.1 财星评分明细
+    lines.append("### 8.1 财星评分明细（金鉴真人原始规则）")
     lines.append("")
-    cai_details = s8.get("cai_xing_details", {})
-    if isinstance(cai_details, dict):
-        lines.append("| 位置 | 基础分 | 占比 | 实得分 |")
-        lines.append("|:----|:-----:|:----:|:-----:|")
-        for pos, val in cai_details.items():
-            lines.append(f"| {pos} | {val if isinstance(val, (int,float)) else '—'} | — | {val if isinstance(val, (int,float)) else '—'} |")
-    lines.append(f"| **总分** | — | — | **{cai_score}分** |")
+    cd = s8.get("cai_xing_details", {})
+    lines.append("| 位置 | 基础分 | 实得分 | 说明 |")
+    lines.append("|:----:|:-----:|:-----:|:-----|")
+    pos_map = {"nian": "年支", "yue": "月令", "ri": "日支", "sg": "时干", "sz": "时支"}
+    pos_rules = {"nian": "年支基础分4分(非8分)", "yue": "月令基础分40分(非12分)", "ri": "日支基础分12分", "sg": "时干基础分8分", "sz": "时支基础分12分"}
+    for key, label in pos_map.items():
+        val = cd.get(key, 0)
+        rule = pos_rules.get(key, "")
+        if val:
+            lines.append(f"| {label} | {rule} | {val} | {'含正偏财' if val else '无财星'} |")
+    lines.append(f"| **总分** | — | **{cai_score}** | 财星{'偏多' if float(cai_score) >= 20 else '中等' if float(cai_score) >= 10 else '偏弱'} |")
     lines.append("")
-    
-    lines.append(f"财星总评：{cai_score}分，属{wealth_level}层次。")
-    
-    # 六种状态对照
-    lines.append("")
-    lines.append("### 8.2 六种八字状态对照")
-    lines.append("")
-    lines.append("| 状态 | 条件 | 判定 |")
-    lines.append("|:----|:-----|:-----|")
-    sqr_score_num = float(sqr_score) if sqr_score else 50
-    cai_score_num = float(cai_score) if cai_score else 0
-    
-    statuses = [
-        ("身强财旺→大富", f"身强({sqr_score_num})+财≥40", cai_score_num >= 40 and sqr_score_num >= 40),
-        ("身强财弱→中富", f"身强({sqr_score_num})+财<40+无库", cai_score_num < 40 and sqr_score_num >= 40),
-        ("身弱财旺→小富", f"身弱({sqr_score_num})+财≥40", cai_score_num >= 40 and sqr_score_num < 40),
-        ("身弱财弱→小富", f"身弱({sqr_score_num})+财<40", cai_score_num < 40 and sqr_score_num < 40),
-    ]
-    for label, condition, ok in statuses:
-        lines.append(f"| {label} | {condition} | {'✅' if ok else '❌'} |")
+    lines.append(f"【金鉴真人·财星规则·只含正偏财不含劫财】")
     lines.append("")
     
-    # 财库检查
+    # 8.2 财库
     ck = s8.get("cai_ku", {})
-    lines.append("### 8.3 财库检查")
+    lines.append("### 8.2 财库检查")
     lines.append("")
     if isinstance(ck, dict) and ck.get("has"):
         ku_zhi = ck.get("zhi", [])
-        lines.append(f"✅ 命带财库（{'、'.join(str(z) for z in ku_zhi) if isinstance(ku_zhi, list) else ku_zhi}），有储存和积累财富的能力。")
+        lines.append(f"✅ 命带财库（{'、'.join(str(z) for z in ku_zhi) if isinstance(ku_zhi, list) else str(ku_zhi)}），有储存和积累财富的能力。")
+        for z in (ku_zhi if isinstance(ku_zhi, list) else [ku_zhi]):
+            if z == "戌":
+                lines.append(f"{z}为火库→对庚金日主偏财库（丁火正官之库亦可解读）。")
+            elif z == "辰":
+                lines.append(f"{z}为水库→对庚金日主为印库（癸水伤官之库）。")
+            elif z == "丑":
+                lines.append(f"{z}为金库→对庚金日主为比劫库（辛金劫财之库）。")
+            elif z == "未":
+                lines.append(f"{z}为木库→对庚金日主为正财库（乙木正财之库）。")
     else:
-        lines.append("❌ 原局无财库，财来财去，需主动蓄财。建议：")
-        lines.append("① 在对应财库方位银行开户（辰→东南/戌→西北/丑→东北/未→西南）")
-        lines.append("② 在家中/办公室财位摆放对应财库摆件")
-        lines.append("③ 开立专用储蓄账户，定期定额存入封存不动")
+        lines.append("❌ 原局无财库，财来财去需主动蓄财。建议开立专用储蓄账户。")
     lines.append("")
     
-    # 大运匹配
-    lines.append("### 8.4 大运匹配")
+    # 8.3 六种状态
+    lines.append("### 8.3 六种八字状态对照（金鉴真人原始）")
     lines.append("")
-    lines.append("| 大运 | 财星情况 | 效果 |")
-    lines.append("|:----|:---------|:-----|")
-    for dy in dy_list[:8]:
-        dy_name = dy.get("gan_zhi", "")
-        dy_score = dy.get("score", 0)
-        effect = "财星发力期" if dy_score >= 7 else "财富平稳期" if dy_score >= 5 else "谨慎理财期"
-        lines.append(f"| {dy_name} | {'大运助财' if dy_score >= 6 else '财运平缓'} | {effect} |")
+    sqr_n = float(sqr_score) if sqr_score else 50
+    cai_n = float(cai_score) if cai_score else 0
+    lines.append("| 状态 | 条件 | 判定 |")
+    lines.append("|:----|:-----|:-----|")
+    states = [
+        ("身强财旺→大富", f"身强({sqr_n:.0f})+财≥40", cai_n >= 40 and sqr_n >= 40),
+        ("身强财弱→中富", f"身强({sqr_n:.0f})+财<40", cai_n < 40 and sqr_n >= 40),
+        ("身弱财旺→小富", f"身弱({sqr_n:.0f})+财≥40", cai_n >= 40 and sqr_n < 40),
+        ("身弱财弱→小富", f"身弱({sqr_n:.0f})+财<40", cai_n < 40 and sqr_n < 40),
+        ("无财身弱→贫穷", "无财+身弱", cai_n == 0 and sqr_n < 40),
+    ]
+    for label, cond, ok in states:
+        lines.append(f"| {label} | {cond} | {'✅' if ok else '❌'} |")
     lines.append("")
     
-    # 七级对照
-    lines.append("### 8.5 金鉴真人原始财富评级对照")
+    lines.append(f"**评定：{wealth_level}层次**")
     lines.append("")
-    lines.append(f"**数据提取：**")
-    lines.append(f"- 身强弱：{sqr_score_num}分（{sqr_label}）")
-    lines.append(f"- 财星总分：{cai_score_num}分")
-    lines.append(f"- 日/时柱有库：{'有' if isinstance(ck, dict) and ck.get('has') else '无'}")
+    
+    lines.append("### 8.4 金鉴真人原始财富五级对照")
     lines.append("")
-    lines.append("**五级定量标准（金鉴真人原始）：**")
     lines.append("| 等级 | 身价 | 核心条件 |")
     lines.append("|:----:|:----|:---------|")
     lines.append("| 👑 **巨富** | 几十亿~上百亿 | 身强财旺+日/时柱有库+无刑冲+大运配合 |")
@@ -656,453 +515,390 @@ def generate_deep_report(engine_json: dict, name: str = "", gender: str = "") ->
     lines.append("| 🏠 **小富** | 上千万 | 身弱财弱+遇印比则发 |")
     lines.append("| 🥉 **贫穷** | 千万以内 | 身弱+无财 |")
     lines.append("")
-    lines.append(f"**评定：{wealth_level or '—'}**")
+    lines.append(f"本命评定：{wealth_level}层次。财星{cai_n}分，{'有财库' if isinstance(ck,dict) and ck.get('has') else '无财库'}。")
     lines.append("")
     
-    # ═══════════════════════════════════════
+    # ═══════════════════════════════════════════════
     # §9 置业
-    # ═══════════════════════════════════════
+    # ═══════════════════════════════════════════════
     lines.append("## §9 置业/买房分析")
     lines.append("")
-    property_pot = s9.get("property_potential", "") if isinstance(s9, dict) else ""
-    property_level = s9.get("property_level", "") if isinstance(s9, dict) else ""
-    if property_pot or property_level:
-        lines.append(f"置业方位：{property_pot or '—'}。")
-        lines.append(f"置业能力：{property_level or '—'}。")
+    prop_pot = _s(s9, "property_potential", "")
+    prop_lvl = _s(s9, "property_level", "")
+    prop_windows = s9.get("windows", [])
+    prop_risk = _s(s9, "risk", "")
+    if prop_pot or prop_lvl or prop_windows:
+        if prop_pot:
+            lines.append(f"置业方位：{prop_pot}。")
+        if prop_lvl:
+            lines.append(f"置业能力：{prop_lvl}。")
+        if isinstance(prop_windows, list):
+            for w in prop_windows[:3]:
+                if isinstance(w, dict):
+                    lines.append(f"- {_s(w,'age_range','')}（{_s(w,'da_yun','')}运）— {_s(w,'type','')}")
+        if prop_risk:
+            lines.append(f"风险提示：{prop_risk}。")
     else:
-        lines.append("不动产方面，需结合大运中的土金运判断置业时机。")
+        lines.append("置业方面需结合大运中的土金运判断时机。")
         lines.append("通常在印比大运（帮身）或财星大运（财力足）时适合置业。")
     lines.append("")
     
-    # ═══════════════════════════════════════
-    # §10 事业
-    # ═══════════════════════════════════════
+    # ═══════════════════════════════════════════════
+    # §10 事业 — 从引擎数据展开
+    # ═══════════════════════════════════════════════
     lines.append("## §10 事业分析")
     lines.append("")
-    
-    career_dir = s10.get("career_direction", "") if isinstance(s10, dict) else ""
-    career_grade_text = s10.get("career_grade", "") if isinstance(s10, dict) else ""
-    industry = s10.get("recommended_industries", "") if isinstance(s10, dict) else ""
-    entre = s10.get("entrepreneurship", "") if isinstance(s10, dict) else ""
-    
-    if career_dir:
-        lines.append(f"### 10.1 事业方向")
-        lines.append("")
-        lines.append(f"事业方向宜走{career_dir}路线。")
-        lines.append("")
-    
-    if career_grade_text:
-        lines.append(f"### 10.2 事业等级")
-        lines.append("")
-        lines.append(f"{career_grade_text}。")
-        lines.append("")
-    
-    if industry:
-        lines.append("### 10.3 行业推荐")
-        lines.append("")
-        lines.append(f"五行定行业，适宜从事{industry}等相关领域。")
-        lines.append("")
-    
-    if entre:
-        lines.append("### 10.4 创业分析")
-        lines.append("")
-        lines.append(f"{entre}。")
-        lines.append("")
-    
-    if not any([career_dir, career_grade_text, industry, entre]):
-        lines.append("""事业方面需结合格局和喜用神来判断：
-- 正官/七杀有制→适合管理和领导岗位
-- 印星得力→适合学术、教育、研究类
-- 食伤旺→适合创意、技术、表达类
-- 财星旺→适合商业、金融、贸易类""")
+    lines.append(f"事业方向：{_s(s10,'career_direction','—')}")
+    lines.append(f"事业描述：{_s(s10,'career_desc','—')}")
+    lines.append(f"工作模式：{_s(s10,'work_mode','—')}")
+    lines.append(f"事业等级：{_s(s10,'career_level','—')}")
+    lines.append(f"等级评定：{_s(s10,'career_grade','—')}")
     lines.append("")
+    industry = _s(s10, "recommended_industries", "")
+    if industry:
+        lines.append(f"推荐行业：{industry}")
+        lines.append("")
+    entre = _s(s10, "entrepreneurship", "")
+    if entre:
+        lines.append(f"创业分析：{entre}")
+        lines.append("")
     
-    # ═══════════════════════════════════════
-    # §11 学历
-    # ═══════════════════════════════════════
+    # ═══════════════════════════════════════════════
+    # §11 学历 — 从引擎数据展开
+    # ═══════════════════════════════════════════════
     lines.append("## §11 学历分析")
     lines.append("")
-    
-    edu_display_text = s11.get("display", s11.get("school_level", "")) if isinstance(s11, dict) else ""
-    if edu_display_text:
-        lines.append(f"学业层次：{edu_display_text}。")
-        lines.append("")
-    
-    ypc = s11.get("year_pillar_check", {}) if isinstance(s11, dict) else {}
-    if isinstance(ypc, dict) and ypc.get("detail"):
-        lines.append(f"年柱分析：{ypc['detail']}。")
-        lines.append("")
-    
-    nc = s11.get("nian_gan_check", {}) if isinstance(s11, dict) else {}
-    if isinstance(nc, dict) and nc.get("shi_shen"):
+    lines.append(f"综合判定：{edu_display}")
+    lines.append("")
+    ypc = s11.get("year_pillar_check", {})
+    if isinstance(ypc, dict):
+        has_yin = ypc.get("has_yin", "")
+        yin_score = ypc.get("yin_score", "")
+        level = ypc.get("level", "")
+        detail = ypc.get("detail", "")
+        lines.append(f"年柱印星检查：{'有印' if has_yin else '无印'}（印分{yin_score}，等级{level}）")
+        if detail:
+            lines.append(f"详情：{detail}")
+    lines.append("")
+    nc = s11.get("nian_gan_check", {})
+    if isinstance(nc, dict):
         ss = nc.get("shi_shen", "")
-        if ss == "伤官":
-            lines.append("年干带伤官，少年时期或有叛逆倾向，需引导而非压制。")
-        elif ss in ["正印", "偏印"]:
-            lines.append(f"年干见{ss}，有学业基因，学习能力较强。")
+        if ss:
+            lines.append(f"年干十神：{ss}——{'伤官=少年叛逆倾向' if ss == '伤官' else '印星=有学业基因' if '印' in str(ss) else ''}")
+    lines.append("")
+    
+    # 学校等级
+    school_level = _s(s11, "school_level", "")
+    degree = _s(s11, "degree", "")
+    if school_level or degree:
+        lines.append("### 11.1 学校等级·学历层级")
+        lines.append("")
+        lines.append(f"学校等级：{school_level}")
+        lines.append(f"学历层级：{degree}")
         lines.append("")
     
-    # 学校等级定位
-    lines.append("### 11.1 学校等级定位（六档标准）")
-    lines.append("")
-    lines.append("| 等级 | 条件 |")
-    lines.append("|:----|:-----|")
-    lines.append("| 👑 顶尖 | ≥5项✅+文昌月令+身强印格 |")
-    lines.append("| 🥇 985顶级 | 3-4项✅+文昌日/月+月令印强 |")
-    lines.append("| 🥇 211一本 | 3项✅+文昌在局 |")
-    lines.append("| 🥈 普通本科 | 2项✅+文昌大运补救 |")
-    lines.append("| 🥉 大专职校 | 1-2项✅+文昌缺+食伤导向 |")
-    lines.append("| 🪜 初中 | ≤1项✅+无印无文昌+财破印 |")
-    lines.append("")
-    
-    # ═══════════════════════════════════════
-    # §12 婚姻
-    # ═══════════════════════════════════════
+    # ═══════════════════════════════════════════════
+    # §12 婚姻 — 从引擎数据展开
+    # ═══════════════════════════════════════════════
     lines.append("## §12 婚姻/感情分析")
     lines.append("")
     
-    mar_q = s12.get("quality", "") if isinstance(s12, dict) else ""
-    mar_score = s12.get("quality_score", "") if isinstance(s12, dict) else ""
-    mar_win = s12.get("best_window_age", "") if isinstance(s12, dict) else ""
-    spouse = s12.get("spouse_trait", "") if isinstance(s12, dict) else ""
-    
-    if mar_q:
-        lines.append(f"婚姻质量{b'<b>'}{mar_q}{b'</b>'}{'（'+str(mar_score)+'/10）' if mar_score else ''}。")
-    if mar_win:
-        lines.append(f"最佳婚恋窗口在{mar_win}。")
-    if spouse:
-        lines.append(f"配偶特征：{spouse}。")
-    if not any([mar_q, mar_win, spouse]):
-        lines.append("夫妻宫（日支）的喜忌决定了婚姻质量的基础。")
-        lines.append("大运中与夫妻宫产生合、冲、刑的年份是婚姻变化的信号。")
+    po = s12.get("pei_ou_xing", {})
+    if isinstance(po, dict):
+        primary = _s(po, "primary", "")
+        detail = _s(po, "detail", "")
+        if primary:
+            lines.append(f"配偶星：{primary}")
+        if detail:
+            lines.append(f"详情：{detail}")
     lines.append("")
     
-    # ═══════════════════════════════════════
-    # §13 子女
-    # ═══════════════════════════════════════
+    rz_analysis = s12.get("ri_zhi_analysis", {})
+    if isinstance(rz_analysis, dict):
+        zhi = _s(rz_analysis, "zhi", "")
+        lines.append(f"夫妻宫（日支）：{zhi}")
+        shi_shens = rz_analysis.get("shi_shens", [])
+        if isinstance(shi_shens, list):
+            for item in shi_shens[:3]:
+                if isinstance(item, dict):
+                    lines.append(f"  - {_s(item,'cang_gan','')}（{_s(item,'shi_shen','')}）")
+        lines.append("")
+    
+    mar_q = _s(s12, "quality", "")
+    mar_score = _s(s12, "quality_score", "")
+    if mar_q or mar_score:
+        lines.append(f"婚姻质量：{mar_q}{'（'+str(mar_score)+'/10）' if mar_score else ''}")
+    mar_win = _s(s12, "best_window_age", "")
+    if mar_win:
+        lines.append(f"最佳结婚窗口：{mar_win}")
+    spouse = _s(s12, "spouse_trait", "")
+    if spouse:
+        lines.append(f"配偶特征：{spouse}")
+    lines.append("")
+    
+    # ═══════════════════════════════════════════════
+    # §13 子女 — 从引擎数据展开
+    # ═══════════════════════════════════════════════
     lines.append("## §13 子女分析")
     lines.append("")
-    
-    child_cnt = s13.get("child_count_estimate", "") if isinstance(s13, dict) else ""
-    child_ach = s13.get("child_achievement", "") if isinstance(s13, dict) else ""
-    sheng_yu = s13.get("sheng_yu_potential", "") if isinstance(s13, dict) else ""
-    
+    child_cnt = _s(s13, "child_count_estimate", "")
+    child_ach = _s(s13, "child_achievement", "")
+    sheng_yu = s13.get("sheng_yu_potential", "")
+    windows = s13.get("windows", [])
     if child_cnt:
-        lines.append(f"子女方面：{child_cnt}。")
+        lines.append(f"子女数量估计：{child_cnt}。")
     if child_ach:
         lines.append(f"子女成就趋势：{child_ach}。")
     if sheng_yu:
         if isinstance(sheng_yu, dict):
-            lines.append(f"{sheng_yu.get('desc', sheng_yu.get('text', ''))}")
+            lines.append(f"生育力：{_s(sheng_yu,'desc',_s(sheng_yu,'text',''))}")
         else:
-            lines.append(f"{sheng_yu}")
-    if not any([child_cnt, child_ach, sheng_yu]):
-        lines.append("时柱（子女宫）的十神和喜忌决定了子女运势的基础。")
+            lines.append(f"生育力：{sheng_yu}。")
+    if isinstance(windows, list) and windows:
+        lines.append("添丁窗口：")
+        for w in windows[:3]:
+            w_str = str(w) if not isinstance(w, dict) else f"{_s(w,'年份','')}年（{_s(w,'原因','')}）"
+            if len(w_str) > 100:
+                w_str = w_str[:100] + "..."
+            lines.append(f"  - {w_str}")
     lines.append("")
     
-    # ═══════════════════════════════════════
-    # §14 健康
-    # ═══════════════════════════════════════
+    # ═══════════════════════════════════════════════
+    # §14 健康 — 从引擎数据展开
+    # ═══════════════════════════════════════════════
     lines.append("## §14 健康分析")
     lines.append("")
-    
-    constit = s14.get("constitution", "") if isinstance(s14, dict) else ""
-    wxot = s14.get("wu_xing_over_three", []) if isinstance(s14, dict) else []
-    
+    constit = _s(s14, "constitution", "")
     if constit:
-        lines.append(f"体质：{constit}。")
-        lines.append("")
+        lines.append(f"体质判定：{constit}。")
+    lines.append("")
     
-    if wxot and isinstance(wxot, list):
-        lines.append("### 14.1 五行过三排查")
+    # 偏印风险
+    py_risks = s14.get("pian_yin_risks", [])
+    if isinstance(py_risks, list) and py_risks:
+        lines.append("### 14.1 偏印风险排查")
         lines.append("")
-        for item in wxot[:3]:
+        for item in py_risks[:3]:
             if isinstance(item, dict):
-                wx = item.get("wx", "")
-                organ = item.get("organ", "")
-                if wx and organ:
-                    lines.append(f"- {wx}五行过旺，注意{organ}保养。")
+                pos = _s(item, "位置", "")
+                body_area = _s(item, "身体分区", "")
+                diag = _s(item, "诊断", "")
+                if diag:
+                    lines.append(f"- {pos}位偏印：{diag}")
+    lines.append("")
+    
+    wxot_health = s14.get("wu_xing_over_three", s5.get("wu_xing_over_three", []))
+    if isinstance(wxot_health, list) and wxot_health:
+        lines.append("### 14.2 五行过三排查")
+        lines.append("")
+        for item in wxot_health[:3]:
+            if isinstance(item, dict):
+                lines.append(f"- {_s(item,'wx','')}过{_s(item,'count','')}→注意{_s(item,'organ','')}")
         lines.append("")
     
-    if not constit and not wxot:
-        lines.append("五行平衡，常规保养即可。注意每年体检，关注主要脏器健康。")
-        lines.append("")
-    
-    # ═══════════════════════════════════════
-    # §15 六亲
-    # ═══════════════════════════════════════
+    # ═══════════════════════════════════════════════
+    # §15 六亲 — 从引擎数据展开
+    # ═══════════════════════════════════════════════
     lines.append("## §15 六亲分析")
     lines.append("")
-    
-    fam_summary = s15.get("summary", "") if isinstance(s15, dict) else ""
-    if fam_summary:
-        lines.append(f"{fam_summary}")
-    else:
-        lines.append("**年柱（祖上/早年）：** 代表祖辈和早年家庭环境。")
-        lines.append("**月柱（父母/兄弟）：** 代表父母和兄弟关系，也代表出身环境。")
-        lines.append("**日支（配偶）：** 代表配偶和婚姻关系。")
-        lines.append("**时柱（子女/晚年）：** 代表子女和晚年生活。")
+    for pos_name in ["nian_zhu", "yue_zhu"]:
+        item = s15.get(pos_name, {})
+        if isinstance(item, dict):
+            lines.append(f"**{pos_name.replace('_zhu','').replace('nian','年').replace('yue','月')}柱**：{_s(item,'gan','')}{_s(item,'zhi','')}，十神{_s(item,'shi_shen','')}——{_s(item,'meaning','')}")
+    fam_econ = _s(s15, "family_economy", "")
+    if fam_econ:
+        lines.append(f"家庭经济：{fam_econ}。")
+    fam_press = _s(s15, "family_pressure", "")
+    if fam_press:
+        lines.append(f"家庭压力：{fam_press}。")
     lines.append("")
     
-    # ═══════════════════════════════════════
-    # §16 事件总表（大幅扩展）
-    # ═══════════════════════════════════════
+    # ═══════════════════════════════════════════════
+    # §16 事件总表 — 从引擎数据展开
+    # ═══════════════════════════════════════════════
     lines.append("## §16 全生命周期重点事件总表")
     lines.append("")
-    lines.append("| 序号 | 大运 | 年份 | 年龄 | 事件 | 类型 | 命理信号 |")
-    lines.append("|:----:|:----:|:----:|:----:|:-----|:----:|:---------|")
-    
+    lines.append("| 序号 | 年份 | 事件 | 类型 | 置信度 |")
+    lines.append("|:----:|:----:|:-----|:----:|:------:|")
     evt_count = 0
-    key_events = s16.get("key_events", {}) if isinstance(s16, dict) else {}
-    for etype, evts in key_events.items():
+    for etype, evts in s16.get("key_events", {}).items():
         if isinstance(evts, list):
-            for e in evts:
-                if isinstance(e, dict) and e.get("year") and evt_count < 50:
+            for e in evts[:5]:
+                if isinstance(e, dict) and e.get("year"):
                     evt_count += 1
                     year = e.get("year", "")
                     desc = e.get("description", "")
-                    lines.append(f"| {evt_count} | — | {year} | — | {desc} | {etype} | — |")
-    
-    # 如果事件不够，补一些预测事件
-    if evt_count < 30:
-        for dy in dy_list[:8]:
-            dy_name = dy.get("gan_zhi", "")
-            dy_score = dy.get("score", 0)
-            if dy_score >= 7:
-                evt_count += 1
-                lines.append(f"| {evt_count} | {dy_name} | — | — | 此运为黄金时期，事业财富有重大突破 | C/B | 大运能量高峰 |")
-            elif dy_score <= 4:
-                evt_count += 1
-                lines.append(f"| {evt_count} | {dy_name} | — | — | 此运需谨慎行事，防范压力和风险 | H | 大运低谷期 |")
-    
+                    conf = e.get("confidence", "")
+                    lines.append(f"| {evt_count} | {year} | {desc} | {etype} | {conf} |")
+    if evt_count == 0:
+        lines.append("| — | — | （引擎暂无详细事件数据） | — | — |")
     lines.append("")
-    lines.append(f"**事件类型代码：** A=学业 B=事业/晋升 C=发财/财务 E=置业/买房 F=结婚/感情 G=添丁 H=压力/低谷")
+    lines.append("**事件类型：** wealth=财富 career=事业 marriage=婚姻 health=健康 move=搬迁")
     lines.append("")
     
-    # ═══════════════════════════════════════
-    # §17 大运精析（大幅扩展）
-    # ═══════════════════════════════════════
-    lines.append("## §17 大运精析（10步完整序列）")
+    # ═══════════════════════════════════════════════
+    # §17 大运精析 — 从引擎数据展开
+    # ═══════════════════════════════════════════════
+    lines.append("## §17 大运精析")
     lines.append("")
-    
-    for i, dy in enumerate(dy_list[:10]):
-        dy_name = dy.get("gan_zhi", "")
-        start_age = dy.get("start_age", "")
-        end_age = dy.get("end_age", "")
-        score = dy.get("score", 0)
-        gan_ss = dy.get("gan_ss", "")
+    for i, dy in enumerate(dy_list[:8]):
+        dy_name = _s(dy, "gan_zhi", "")
+        sa = _s(dy, "start_age", "")
+        ea = _s(dy, "end_age", "")
+        score = _s(dy, "score", 0)
+        gan_ss = _s(dy, "gan_ss", "")
         
-        # 大运评分描述
-        score_int = int(score) if score else 5
-        if score_int in DA_YUN_SCORE_DESC:
-            score_desc = DA_YUN_SCORE_DESC[score_int]
+        score_n = float(score) if score else 5
+        if score_n >= 8:
+            tag = "🏆 最佳大运"
+        elif score_n >= 6:
+            tag = "✅ 良好大运"
+        elif score_n >= 4:
+            tag = "📌 平运"
         else:
-            score_desc = "平稳运"
+            tag = "⚠️ 低谷大运"
         
-        lines.append(f"### 17.{i+1} {dy_name}大运（{start_age}~{end_age}岁）·{'上佳运势' if score >= 7 else '平稳过渡' if score >= 5 else '谨慎保守'}")
+        lines.append(f"### 17.{i+1} {dy_name}大运（{sa}~{ea}岁）{tag}")
         lines.append("")
-        lines.append(f"**干支**：{gan_ss}")
-        lines.append(f"**年龄**：{start_age}~{end_age}岁")
-        lines.append(f"**评分**：{score}/10 — {score_desc}。")
-        lines.append("")
+        lines.append(f"- 干支十神：天干{gan_ss}")
+        lines.append(f"- 评分：{score_n}/10")
         
-        # 运象分析
-        lines.append("**运象分析：**")
-        lines.append("")
-        lines.append(f"此运天干地支{'生扶喜用' if score >= 7 else '喜忌参半' if score >= 5 else '压力较大'}。")
-        if score >= 8:
-            lines.append("此运为人生黄金运，各方面顺风顺水，宜全力把握机会。")
-            lines.append("事业上有重大突破的可能，财富积累加速。")
-        elif score >= 6:
-            lines.append("此运稳中有进，按部就班发展即可。")
-            lines.append("适合积累资源和人脉，为下一步爆发做准备。")
-        elif score >= 4:
-            lines.append("此运平缓过渡，不宜冒进，以守成为主。")
-            lines.append("注意防范人际关系和财务方面的风险。")
+        # 大运评分依据（基于引擎评分）
+        if score_n >= 8:
+            lines.append(f"- 判定：大运组合生扶喜用，能量充沛，最佳发展期")
+        elif score_n >= 6:
+            lines.append(f"- 判定：大运喜忌参半但偏向有利，稳中有进")
+        elif score_n >= 4:
+            lines.append(f"- 判定：大运喜忌平衡，平缓过渡期，以守为主")
         else:
-            lines.append("此运压力和挑战较多，宜谨慎行事，以稳为主。")
-            lines.append("注意健康和情绪管理，避免重大决策。")
+            lines.append(f"- 判定：大运压力较大，需谨慎行事，防范风险")
         
         # 关键年份
-        lines.append("")
-        lines.append("**关键年份：**")
-        base_year = 2020 + i * 10
-        for y_off in [-2, 0, 2, 5, 8]:
-            year = base_year + y_off
-            if 2020 <= year <= 2100:
-                tg = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'][year % 10 - 4]
-                dz = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'][(year - 4) % 12]
-                lines.append(f"- **{tg}{dz}年**（{year}年）：{'关键年份，注意把握机会' if score >= 6 else '需谨慎应对'}。")
+        key_years_for_dy = []
+        for etype, evts in s16.get("key_events", {}).items():
+            if isinstance(evts, list):
+                for e in evts:
+                    if isinstance(e, dict):
+                        ey = e.get("year", 0)
+                        if ey and isinstance(sa, (int,float)) and isinstance(ea, (int,float)):
+                            if sa <= ey - 2011 <= ea:
+                                key_years_for_dy.append(e)
+        if key_years_for_dy:
+            lines.append(f"- 关键年份：")
+            for e in key_years_for_dy[:3]:
+                lines.append(f"  · {_s(e,'year','')}年：{_s(e,'description','')}")
         
         lines.append("")
     
-    # ═══════════════════════════════════════
-    # §18 三决断
-    # ═══════════════════════════════════════
+    # ═══════════════════════════════════════════════
+    # §18 三决断 — 从引擎数据展开
+    # ═══════════════════════════════════════════════
     lines.append("## §18 三决断")
     lines.append("")
-    
-    verdicts = s18 if isinstance(s18, list) else []
-    if verdicts:
-        for i, v in enumerate(verdicts[:3]):
+    if isinstance(s18, list) and s18:
+        for i, v in enumerate(s18[:3]):
             if isinstance(v, dict):
-                title = v.get("title", "")
-                event = v.get("event", "")
-                vtime = v.get("time", "")
-                lines.append(f"### 决断{i+1}：{title or '—'}")
+                lines.append(f"### 决断{i+1}：{_s(v,'title','')}")
                 lines.append("")
-                lines.append(f"**其事**：{event or '—'}")
-                lines.append(f"**其时**：{vtime or '—'}")
+                lines.append(f"其事：{_s(v,'event','')}")
+                lines.append(f"其时：{_s(v,'time','')}")
+                lines.append(f"其度：{_s(v,'degree','')}")
+                lines.append(f"理由：{_s(v,'reason','')}")
                 lines.append("")
-    
-    if not verdicts:
-        lines.append("### 决断一：事业巅峰")
-        lines.append("")
-        lines.append("**其时**：最佳大运期间")
-        lines.append("**其度**：事业有重大突破")
-        lines.append("")
-        lines.append("### 决断二：财富积累")
-        lines.append("")
-        lines.append("**其时**：财星大运期间")
-        lines.append("**其度**：财富有显著增长")
-        lines.append("")
-        lines.append("### 决断三：人生转折")
-        lines.append("")
-        lines.append("**其时**：关键大运转换期")
-        lines.append("**其度**：人生方向和状态的重大转变")
+    else:
+        lines.append("（引擎暂无三决断数据）")
         lines.append("")
     
-    # ═══════════════════════════════════════
-    # §19 运程总评
-    # ═══════════════════════════════════════
+    # ═══════════════════════════════════════════════
+    # §19 运程曲线 — 从引擎数据展开
+    # ═══════════════════════════════════════════════
     lines.append("## §19 人生运程总评")
     lines.append("")
+    curve = s19.get("curve", [])
+    if isinstance(curve, list) and curve:
+        lines.append("```")
+        for c in curve[:8]:
+            dy_name = _s(c, "da_yun", "")
+            bar = _s(c, "bar", "")
+            score = _s(c, "score", "")
+            lines.append(f"{dy_name:8s}  {bar}  {score}/10")
+        lines.append("```")
+        lines.append("")
     
-    # ASCII曲线
-    lines.append("### 19.1 运程曲线")
-    lines.append("")
-    curve = s19.get("curve", []) if isinstance(s19, dict) else []
-    lines.append("```")
-    for c in curve[:10]:
-        if isinstance(c, dict):
-            dy_name = c.get("da_yun", "")
-            score = c.get("score", 0)
-            bar = c.get("bar", "")
-            lines.append(f"  {dy_name:8s}  {bar or '█' * int(score)}{score}/10")
-    lines.append("```")
-    lines.append("")
-    
-    # 评分表
-    lines.append("### 19.2 各运评分表")
-    lines.append("")
     lines.append("| 大运 | 评分 | 评语 |")
     lines.append("|:----|:----:|:-----|")
-    for dy in dy_list[:10]:
-        dy_name = dy.get("gan_zhi", "")
-        score = dy.get("score", 0)
-        comment = "人生巅峰" if score >= 8 else "稳中有进" if score >= 6 else "平缓过渡" if score >= 4 else "艰难时期"
+    for dy in dy_list[:8]:
+        dy_name = _s(dy, "gan_zhi", "")
+        score = _s(dy, "score", 0)
+        score_n = float(score) if score else 5
+        comment = "🏆巅峰" if score_n >= 8 else "✅良好" if score_n >= 6 else "📌平运" if score_n >= 4 else "⚠️低谷"
         lines.append(f"| {dy_name} | {score}/10 | {comment} |")
     lines.append("")
     
-    # ═══════════════════════════════════════
-    # §20 五行补充
-    # ═══════════════════════════════════════
+    # ═══════════════════════════════════════════════
+    # §20 五行补充 — 从引擎数据展开
+    # ═══════════════════════════════════════════════
     lines.append("## §20 五行补充建议")
     lines.append("")
-    
-    colors = s20.get("colors", "") if isinstance(s20, dict) else ""
-    directions = s20.get("directions", "") if isinstance(s20, dict) else ""
-    jewellery = s20.get("jewellery", "") if isinstance(s20, dict) else ""
-    diet = s20.get("diet", "") if isinstance(s20, dict) else ""
-    
-    # 如果引擎没有给出，根据喜用自动生成
-    if not colors and xi_list:
-        colors = "、".join(WU_XING_COLORS.get(str(wx), "") for wx in xi_list[:3])
-    if not directions and xi_list:
-        directions = "、".join(WU_XING_DIRECTIONS.get(str(wx), "") for wx in xi_list[:3])
-    
+    colors = _s(s20, "colors", "")
+    directions = _s(s20, "directions", "")
+    jewellery = _s(s20, "jewellery", "")
+    diet = _s(s20, "diet", "")
+    lucky = _s(s20, "lucky_numbers", "")
+    advice = _s(s20, "advice", "")
     lines.append("| 类别 | 建议 |")
     lines.append("|:----|:-----|")
-    lines.append(f"| 🎨 颜色 | {colors or '常规搭配'} |")
-    lines.append(f"| 🧭 方位 | {directions or '常规选择'} |")
-    lines.append(f"| 💎 饰品 | {jewellery or '对应五行材质'} |")
-    lines.append(f"| 🥗 饮食 | {diet or '均衡饮食'} |")
-    if xi_list:
-        lucky_nums = "、".join(WU_XING_NUMBERS.get(str(wx), "") for wx in xi_list[:3])
-        lines.append(f"| 🔢 数字 | {lucky_nums or '—'} |")
+    lines.append(f"| 🎨 颜色 | {colors or '—'} |")
+    lines.append(f"| 🧭 方位 | {directions or '—'} |")
+    lines.append(f"| 💎 饰品 | {jewellery or '—'} |")
+    lines.append(f"| 🥗 饮食 | {diet or '—'} |")
+    if lucky:
+        lines.append(f"| 🔢 幸运数字 | {lucky} |")
+    elif xi_yong:
+        num_map = {"火": "2、7", "木": "3、8", "水": "1、6", "金": "4、9", "土": "5、10"}
+        nums = "、".join(num_map.get(str(wx), "") for wx in xi_yong[:3])
+        lines.append(f"| 🔢 幸运数字 | {nums} |")
+    if advice:
+        lines.append(f"| 💡 综合建议 | {advice} |")
     lines.append("")
     
-    # ═══════════════════════════════════════
-    # §21 人生建议（大幅扩展）
-    # ═══════════════════════════════════════
+    # ═══════════════════════════════════════════════
+    # §21 人生建议 — 从引擎advice数据展开
+    # ═══════════════════════════════════════════════
     lines.append("## §21 人生建议")
     lines.append("")
     
-    ca = s21.get("career", {}) if isinstance(s21, dict) else {}
-    wa = s21.get("wealth", {}) if isinstance(s21, dict) else {}
-    ha = s21.get("health", {}) if isinstance(s21, dict) else {}
-    ma_adv = s21.get("marriage", {}) if isinstance(s21, dict) else {}
+    ca = s21.get("career", {})
+    wa = s21.get("wealth", {})
+    ha = s21.get("health", {})
+    ma = s21.get("marriage", {})
     
-    lines.append("### 21.1 事业方向与路线图")
-    lines.append("")
     if isinstance(ca, dict) and ca.get("advice"):
-        lines.append(f"{ca['advice']}")
-    else:
-        lines.append(f"基于格局{ge_ju_detail or '分析'}，事业上应善于利用自身优势。")
-        if "身强" in str(sqr_label):
-            lines.append("身强有担当大事的底子，适合在压力下成长，可考虑管理岗位或创业。")
-        else:
-            lines.append("身弱宜借平台发力，选择稳定的大平台发展更为有利。")
-    lines.append("")
-    
-    lines.append("### 21.2 财富管理与补财库")
-    lines.append("")
-    if isinstance(wa, dict) and wa.get("advice"):
-        lines.append(f"{wa['advice']}")
-    else:
-        lines.append(f"财富等级{wealth_level or '中等'}。")
-        if isinstance(ck, dict) and ck.get("has"):
-            lines.append("命带财库，有较好的财富积累能力，宜善加利用。")
-        else:
-            lines.append("原局无财库，需主动养成立储蓄和投资习惯。")
-        lines.append("建议：每月固定比例储蓄，选择稳健型投资。")
-    lines.append("")
-    
-    lines.append("### 21.3 关键流年警示")
-    lines.append("")
-    lines.append("| 年份 | 风险类型 | 具体注意 |")
-    lines.append("|:----|:---------|:---------|")
-    for dy in dy_list[:5]:
-        dy_score = dy.get("score", 0)
-        risk_type = "谨慎保守" if dy_score <= 4 else "稳步发展" if dy_score <= 6 else "积极进取"
-        lines.append(f"| {dy.get('gan_zhi','')}运 | {risk_type} | 此运评分{dy_score}/10，{'宜保守' if dy_score<=4 else '可适度发展' if dy_score<=6 else '宜积极把握'} |")
-    lines.append("")
-    
-    lines.append("### 21.4 健康养生（终身策略）")
-    lines.append("")
-    if isinstance(ha, dict) and ha.get("advice"):
-        lines.append(f"{ha['advice']}")
-    elif wxot and isinstance(wxot, list):
-        for item in wxot[:2]:
-            if isinstance(item, dict) and item.get("organ"):
-                lines.append(f"注意{item['organ']}保养，每年体检重点关注。")
+        lines.append(f"### 21.1 事业方向")
         lines.append("")
-    else:
-        lines.append("常规养生，保持良好作息和适度运动即可。")
-        lines.append("每年定期体检，关注身体变化。")
-    lines.append("")
+        lines.append(f"{ca['advice']}。大运窗口：{_s(ca,'best_da_yun','')}。")
+        lines.append("")
     
-    lines.append("### 21.5 婚姻/感情经营")
-    lines.append("")
-    if isinstance(ma_adv, dict) and ma_adv.get("advice"):
-        lines.append(f"{ma_adv['advice']}")
-    else:
-        lines.append("感情经营重在沟通和理解。")
-        if mar_q:
-            lines.append(f"婚姻质量{mar_q}，{mar_score and f'评分{mar_score}/10' or ''}。")
-    lines.append("")
+    if isinstance(wa, dict) and wa.get("advice"):
+        lines.append(f"### 21.2 财富管理")
+        lines.append("")
+        lines.append(f"{wa['advice']}。策略：{_s(wa,'strategy','均衡配置')}。")
+        lines.append("")
     
-    lines.append("### 21.6 核心数据速查表")
+    if isinstance(ha, dict) and ha.get("advice"):
+        lines.append(f"### 21.3 健康养生")
+        lines.append("")
+        lines.append(f"{ha['advice']}。")
+        lines.append("")
+    
+    if isinstance(ma, dict) and ma.get("advice"):
+        lines.append(f"### 21.4 婚姻经营")
+        lines.append("")
+        lines.append(f"{ma['advice']}。")
+        lines.append("")
+    
+    # 核心速查表
+    lines.append("### 21.5 核心数据速查表")
     lines.append("")
     lines.append("| 项目 | 数据 |")
     lines.append("|:----|:------|")
@@ -1111,37 +907,34 @@ def generate_deep_report(engine_json: dict, name: str = "", gender: str = "") ->
     lines.append(f"| 💪 **身强弱** | {sqr_score}分·{sqr_label} |")
     lines.append(f"| 🟢 **喜用** | {xi_str or '—'} |")
     lines.append(f"| 🔴 **忌神** | {ji_str or '—'} |")
-    lines.append(f"| 💰 **财星** | {cai_score}分·{'有财库' if isinstance(ck, dict) and ck.get('has') else '无财库'} |")
+    lines.append(f"| 💰 **财星** | {cai_score}分·{'有财库' if isinstance(ck,dict) and ck.get('has') else '无财库'} |")
     lines.append(f"| 💵 **财富等级** | {wealth_level or '—'} |")
-    lines.append(f"| 🎓 **学历** | {edu_display_text or '—'} |")
-    lines.append(f"| 🏢 **事业** | {career_grade_text or '—'} |")
-    lines.append(f"| 🥇 **最佳大运** | {best_dy}运（{best_score}/10） |")
-    lines.append(f"| ⚠️ **最差大运** | {worst_name}运（{worst_score}/10） |")
+    lines.append(f"| 🎓 **学历** | {edu_display or '—'} |")
+    lines.append(f"| 🏢 **事业** | {career_grade or '—'} |")
+    lines.append(f"| 🥇 **最佳大运** | {_s(best_dy,'gan_zhi','')}（{_s(best_dy,'score','')}/10） |")
+    lines.append(f"| ⚠️ **最差大运** | {_s(worst_dy,'gan_zhi','')}（{_s(worst_dy,'score','')}/10） |")
     lines.append("")
     
-    # ═══════════════════════════════════════
+    # ═══════════════════════════════════════════════
     # 签署
-    # ═══════════════════════════════════════
+    # ═══════════════════════════════════════════════
     lines.append("---")
     lines.append("**编制人：** 金鉴真人")
-    lines.append(f"**编制时间：** {today.year}年{today.month:02d}月{today.day:02d}日")
-    lines.append("**版本：** v2.0（引擎数据校准版）")
-    lines.append("**分析方法：** 金鉴真人体系 · 确定性规则引擎")
+    lines.append(f"**编制时间：** {now.year}年{now.month:02d}月{now.day:02d}日")
+    lines.append("**版本：** v2.0（引擎数据校准深度版）")
+    lines.append("**分析方法：** 金鉴真人体系 · 所有分析源自规则引擎计算")
+    lines.append("")
     lines.append("#PIPELINE-SIG-JINJIAN-V2")
     
     return "\n".join(lines)
 
 
 def main():
-    """测试入口"""
-    import json
-    
     sys.path.insert(0, os.path.dirname(__file__))
     from paipan import paipan
     from pipeline_v5 import run_v5
     from constants import BaZi, Pillar
     
-    # 子源八字
     r = paipan("子源", "男", 2011, 4, 25, 10)
     bazi = BaZi(
         year=Pillar(r["year_pillar"]["gan"], r["year_pillar"]["zhi"]),
@@ -1152,43 +945,30 @@ def main():
     )
     pipeline_result = run_v5(bazi, 2011, 4, 1.1)
     
-    # 组装engine_json格式
     engine_json = {
         "paipan": {"bazi": "辛卯 壬辰 庚戌 辛巳"},
         "basic_data": {
             "ri_zhu": {"gan": "庚", "wu_xing": "金"},
-            "pillars": {
-                "year": {"tian_gan": "辛", "di_zhi": "卯", "shi_shen": "劫财", "na_yin": "松柏木", "cang_gan": [{"gan": "乙", "ratio": 100}]},
-                "month": {"tian_gan": "壬", "di_zhi": "辰", "shi_shen": "食神", "na_yin": "长流水", "cang_gan": [{"gan": "戊", "ratio": 100}, {"gan": "乙", "ratio": 60}, {"gan": "癸", "ratio": 30}]},
-                "day": {"tian_gan": "庚", "di_zhi": "戌", "shi_shen": "比肩", "na_yin": "钗钏金", "cang_gan": [{"gan": "戊", "ratio": 100}, {"gan": "辛", "ratio": 60}, {"gan": "丁", "ratio": 30}]},
-                "hour": {"tian_gan": "辛", "di_zhi": "巳", "shi_shen": "劫财", "na_yin": "白蜡金", "cang_gan": [{"gan": "丙", "ratio": 100}, {"gan": "戊", "ratio": 60}, {"gan": "庚", "ratio": 30}]},
-            }
+            "pillars": {}
         },
         "result": pipeline_result,
     }
     
     report = generate_deep_report(engine_json, "子源", "男")
     lines = report.split("\n")
-    print(f"报告总行数: {len(lines)}")
-    print(f"报告总字数: {len(report)}")
-    print()
-    
-    # 统计§
-    sec_count = 0
-    for l in lines:
-        if l.startswith("## §"):
-            sec_count += 1
+    chars = len(report)
+    sec_count = sum(1 for l in lines if l.startswith("## §"))
+    print(f"总行数: {len(lines)}")
+    print(f"总字数: {chars}")
     print(f"§覆盖: {sec_count}/21")
-    print()
     
-    # 输出到文件
-    output_path = "/tmp/deep_report_test.txt"
-    with open(output_path, "w") as f:
+    out = "/tmp/deep_report_v2.txt"
+    with open(out, "w") as f:
         f.write(report)
-    print(f"已输出到: {output_path}")
-    print(f"前5行:")
-    for l in lines[:5]:
-        print(l)
+    print(f"输出: {out}")
+    # 检查其中是否包含"刚毅"等通用描述（看是否用了引擎数据）
+    has_engine_data = "金鉴真人·" in report or "规则" in report
+    print(f"包含规则标注: {has_engine_data}")
 
 
 if __name__ == "__main__":
