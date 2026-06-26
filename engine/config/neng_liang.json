@@ -1,0 +1,26 @@
+{
+  "san_hui": {
+    "you_yin_hua": 20,
+    "wu_yin_hua": 10
+  },
+  "san_he": {
+    "you_yin_hua": 15,
+    "wu_yin_hua": 7
+  },
+  "ban_he": {
+    "you_yin_hua": 10,
+    "wu_yin_hua": 5
+  },
+  "liu_he": {
+    "you_yin_hua": 10,
+    "wu_yin_hua": 5
+  },
+  "gong_he": {
+    "you_yin_hua": 10,
+    "wu_yin_hua": 5
+  },
+  "liu_chong": 10,
+  "san_xing_chen_xu_chou_wei": 15,
+  "san_xing_yin_si_shen": 12,
+  "san_xing_zi_mao": 5
+}

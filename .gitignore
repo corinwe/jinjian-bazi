@@ -1,0 +1,45 @@
+# ── Python ──
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# ── 虚拟环境 ──
+venv/
+.venv/
+env/
+.env
+
+# ── IDE ──
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── 数据库（本地开发用） ──
+*.db
+*.db-shm
+*.db-wal
+
+# ── 输出缓存 ──
+output/
+*.log
+
+# ── OS ──
+.DS_Store
+Thumbs.db
+
+# ── 大文件/临时文件 ──
+*.pdf
+*.mp3
+*.mp4
+*.wav
+node_modules/
+
+# ── Hermes特定 ──
+.hermes/

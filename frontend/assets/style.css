@@ -1,0 +1,122 @@
+/* 金鉴真人·八字平台 — 样式 */
+:root {
+    --primary: #1a1a2e;
+    --secondary: #16213e;
+    --accent: #e94560;
+    --gold: #d4a853;
+    --bg: #0f0f1a;
+    --card: #1e1e32;
+    --text: #e0e0e0;
+    --text-muted: #888;
+    --radius: 12px;
+    --shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+}
+#app { max-width: 800px; margin: 0 auto; padding: 0 16px; }
+
+/* Header */
+.header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+    position: sticky; top: 0; background: var(--bg); z-index: 100;
+}
+.logo { font-size: 22px; font-weight: 700; color: var(--gold); letter-spacing: 2px; }
+.nav { display: flex; gap: 8px; }
+.nav a {
+    padding: 6px 14px; border-radius: 20px; color: var(--text-muted);
+    text-decoration: none; font-size: 14px; transition: all 0.2s;
+}
+.nav a.active, .nav a:hover { background: var(--accent); color: #fff; }
+.menu-btn { display: none; background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; }
+
+/* Main */
+.main { padding: 24px 0 80px; }
+.page { display: none; animation: fadeIn 0.3s ease; }
+.page.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Hero */
+.hero { text-align: center; padding: 40px 0; }
+.hero h1 { font-size: 32px; margin-bottom: 12px; color: var(--gold); }
+.hero .subtitle { color: var(--text-muted); margin-bottom: 24px; font-size: 15px; }
+.cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+/* Buttons */
+.btn-primary, .btn-secondary {
+    padding: 12px 28px; border-radius: 25px; font-size: 15px; font-weight: 600;
+    border: none; cursor: pointer; transition: all 0.2s; text-decoration: none;
+    display: inline-block;
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: #d63850; transform: translateY(-1px); }
+.btn-secondary { background: transparent; color: var(--gold); border: 2px solid var(--gold); }
+.btn-secondary:hover { background: rgba(212,168,83,0.1); }
+.btn-full { width: 100%; margin-top: 12px; }
+
+/* Features */
+.features { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-top: 20px; }
+.feature-card {
+    background: var(--card); border-radius: var(--radius); padding: 20px;
+    text-align: center; box-shadow: var(--shadow);
+}
+.feature-card .icon { font-size: 36px; margin-bottom: 10px; }
+.feature-card h3 { font-size: 16px; margin-bottom: 6px; color: var(--gold); }
+.feature-card p { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+
+/* Forms */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-group label { font-size: 12px; color: var(--text-muted); }
+select, .form-input, input[type="number"] {
+    padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);
+    background: var(--card); color: #fff; font-size: 14px; outline: none; width: 100%;
+}
+select:focus, input:focus { border-color: var(--gold); }
+
+/* Report */
+.report-container { background: var(--card); border-radius: var(--radius); padding: 24px; margin-top: 16px; }
+.report-section { margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.report-section:last-child { border-bottom: none; }
+.report-section h3 { color: var(--gold); font-size: 16px; margin-bottom: 8px; }
+.report-label { color: var(--text-muted); font-size: 12px; }
+.report-value { font-size: 15px; margin-bottom: 4px; }
+.score-bar { height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; margin-top: 4px; overflow: hidden; }
+.score-fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
+.dim-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* Report History */
+.report-item {
+    background: var(--card); border-radius: var(--radius); padding: 16px;
+    margin-bottom: 12px; cursor: pointer; transition: all 0.2s;
+}
+.report-item:hover { background: #2a2a42; }
+.report-item .bazi { color: var(--gold); font-size: 18px; font-weight: 600; }
+.report-item .meta { color: var(--text-muted); font-size: 13px; margin-top: 4px; }
+
+/* Login */
+.login-prompt { text-align: center; padding: 40px; color: var(--text-muted); }
+#login-form, #user-info { max-width: 360px; margin: 0 auto; }
+#login-form h3 { margin: 16px 0 8px; color: var(--gold); }
+.form-input { margin-bottom: 8px; }
+hr { border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 20px 0; }
+
+/* Loading */
+#analyze-result { margin-top: 16px; }
+.loading { text-align: center; padding: 40px; color: var(--text-muted); }
+
+/* Mobile */
+@media (max-width: 600px) {
+    .nav { display: none; flex-direction: column; position: absolute; top: 60px; right: 0; background: var(--card); padding: 16px; border-radius: var(--radius); gap: 4px; }
+    .nav.open { display: flex; }
+    .menu-btn { display: block; }
+    .form-grid { grid-template-columns: 1fr; }
+    .dim-grid { grid-template-columns: 1fr; }
+    .hero h1 { font-size: 24px; }
+}
