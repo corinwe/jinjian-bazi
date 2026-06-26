@@ -155,6 +155,13 @@ input,select{font-family:inherit}
       </div>
     </div>
     <div class="fld">
+      <label>日历类型</label>
+      <div class="opt-group" id="calendar-group">
+        <label class="active"><input type="radio" name="calendar" value="solar" checked>阳历</label>
+        <label><input type="radio" name="calendar" value="lunar">农历</label>
+      </div>
+    </div>
+    <div class="fld">
       <label>出生时辰</label>
       <select id="hour">
         <option value="0">子23-01</option><option value="2">丑01-03</option>
@@ -164,9 +171,6 @@ input,select{font-family:inherit}
         <option value="16">申15-17</option><option value="18">酉17-19</option>
         <option value="20">戌19-21</option><option value="22">亥21-23</option>
       </select>
-    </div>
-    <div class="fld" style="display:flex;align-items:flex-end">
-      <div style="font-size:11px;color:var(--m);padding-bottom:8px">约5秒出报告</div>
     </div>
   </div>
   <button class="btn-gold" onclick="doAnalyze()" id="btn-submit">开始分析</button>
@@ -218,9 +222,10 @@ async function doAnalyze(){
   if(!dv)return alert('请选择出生日期');
   const [y,m,d]=dv.split('-').map(Number),h=parseInt($('hour').value)||0;
   const g=document.querySelector('input[name="gender"]:checked').value;
+  const cal=document.querySelector('input[name="calendar"]:checked').value;
   $('btn-submit').disabled=true;$('btn-submit').textContent='分析中...';$('loading').style.display='block';
   try{
-    const r1=await fetch(API+'/engine/debug',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,gender:g,birth_year:y,birth_month:m,birth_day:d,birth_hour:h})});
+    const r1=await fetch(API+'/engine/debug',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,gender:g,birth_year:y,birth_month:m,birth_day:d,birth_hour:h,calendar_type:cal})});
     const data=await r1.json();
     $('loading').style.display='none';$('btn-submit').disabled=false;$('btn-submit').textContent='开始分析';
     $('debug').textContent=JSON.stringify(data,null,2);
