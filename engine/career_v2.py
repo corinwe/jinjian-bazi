@@ -357,6 +357,70 @@ def analyze_career_full(
     if has_shi or has_shang:
         social_circle.append("认识技术/艺术人才")
     
+    # ── ⑫ 详细规则分析文本（供深度报告使用）──
+    detail_parts = []
+    
+    # 格局定方向
+    if direction:
+        detail_parts.append(f"【格局定方向】格局{ge_ju_main}，事业方向宜走「{direction}」路线。{desc}。")
+    
+    # 伟人格
+    if wei_ren_ge_name:
+        wr_info = WEI_REN_GE.get(wei_ren_ge_name, {})
+        detail_parts.append(f"【伟人格判定】{wei_ren_ge_name}——{wr_info.get('principle', '')}。{wr_info.get('comb', '')}。")
+        detail_parts.append(f"凡成大事者必有恶神，恶神有制方为贵。{wei_ren_ge_name}为顶级格局，若大运配合可成就非凡。")
+    
+    # 伤官格
+    if shang_guan_type and shang_guan_type != "无":
+        sg_desc = SHANG_GUAN_SAN_GE.get(shang_guan_type, "")
+        detail_parts.append(f"【伤官格】{shang_guan_type}：{sg_desc}。")
+    
+    # 身强身弱定模式
+    if shen_label == "身强":
+        detail_parts.append(f"【身强定模式】身强{shen_score:.0f}分，有能力担事，适合管理/领导岗位。官杀为喜用时利晋升，越挫越勇，可挑战高压岗位。")
+    elif shen_label == "身弱":
+        detail_parts.append(f"【身弱定模式】身弱{shen_score:.0f}分，有能力但容易累，适合技术/专业岗。印为喜用时需贵人/平台托底。杀印相生→以智慧化压力为成就。")
+    else:
+        detail_parts.append(f"【中和定模式】中和{shen_score:.0f}分，文武兼备，灵活性最高。官杀为喜用时事业顺遂。")
+    
+    # 恶神制化
+    detail_parts.append(f"【恶神制化定级别】{career_grade}（{grade_score}/10）。{ge_ju_main}中")
+    if is_wei:
+        detail_parts[-1] += "恶神有制，杀印相生/食神制杀，为伟人级别的格局配置。"
+    elif has_sha and (has_yin or has_shi):
+        detail_parts[-1] += "七杀有制，化为权威和执行力，能担当重任。"
+    elif has_guan and has_yin:
+        detail_parts[-1] += "官印相生，管理名望自然成，适合体制内或大平台发展。"
+    elif has_guan:
+        detail_parts[-1] += "正官得用，守法负责，适合管理岗位逐步晋升。"
+    else:
+        detail_parts[-1] += "无恶神激发，宜走专业路线深耕。"
+    
+    # 官杀分析
+    if guan_sha_analysis:
+        detail_parts.append(f"【官杀分析】{'；'.join(guan_sha_analysis)}。")
+    
+    # 五行定行业
+    if industry:
+        detail_parts.append(f"【五行定行业】喜用{xi_wx}五行，适宜从事{industry}等相关领域。")
+    
+    # 36命格天赋
+    if talents:
+        detail_parts.append(f"【36命格天赋】{'、'.join(talents)}。")
+    
+    # 名望
+    if fame:
+        detail_parts.append(f"【名望评估】{'；'.join(fame)}。")
+    
+    # 创业判断
+    detail_parts.append(f"【创业判断】{entrepreneurship}。{best_path}。")
+    
+    # 社交圈
+    if social_circle:
+        detail_parts.append(f"【近官立贵】朋友圈决定事业层次：{'；'.join(social_circle)}。")
+    
+    detail_analysis = "\n".join(detail_parts)
+    
     return {
         "career_direction": direction,
         "career_desc": desc,
@@ -375,4 +439,5 @@ def analyze_career_full(
         "entrepreneurship": entrepreneurship,
         "best_path": best_path,
         "social_circle": social_circle,
+        "detail_analysis": detail_analysis,  # 🆕 深度报告用
     }

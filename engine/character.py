@@ -123,6 +123,22 @@ def analyze_character(
     # ── 综合 ──
     personality_type = ", ".join(list(set([s["label"] for s in shi_shen_traits] + [ri_char.get("base", "")]))[:4])
     
+    # ── detail_analysis（深度报告用）──
+    detail_parts = []
+    detail_parts.append(f"【日主底色】日主{ri_zhu}{ri_char.get('base','')}。{base_desc}")
+    for s in shi_shen_traits[:4]:
+        detail_parts.append(f"【十神{s['ten_god']}】{s['label']}——正面：{s['positive']}。负面：{s['negative']}。")
+    if shen_label == "身强":
+        detail_parts.append(f"【身强修正】身强{shen_score:.0f}分，自信外放、能量充沛，性格特质向外展现更充分。")
+    elif shen_label == "身弱":
+        detail_parts.append(f"【身弱修正】身弱{shen_score:.0f}分，内敛敏感、心思细腻，性格特质向内收敛更明显。")
+    if conflicts and conflicts != ["无明显性格冲突"]:
+        detail_parts.append(f"【性格冲突】{'；'.join(conflicts)}。")
+    if talents and talents != ["无明显特殊天赋"]:
+        detail_parts.append(f"【特殊天赋】{'；'.join(talents)}。")
+    detail_parts.append(f"【成长建议】{_generate_advice(shen_label, shi_shen_traits, conflicts)}。")
+    detail_analysis = "\n".join(detail_parts)
+    
     return {
         "ri_zhu_base": {"gan": ri_zhu, "base": ri_char.get("base", ""), "desc": base_desc},
         "personality_type": personality_type,
@@ -131,6 +147,7 @@ def analyze_character(
         "conflicts": conflicts if conflicts else ["无明显性格冲突"],
         "talents": talents if talents else ["无明显特殊天赋"],
         "growth_advice": _generate_advice(shen_label, shi_shen_traits, conflicts),
+        "detail_analysis": detail_analysis,
     }
 
 
