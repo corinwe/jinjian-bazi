@@ -271,12 +271,14 @@ function renderReport(data,name,gender,year,month,day,hour){
   /* ── ② 四柱信息表 ── */
   const pNames=['year','month','day','hour'];
   const pLabels=['年柱','月柱','日柱','时柱'];
+  // 四柱表（行：十神/天干/地支/藏干/纳音/空亡）
   html+=`<div class="card"><div class="card-title">📋 四柱信息</div>
   <table class="pillar-table"><tr><th></th>${pLabels.map(l=>'<th>'+l+'</th>').join('')}</tr>`;
   const rows=[
     ['十神',p=>pi[p]?.shi_shen||''],
     ['天干',p=>pi[p]?.tian_gan||''],
     ['地支',p=>pi[p]?.di_zhi||''],
+    ['藏干',p=>{const cg=pi[p]?.cang_gan;return cg?cg.map(x=>typeof x=='object'?x.gan||x[0]||'':x).join(' '):'';}],
     ['纳音',p=>pi[p]?.na_yin||''],
     ['空亡',p=>pi[p]?.kong_wang||''],
   ];
@@ -351,26 +353,82 @@ function renderReport(data,name,gender,year,month,day,hour){
   if(nc.shi_shen=='伤官')html+=`<p>年干带伤官，少年时期或有叛逆倾向。</p>`;
   else if(nc.shi_shen=='正印'||nc.shi_shen=='偏印')html+=`<p>年干见印星，有学业基因。</p>`;
 
+  // 性格 §6
+  const s6=r.sec_6_character||{};
+  html+=`<h3>五、性格解析</h3>`;
+  if(s6.ri_zhu_base)html+=`<p>日主特质：${s6.ri_zhu_base}。</p>`;
+  if(s6.personality_type)html+=`<p>性格类型：${s6.personality_type}。</p>`;
+  if(s6.key_traits&&s6.key_traits.length)html+=`<p>关键特质：${s6.key_traits.join('、')}。</p>`;
+  if(s6.talents&&s6.talents.length)html+=`<p>天赋潜能：${s6.talents.join('、')}。</p>`;
+
+  // 身材外貌 §7
+  const s7=r.sec_7_appearance||{};
+  html+=`<h3>六、身材外貌</h3>`;
+  if(s7.ri_zhu_appearance)html+=`<p>基本特征：${s7.ri_zhu_appearance}。</p>`;
+  if(s7.build||s7.height_estimate)html+=`<p>体型身高：${s7.build||''}，${s7.height_estimate||''}。</p>`;
+  if(s7.style)html+=`<p>气质风格：${s7.style}。</p>`;
+  if(s7.weight_tendency)html+=`<p>体重倾向：${s7.weight_tendency}。</p>`;
+
   // 婚姻
   const marQ=s12.quality||'',marScore=s12.quality_score||'',marWin=s12.best_window_age||'',spouse=s12.spouse_trait||'';
-  html+=`<h3>五、婚姻感情</h3>`;
+  html+=`<h3>七、婚姻感情</h3>`;
   if(marQ)html+=`<p>婚姻质量<b>${marQ}</b>${marScore?'（'+marScore+'/10）':''}。</p>`;
   if(marWin)html+=`<p>最佳婚恋窗口在<b>${marWin}</b>。</p>`;
   if(spouse)html+=`<p>配偶特征：${spouse}。</p>`;
 
   // 子女
   const childCount=s13.child_count_estimate||'',childAch=s13.child_achievement||'',shengYu=s13.sheng_yu_potential||'';
-  html+=`<h3>六、子女运势</h3>`;
+  html+=`<h3>八、子女运势</h3>`;
   if(childCount)html+=`<p>子女方面，约${typeof childCount=='object'?childCount.text||childCount.数量||'':childCount}。</p>`;
   if(childAch)html+=`<p>子女成就趋势：${childAch}。</p>`;
   if(shengYu)html+=`<p>${typeof shengYu=='object'?shengYu.desc||shengYu.text||'':shengYu}</p>`;
 
   // 健康
   const constit=s14.constitution||'',wxot=s14.wu_xing_over_three||[],battles=s14.wu_xing_battles||[];
-  html+=`<h3>七、健康注意</h3>`;
+  html+=`<h3>九、健康注意</h3>`;
   if(constit)html+=`<p>体质方面：${constit}。</p>`;
   if(wxot.length){wxot.slice(0,2).forEach(item=>{if(item.wx&&item.organ)html+=`<p>注意<b>${item.wx}</b>五行过旺，对应<b>${item.organ}</b>需留意保养。</p>`;});}
   if(battles.length){battles.slice(0,2).forEach(b=>{if(b.disease)html+=`<p>地支冲克提示：${b.disease}。</p>`;});}
+
+  // 灾祸/化解 §5
+  const s5=r.sec_5_zai_huo||{};
+  const mf=s5.misfortune_full||{};
+  const rm=s5.remission_advice||{};
+  html+=`<h3>十、灾祸与化解</h3>`;
+  if(mf.risk_level)html+=`<p>风险评级：<b>${mf.risk_level}</b>。</p>`;
+  const chong=s5.shen_sha_chong||[]; const xing=s5.shen_sha_xing||[]; const hai=s5.shen_sha_hai||[];
+  if(chong.length)html+=`<p>地支相冲：${chong.join('、')}。</p>`;
+  if(xing.length)html+=`<p>地支相刑：${xing.join('、')}。</p>`;
+  if(hai.length)html+=`<p>地支相害：${hai.join('、')}。</p>`;
+  if(rm.advice)html+=`<p>化解建议：${rm.advice}。</p>`;
+
+  // 置业 §9
+  const s9=r.sec_9_property||{};
+  html+=`<h3>十一、置业分析</h3>`;
+  if(s9.property_potential)html+=`<p>置业方位：${s9.property_potential}。</p>`;
+  if(s9.property_level)html+=`<p>置业能力：${s9.property_level}。</p>`;
+  if(s9.risk)html+=`<p>注意事项：${s9.risk}。</p>`;
+
+  // 六亲关系 §15
+  const s15=r.sec_15_family||{};
+  html+=`<h3>十二、六亲关系</h3>`;
+  if(s15.summary)html+=`<p>${s15.summary}</p>`;
+  if(s15.family_economy)html+=`<p>家庭经济：${s15.family_economy}。</p>`;
+  if(s15.family_pressure)html+=`<p>家庭压力：${s15.family_pressure}。</p>`;
+
+  // 流年事件 §16
+  const s16=r.sec_16_events||{};
+  const keyEvts=s16.key_events||{};
+  html+=`<h3>十三、流年事件</h3>`;
+  let evtCount=0;
+  Object.entries(keyEvts).forEach(([type,evts])=>{
+    if(evts&&evts.length){
+      evts.slice(0,2).forEach(e=>{
+        if(evtCount<4){html+=`<p>${e.year}年：${e.description||''}</p>`;evtCount++;}
+      });
+    }
+  });
+  if(!evtCount)html+=`<p>当前无显著流年事件触发。</p>`;
 
   html+=`</div></div>`;
 
@@ -383,6 +441,22 @@ function renderReport(data,name,gender,year,month,day,hour){
       let cls='dy-item';
       if(sc>=8)cls+=' gold';else if(sc>=6)cls+=' green';else if(sc>=4)cls+=' yellow';else cls+=' red';
       html+=`<div class="${cls}"><div class="dy-name">${dy.gan_zhi}</div><div class="dy-age">${dy.start_age}~${dy.end_age}岁</div><div style="font-size:10px;color:var(--m)">${sc}分</div></div>`;
+    });
+    html+=`</div></div>`;
+  }
+
+  /* ── 运程曲线 §19 ── */
+  const s19=r.sec_19_overall||{};
+  const curve=s19.curve||[];
+  if(curve.length){
+    html+=`<div class="card"><div class="card-title">📈 运程曲线</div><div style="margin-top:4px">`;
+    curve.forEach(c=>{
+      const bar=c.bar||'';
+      html+=`<div style="display:flex;align-items:center;margin:3px 0;font-size:12px">
+        <span style="width:70px;color:var(--m)">${c.da_yun||''}</span>
+        <span style="flex:1;font-family:monospace;font-size:14px;letter-spacing:1px">${bar}</span>
+        <span style="width:30px;text-align:right;color:var(--g)">${c.score||''}</span>
+      </div>`;
     });
     html+=`</div></div>`;
   }
@@ -408,12 +482,25 @@ function renderReport(data,name,gender,year,month,day,hour){
   }
 
   /* ── ⑧ 五行开运 ── */
-  if(s20.colors||s20.directions||s20.jewellery||s20.diet){
+  if(s20.colors||s20.directions||s20.jewellery||s20.diet||s20.lucky_numbers){
     html+=`<div class="card"><div class="card-title">🌈 五行开运</div><div class="wx-grid">`;
     if(s20.colors)html+=`<div class="wx-item"><div class="wl">🎨颜色</div>${s20.colors}</div>`;
     if(s20.directions)html+=`<div class="wx-item"><div class="wl">🧭方位</div>${s20.directions}</div>`;
     if(s20.jewellery)html+=`<div class="wx-item"><div class="wl">💎饰品</div>${s20.jewellery}</div>`;
     if(s20.diet)html+=`<div class="wx-item"><div class="wl">🥗饮食</div>${s20.diet}</div>`;
+    if(s20.lucky_numbers)html+=`<div class="wx-item"><div class="wl">🔢幸运数字</div>${s20.lucky_numbers}</div>`;
+    if(s20.advice)html+=`<div class="wx-item" style="grid-column:1/3"><div class="wl">💡建议</div>${s20.advice}</div>`;
+    html+=`</div></div>`;
+  }
+
+  /* ── ⑨ 人生建议 §21 ── */
+  const s21=r.sec_21_advice||{};
+  if(s21.career||s21.wealth||s21.health||s21.marriage){
+    html+=`<div class="card"><div class="card-title">💡 人生建议</div><div class="wx-grid">`;
+    if(s21.career&&s21.career.advice)html+=`<div class="wx-item" style="grid-column:1/3"><div class="wl">🏢 事业</div>${s21.career.advice}</div>`;
+    if(s21.wealth&&s21.wealth.advice)html+=`<div class="wx-item"><div class="wl">💰 财富</div>${s21.wealth.advice}</div>`;
+    if(s21.health&&s21.health.advice)html+=`<div class="wx-item"><div class="wl">🏥 健康</div>${s21.health.advice}</div>`;
+    if(s21.marriage&&s21.marriage.advice)html+=`<div class="wx-item"><div class="wl">❤️ 婚姻</div>${s21.marriage.advice}</div>`;
     html+=`</div></div>`;
   }
 

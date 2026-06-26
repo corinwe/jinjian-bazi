@@ -32,6 +32,15 @@ from family import analyze_nian_yue
 from comprehensive_v2 import run_comprehensive_engine
 from misfortune_analysis import analyze_misfortune, analyze_remission
 
+
+# ── 地支藏干映射 ──
+CANG_GAN_MAP = {
+    "子": ["癸"], "丑": ["己","癸","辛"], "寅": ["甲","丙","戊"],
+    "卯": ["乙"], "辰": ["戊","乙","癸"], "巳": ["丙","戊","庚"],
+    "午": ["丁","己"], "未": ["己","丁","乙"], "申": ["庚","壬","戊"],
+    "酉": ["辛"], "戌": ["戊","辛","丁"], "亥": ["壬","甲"],
+}
+
 # ── 纳音查表（修复原引擎bug）──
 NA_YIN_FULL = {
     "甲子": "海中金", "乙丑": "海中金", "丙寅": "炉中火", "丁卯": "炉中火",
@@ -557,10 +566,10 @@ def run_pipeline(name: str, gender: str,
         "basic_data": {
             "ri_zhu": {"gan": day_gan, "wu_xing": TIAN_GAN_WU_XING[day_gan]},
             "pillars": {
-                "year": {"gan": year_gan, "zhi": year_zhi, "shi_shen": get_shi_shen_for_gan(year_gan, ri_zhu), "tian_gan": year_gan, "di_zhi": year_zhi, "na_yin": _get_na_yin(year_gan, year_zhi), "kong_wang": _get_kong_wang(year_gan, year_zhi)},
-                "month": {"gan": month_gan, "zhi": month_zhi, "shi_shen": get_shi_shen_for_gan(month_gan, ri_zhu), "tian_gan": month_gan, "di_zhi": month_zhi, "na_yin": _get_na_yin(month_gan, month_zhi), "kong_wang": _get_kong_wang(month_gan, month_zhi)},
-                "day": {"gan": day_gan, "zhi": day_zhi, "shi_shen": "元男" if gender == "男" else "元女", "tian_gan": day_gan, "di_zhi": day_zhi, "na_yin": _get_na_yin(day_gan, day_zhi), "kong_wang": _get_kong_wang(day_gan, day_zhi)},
-                "hour": {"gan": hour_gan, "zhi": hour_zhi, "shi_shen": get_shi_shen_for_gan(hour_gan, ri_zhu), "tian_gan": hour_gan, "di_zhi": hour_zhi, "na_yin": _get_na_yin(hour_gan, hour_zhi), "kong_wang": _get_kong_wang(hour_gan, hour_zhi)},
+                "year": {"gan": year_gan, "zhi": year_zhi, "shi_shen": get_shi_shen_for_gan(year_gan, ri_zhu), "tian_gan": year_gan, "di_zhi": year_zhi, "cang_gan": CANG_GAN_MAP.get(year_zhi, []), "na_yin": _get_na_yin(year_gan, year_zhi), "kong_wang": _get_kong_wang(year_gan, year_zhi)},
+                "month": {"gan": month_gan, "zhi": month_zhi, "shi_shen": get_shi_shen_for_gan(month_gan, ri_zhu), "tian_gan": month_gan, "di_zhi": month_zhi, "cang_gan": CANG_GAN_MAP.get(month_zhi, []), "na_yin": _get_na_yin(month_gan, month_zhi), "kong_wang": _get_kong_wang(month_gan, month_zhi)},
+                "day": {"gan": day_gan, "zhi": day_zhi, "shi_shen": "元男" if gender == "男" else "元女", "tian_gan": day_gan, "di_zhi": day_zhi, "cang_gan": CANG_GAN_MAP.get(day_zhi, []), "na_yin": _get_na_yin(day_gan, day_zhi), "kong_wang": _get_kong_wang(day_gan, day_zhi)},
+                "hour": {"gan": hour_gan, "zhi": hour_zhi, "shi_shen": get_shi_shen_for_gan(hour_gan, ri_zhu), "tian_gan": hour_gan, "di_zhi": hour_zhi, "cang_gan": CANG_GAN_MAP.get(hour_zhi, []), "na_yin": _get_na_yin(hour_gan, hour_zhi), "kong_wang": _get_kong_wang(hour_gan, hour_zhi)},
             },
             "tian_gan_notes": [],
             "di_zhi_notes": [],
