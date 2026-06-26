@@ -12,9 +12,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Micr
 .hd{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.05)}
 .lg{font-size:20px;font-weight:700;color:var(--g);letter-spacing:2px}
 .lg span{font-size:12px;color:var(--m);font-weight:400;margin-left:6px}
-.page{display:none;animation:fadeIn .3s}.page.active{display:block}
-@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.form-box{background:var(--c);border-radius:var(--r);padding:24px;margin-top:16px}
+.page{display:none}.page.active{display:block}
+.form-box{background:var(--c);border-radius:12px;padding:24px;margin-top:16px}
 .form-box h2{font-size:18px;color:var(--g);margin-bottom:16px;text-align:center}
 .fg{margin-bottom:14px}.fg label{display:block;font-size:12px;color:var(--m);margin-bottom:4px}
 input[type="date"]{color-scheme:dark;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:var(--b);color:#fff;font-size:14px;width:100%;outline:0}
@@ -24,35 +23,28 @@ input[type="date"]{color-scheme:dark;padding:10px 12px;border-radius:8px;border:
 .opt-group label{display:flex;align-items:center;gap:4px;background:var(--b);padding:8px 12px;border-radius:8px;cursor:pointer;flex:1;text-align:center;justify-content:center;border:2px solid transparent;font-size:13px;color:var(--m)}
 .opt-group label.active{border-color:var(--g);color:var(--g)}
 .opt-group input{display:none}
-.btn-p{padding:12px 28px;border-radius:25px;font-size:15px;font-weight:600;border:none;cursor:pointer;background:var(--a);color:#fff;display:inline-block}
-.btn-s{padding:12px 28px;border-radius:25px;font-size:15px;font-weight:600;border:2px solid var(--g);cursor:pointer;background:0 0;color:var(--g);display:inline-block}
-.btn-full{width:100%}
+.btn-p{padding:12px 28px;border-radius:25px;font-size:15px;font-weight:600;border:none;cursor:pointer;background:var(--a);color:#fff;display:inline-block;width:100%}
 .btn-p:disabled{opacity:.5;cursor:not-allowed}
 .loading{display:none;text-align:center;padding:30px 0}
 .loading .sp{display:inline-block;width:36px;height:36px;border:3px solid var(--c);border-top-color:var(--g);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.report-card{background:var(--c);border-radius:var(--r);padding:20px;margin-top:16px}
-.sec{margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,.06)}
-.sec:last-child{border-bottom:none;margin-bottom:0}
-.sec h3{font-size:15px;color:var(--g);margin-bottom:8px}
-.bazi-large{font-size:26px;color:var(--g);letter-spacing:4px;text-align:center;padding:12px 0}
-.bazi-meta{text-align:center;color:var(--m);font-size:12px;margin-bottom:8px}
-.tags{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:6px 0}
-.tags span{background:rgba(212,168,83,.15);padding:4px 12px;border-radius:12px;font-size:12px;color:var(--g)}
-.info-row{font-size:13px;color:var(--t);padding:2px 0}
-.info-row strong{color:var(--g)}
-.big-num{font-size:32px;color:#4caf50;font-weight:700}
-.big-num .unit{font-size:14px;color:var(--m);font-weight:400}
-.label{font-size:13px;color:var(--t);padding:1px 0}
-.dy-row{padding:3px 0;font-size:13px}
-.verdict{padding:6px 10px;background:rgba(0,0,0,.15);border-radius:6px;margin:4px 0;font-size:13px}
-.dim-row{display:grid;grid-template-columns:100px 1fr 50px;gap:8px;align-items:center;margin:6px 0}
-.dim-name{font-size:13px;color:var(--t)}
-.dim-bar{height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden}
-.dim-fill{height:100%;border-radius:3px}
-.dim-score{font-size:13px;color:var(--g);text-align:right}
-.error-box{background:rgba(233,69,96,.15);border:1px solid var(--a);border-radius:var(--r);padding:16px;color:var(--a);font-size:14px}
-.debug-box{background:#111;border-radius:var(--r);padding:12px;margin-top:12px;font-family:monospace;font-size:11px;color:#aaa;white-space:pre-wrap;max-height:400px;overflow:auto;display:none}
+
+/* ── 报告样式 ── */
+.report-wrap{animation:fadeIn .4s}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.report-header{background:linear-gradient(135deg,#1e1e32,#27254a);border-radius:12px;padding:24px;margin-top:16px;text-align:center;border-bottom:3px solid var(--g)}
+.report-header h1{font-size:20px;color:var(--g);margin-bottom:4px}
+.report-header .bazi{font-size:28px;color:#fff;letter-spacing:6px;margin:8px 0}
+.report-header .meta{font-size:13px;color:var(--m)}
+.r-section{background:var(--c);border-radius:12px;padding:20px;margin-top:12px}
+.r-section h2{font-size:16px;color:var(--g);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.06)}
+.r-section p{font-size:14px;line-height:1.8;color:var(--t);margin-bottom:6px}
+.r-section .highlight{color:var(--g)}
+.r-section .tag-good{color:#4caf50;font-weight:600}
+.r-section .tag-warn{color:#ff9800}
+.r-section .tag-bad{color:var(--a)}
+.r-footer{text-align:center;padding:20px;font-size:12px;color:var(--m);line-height:1.6}
+.bad{color:var(--a)}.good{color:#4caf50}
 .sample-bar{display:flex;gap:8px;justify-content:center;margin-top:12px;font-size:12px}
 .sample-bar span{cursor:pointer;color:var(--m);padding:4px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.1)}
 .sample-bar span:hover{border-color:var(--g);color:var(--g)}
@@ -66,14 +58,14 @@ input[type="date"]{color-scheme:dark;padding:10px 12px;border-radius:8px;border:
 <!-- 输入页 -->
 <div id="page-input" class="page active">
 <div class="form-box">
-  <h2>输入出生信息</h2>
+  <h2>输入出生信息 · 获取完整命理报告</h2>
   <div class="fg">
     <label>姓名</label>
     <input id="name" value="测试" placeholder="请输入姓名">
   </div>
   <div class="fg">
     <label>出生日期</label>
-    <input type="date" id="birth-date" value="1979-07-15" style="color-scheme:dark">
+    <input type="date" id="birth-date" value="1980-05-15" style="color-scheme:dark">
   </div>
   <div class="fg-row">
     <div class="fg">
@@ -88,10 +80,10 @@ input[type="date"]{color-scheme:dark;padding:10px 12px;border-radius:8px;border:
       <select id="hour">
         <option value="0">子时 23-01</option>
         <option value="2">丑时 01-03</option>
-        <option value="4" selected>寅时 03-05</option>
+        <option value="4">寅时 03-05</option>
         <option value="6">卯时 05-07</option>
         <option value="8">辰时 07-09</option>
-        <option value="10">巳时 09-11</option>
+        <option value="10" selected>巳时 09-11</option>
         <option value="12">午时 11-13</option>
         <option value="14">未时 13-15</option>
         <option value="16">申时 15-17</option>
@@ -100,35 +92,29 @@ input[type="date"]{color-scheme:dark;padding:10px 12px;border-radius:8px;border:
         <option value="22">亥时 21-23</option>
       </select>
     </div>
-    <div class="fg">
-      <label style="visibility:hidden">占位</label>
-      <div style="height:42px;display:flex;align-items:flex-end;font-size:11px;color:var(--m)">约1分钟出结果</div>
-    </div>
   </div>
-  <button class="btn-p btn-full" onclick="doAnalyze()" id="btn-submit">开始分析</button>
-  <div class="loading" id="loading"><div class="sp"></div><div style="margin-top:8px;font-size:13px;color:var(--m)">排盘中...</div></div>
+  <button class="btn-p" onclick="doReport()" id="btn-submit">开始分析</button>
+  <div class="loading" id="loading"><div class="sp"></div><div style="margin-top:8px;font-size:13px;color:var(--m)">排盘生成报告中...</div></div>
 </div>
 <div class="sample-bar">
   <span onclick="fillSample('家主','1979-07-15',4,'男')">📌 家主(庚申)</span>
   <span onclick="fillSample('子源','2011-04-25',10,'男')">📌 子源(辛卯)</span>
-  <span onclick="fillSample('立','2011-04-25',12,'男')">📌 立(辛卯)</span>
 </div>
 </div>
 
-<!-- 结果页 -->
-<div id="page-result" class="page">
-<div style="text-align:right;margin-bottom:8px">
-  <button class="btn-s" style="padding:4px 16px;font-size:12px" onclick="backToInput()">← 重新输入</button>
-  <button class="btn-s" style="padding:4px 16px;font-size:12px" onclick="toggleDebug()">🔍 JSON</button>
+<!-- 报告页 -->
+<div id="page-report" class="page">
+<div style="display:flex;gap:8px;margin-top:12px">
+  <button class="btn-p" style="padding:8px;font-size:13px;width:auto" onclick="backToInput()">← 重新输入</button>
+  <button class="btn-p" style="padding:8px;font-size:13px;width:auto;background:0 0;border:1px solid var(--m);color:var(--m)" onclick="toggleJson()">📋 查看数据</button>
 </div>
-<div id="result-display"></div>
-<div class="debug-box" id="debug-json"></div>
+<div id="report-content"></div>
+<div id="json-content" style="display:none;background:#111;border-radius:12px;padding:16px;margin-top:12px;font-family:monospace;font-size:11px;color:#aaa;white-space:pre-wrap;max-height:500px;overflow:auto"></div>
 </div>
 
 </div>
 
 <script>
-// ── 工具 ──
 const API = '/api/v1';
 const $ = id => document.getElementById(id);
 
@@ -143,7 +129,6 @@ document.querySelectorAll('.opt-group').forEach(g => {
   });
 });
 
-// ── 填充示例 ──
 function fillSample(name, date, hour, gender) {
   $('name').value = name;
   $('birth-date').value = date;
@@ -156,8 +141,15 @@ function fillSample(name, date, hour, gender) {
   });
 }
 
-// ── 提交分析 ──
-async function doAnalyze() {
+function showPage(p) {
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+  $('page-' + p).classList.add('active');
+  window.scrollTo(0, 0);
+}
+function backToInput() { showPage('input'); }
+
+// ── 生成报告 ──
+async function doReport() {
   const name = $('name').value.trim() || '用户';
   const dateVal = $('birth-date').value;
   if (!dateVal) return alert('请选择出生日期');
@@ -165,197 +157,109 @@ async function doAnalyze() {
   const hour = parseInt($('hour').value) || 0;
   const gender = document.querySelector('input[name="gender"]:checked').value;
 
-  const btn = $('btn-submit');
-  btn.disabled = true;
-  btn.textContent = '分析中...';
+  $('btn-submit').disabled = true;
+  $('btn-submit').textContent = '分析中...';
   $('loading').style.display = 'block';
 
   try {
-    const res = await fetch(API + '/analyze', {
+    const res = await fetch(API + '/report', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({name, gender, birth_year: year, birth_month: month, birth_day: day, birth_hour: hour})
     });
-    
-    // 如果analyze失败，fallback到debug接口
-    let data;
-    if (!res.ok) {
-      // 直接调engine/debug
-      const res2 = await fetch(API + '/engine/debug', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({name, gender, birth_year: year, birth_month: month, birth_day: day, birth_hour: hour})
-      });
-      data = await res2.json();
-    } else {
-      const resp = await res.json();
-      data = resp.analysis || resp;
+    const d = await res.json();
+
+    $('loading').style.display = 'none';
+    $('btn-submit').disabled = false;
+    $('btn-submit').textContent = '开始分析';
+
+    if (!d.success) {
+      alert('分析失败: ' + (d.error || '未知错误'));
+      return;
     }
 
-    $('loading').style.display = 'none';
-    btn.disabled = false;
-    btn.textContent = '开始分析';
-
-    // 显示debug
-    $('debug-json').textContent = JSON.stringify(data, null, 2);
-    $('debug-json').style.display = 'none';
-
-    // 渲染
-    renderReport(data, name);
-    showPage('result');
+    // 渲染报告
+    renderReport(d.report, d.bazi, name);
+    // 保存JSON调试
+    $('json-content').textContent = d.report;
+    showPage('report');
   } catch(e) {
     $('loading').style.display = 'none';
-    btn.disabled = false;
-    btn.textContent = '开始分析';
+    $('btn-submit').disabled = false;
+    $('btn-submit').textContent = '开始分析';
     alert('错误: ' + e.message);
   }
 }
 
-// ── 页面切换 ──
-function showPage(p) {
-  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
-  $('page-' + p).classList.add('active');
-  window.scrollTo(0, 0);
-}
-function backToInput() { showPage('input'); }
-let debugVisible = false;
-function toggleDebug() {
-  const d = $('debug-json');
-  debugVisible = !debugVisible;
-  d.style.display = debugVisible ? 'block' : 'none';
+let jsonVisible = false;
+function toggleJson() {
+  jsonVisible = !jsonVisible;
+  $('json-content').style.display = jsonVisible ? 'block' : 'none';
 }
 
-// ── 渲染报告 ──
-function renderReport(data, name) {
-  // 兼容旧格式：提取result
-  const result = data.result || data;
-  const s1 = result.sec_1_overview || {};
-  const s3 = result.sec_3_shen_qiang_ruo || {};
-  const s4 = result.sec_4_xi_yong || {};
-  const s8 = result.sec_8_wealth || {};
-  const s10 = result.sec_10_career || {};
-  const s11 = result.sec_11_education || {};
-  const s12 = result.sec_12_marriage || {};
-  const s13 = result.sec_13_children || {};
-  const s14 = result.sec_14_health || {};
-  const s17 = result.sec_17_da_yun_detail || {};
-  const s18 = result.sec_18_verdicts || [];
-  const s20 = result.sec_20_wu_xing_advice || {};
+// ── 渲染Markdown格式报告为HTML ──
+function renderReport(md, bazi, name) {
+  // 简单markdown转HTML
+  const lines = md.split('\n');
+  let html = '<div class="report-wrap">';
 
-  // 兼容直接analysis格式
-  const analysis = data.analysis || {};
-  const aSqr = analysis.shen_qiang_ruo || {};
-  const aXi = analysis.xi_yong_shen || {};
+  // 解析标题和段落
+  let inSection = false;
+  let sectionHtml = '';
 
-  const baziStr = s1.bazi || data.paipan?.bazi || data.basic?.bazi || '';
-  const sqrLabel = s3.label || aSqr.label || '';
-  const sqrScore = s3.score || aSqr.score || 0;
-  const caiTotal = s8.cai_xing_total || data.cai_xing?.total || 0;
-  const wealthLevel = s8.wealth_level || '';
-  const geJu = result.sec_2_ge_ju?.detail || analysis.ge_ju?.detail || '';
-  const xiArr = s4.xi || aXi.xi || [];
-  const jiArr = s4.ji || aXi.ji || [];
-  const dyList = s17.list || analysis.da_yun?.list || [];
-  const dims = analysis.dimensions || {};
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
 
-  let html = '<div class="report-card">';
+    // 跳过空分隔行
+    if (trimmed === '---') continue;
 
-  // §1
-  html += '<div class="sec"><h3>📋 八字总览</h3>';
-  html += '<div class="bazi-large">' + baziStr + '</div>';
-  html += '<div class="tags">';
-  if (sqrLabel) html += '<span>' + sqrLabel + sqrScore + '分</span>';
-  if (caiTotal) html += '<span>💰' + caiTotal + '分</span>';
-  if (geJu) html += '<span>' + geJu + '</span>';
+    // 一级标题（报告名称）
+    if (trimmed.startsWith('# ') && !trimmed.startsWith('## ')) {
+      // 报告头
+      const title = trimmed.replace('# ', '');
+      const genderText = title.includes('八字命理报告') ? '报告' : title;
+      html += `<div class="report-header"><h1>📜 ${genderText}</h1><div class="bazi">${bazi || ''}</div><div class="meta">金鉴真人·八字命理分析</div></div>`;
+      continue;
+    }
+
+    // 二级标题（各章节）
+    if (trimmed.startsWith('## ')) {
+      // 关闭上一个section
+      if (inSection && sectionHtml) {
+        html += `<div class="r-section">${sectionHtml}</div>`;
+        sectionHtml = '';
+      }
+      inSection = true;
+      const secTitle = trimmed.replace('## ', '');
+      sectionHtml = `<h2>${secTitle}</h2>`;
+      continue;
+    }
+
+    // 普通段落
+    if (trimmed) {
+      if (sectionHtml) {
+        // 检查是否有评分标签
+        let pClass = '';
+        if (trimmed.includes('🏆') || trimmed.includes('上佳')) pClass = ' class="tag-good"';
+        else if (trimmed.includes('❌') || trimmed.includes('低谷') || trimmed.includes('注意')) pClass = ' class="tag-warn"';
+        sectionHtml += `<p${pClass}>${trimmed}</p>`;
+      } else {
+        html += `<p style="font-size:14px;line-height:1.8;margin-bottom:6px">${trimmed}</p>`;
+      }
+    }
+  }
+
+  // 关闭最后一个section
+  if (inSection && sectionHtml) {
+    html += `<div class="r-section">${sectionHtml}</div>`;
+  }
+
+  // 页脚
+  html += `<div class="r-footer">金鉴真人 · 八字命理分析<br>确定性规则引擎 v5.0<br>本报告基于规则计算生成，仅供参考</div>`;
   html += '</div>';
-  html += '<div class="info-row">喜用: <strong>' + xiArr.join(' ') + '</strong> | 忌: <strong>' + jiArr.join(' ') + '</strong></div>';
-  if (s11.display || s11.school_level) html += '<div class="info-row">🎓 学历: ' + (s11.display || s11.school_level) + '</div>';
-  html += '</div>';
 
-  // §8
-  if (caiTotal) {
-    html += '<div class="sec"><h3>💰 财富</h3>';
-    html += '<div class="big-num">' + caiTotal + '<span class="unit">分</span></div>';
-    if (wealthLevel) html += '<div class="label">等级: ' + wealthLevel + '</div>';
-    html += '</div>';
-  }
-
-  // §10
-  if (s10.career_direction || s10.career_grade) {
-    html += '<div class="sec"><h3>🏢 事业</h3>';
-    if (s10.career_direction) html += '<div class="label">方向: ' + s10.career_direction + '</div>';
-    if (s10.career_grade) html += '<div class="label">' + s10.career_grade + '</div>';
-    if (s10.recommended_industries) html += '<div class="label">行业: ' + s10.recommended_industries + '</div>';
-    html += '</div>';
-  }
-
-  // §12
-  if (s12.quality) {
-    html += '<div class="sec"><h3>❤️ 婚姻</h3>';
-    html += '<div class="label">质量: ' + s12.quality + (s12.quality_score ? '(' + s12.quality_score + '/10)' : '') + '</div>';
-    if (s12.best_window_age) html += '<div class="label">窗口: ' + s12.best_window_age + '</div>';
-    if (s12.spouse_trait) html += '<div class="label">配偶: ' + s12.spouse_trait + '</div>';
-    html += '</div>';
-  }
-
-  // §13
-  if (s13.child_count_estimate) {
-    html += '<div class="sec"><h3>👶 子女</h3>';
-    html += '<div class="label">' + s13.child_count_estimate + ' | ' + (s13.child_achievement || '') + '</div>';
-    html += '</div>';
-  }
-
-  // §14
-  if (s14.constitution) {
-    html += '<div class="sec"><h3>🏥 健康</h3>';
-    html += '<div class="label">体质: ' + s14.constitution + '</div>';
-    html += '</div>';
-  }
-
-  // §17
-  if (dyList.length > 0) {
-    html += '<div class="sec"><h3>🚀 大运</h3>';
-    dyList.forEach(function(dy) {
-      var star = dy.score >= 8 ? '🏆' : dy.score >= 6 ? '✅' : dy.score >= 4 ? '⚠️' : '❌';
-      html += '<div class="dy-row">' + star + ' ' + dy.gan_zhi + ' (' + dy.start_age + '~' + dy.end_age + '岁) ' + dy.score + '/10</div>';
-    });
-    html += '</div>';
-  }
-
-  // §18
-  if (s18.length > 0) {
-    html += '<div class="sec"><h3>🎯 三决断</h3>';
-    s18.forEach(function(v) {
-      html += '<div class="verdict"><strong>' + (v.title || '') + '</strong>: ' + (v.event || '') + '</div>';
-    });
-    html += '</div>';
-  }
-
-  // §20
-  if (s20.colors) {
-    html += '<div class="sec"><h3>🌈 五行开运</h3>';
-    html += '<div class="info-row">🎨 颜色: ' + s20.colors + '</div>';
-    if (s20.directions) html += '<div class="info-row">🧭 方向: ' + s20.directions + '</div>';
-    if (s20.jewellery) html += '<div class="info-row">💎 饰品: ' + s20.jewellery + '</div>';
-    if (s20.diet) html += '<div class="info-row">🥗 饮食: ' + s20.diet + '</div>';
-    html += '</div>';
-  }
-
-  // 维度
-  if (Object.keys(dims).length > 0) {
-    html += '<div class="sec"><h3>📊 八维评分</h3>';
-    Object.entries(dims).forEach(function(e) {
-      var name = e[0], ds = e[1];
-      var total = ds.total || 0;
-      var pct = total * 10;
-      var color = total >= 7 ? '#4caf50' : total >= 5 ? '#d4a853' : '#e94560';
-      html += '<div class="dim-row"><div class="dim-name">' + name + '</div><div class="dim-bar"><div class="dim-fill" style="width:' + pct + '%;background:' + color + '"></div></div><div class="dim-score">' + total + '/10</div></div>';
-    });
-    html += '</div>';
-  }
-
-  html += '</div>';
-  $('result-display').innerHTML = html;
+  $('report-content').innerHTML = html;
 }
 </script>
 </body>

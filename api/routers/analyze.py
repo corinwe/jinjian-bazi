@@ -1,10 +1,15 @@
-"""八字分析路由 v2.0 — 修复_service实例化+端点缺失"""
+"""八字分析路由 v2.0 — 修复_service实例化+端点缺失+报告生成"""
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import HTMLResponse
 from api.schemas.request import AnalyzeRequest
 from api.schemas.response import AnalyzeResponse
 from api.services.analysis_service import AnalysisService
 from concurrent.futures import ThreadPoolExecutor
-import asyncio
+import asyncio, json, os, sys
+
+# 报告生成器
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "engine"))
+from report_generator import generate_report as gen_report
 
 router = APIRouter(prefix="/api/v1", tags=["analyze"])
 
@@ -76,3 +81,32 @@ async def debug_analyze(request: AnalyzeRequest):
         request.lunar_month, request.lunar_day)
 
     return result
+
+
+@router.post("/report")
+async def report_endpoint(request: AnalyzeRequest):
+    """
+    生成完整命理报告（文字版）
+    返回一篇流畅的、像真人命理师写的八字分析报告
+    """
+    from api.services.engine_client import call_engine
+
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(_executor, call_engine,
+        request.name, request.gender,
+        request.birth_year, request.birth_month, request.birth_day,
+        request.birth_hour, request.birth_minute,
+        request.lunar_month, request.lunar_day)
+
+    if not result.get("success"):
+        return {"success": False, "error": result.get("error", "引擎调用失败")}
+
+    engine_result = result.get("result", {})
+    report_text = gen_report(engine_result, request.name, request.gender)
+
+    return {
+        "success": True,
+        "report": report_text,
+        "bazi": result.get("paipan", {}).get("bazi", ""),
+        "analysis_id": None,
+    }
