@@ -21,7 +21,21 @@ def _fmt_list(lst, joiner="、"):
     return joiner.join(str(x) for x in lst)
 
 def generate_report(result: dict, name: str = "", gender: str = "") -> str:
-    """生成标准格式命理报告"""
+    """生成标准格式命理报告（深版+标准版双输出）"""
+    # 标准化浅版
+    standard = _generate_standard_report(result, name, gender)
+    # 深版
+    try:
+        from generate_deep_report import generate_deep_report
+        deep = generate_deep_report({"paipan": {}, "basic_data": {}, "result": result}, name, gender)
+        if len(deep.split("\n")) > len(standard.split("\n")):
+            return deep
+    except Exception:
+        pass
+    return standard
+
+
+def _generate_standard_report(result: dict, name: str = "", gender: str = "") -> str:
     s1 = result.get("sec_1_overview", {})
     s2 = result.get("sec_2_ge_ju", {})
     s3 = result.get("sec_3_shen_qiang_ruo", {})
