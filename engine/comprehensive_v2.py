@@ -278,6 +278,19 @@ def analyze_career(ri_zhu: str, bazi_gans: list[str], bazi_zhis: list[str],
         entrepreneurship = "⚠️ 创业需谨慎，建议先在大平台积累经验"
         best_path = "建议大平台积累→时机成熟再考虑自主"
     
+    # 恶神制化描述
+    e_shen_desc = ""
+    if has_sha and has_yin:
+        e_shen_desc = "七杀有印星化解→杀印相生，化为权威管理力"
+    elif has_sha and has_shi:
+        e_shen_desc = "七杀有食神制约→食神制杀，以智谋制伏凶险"
+    elif has_sha:
+        e_shen_desc = "七杀无制→事业压力大，需借大运印星化解"
+    elif has_shang and has_yin:
+        e_shen_desc = "伤官配印→才华有度，位高权重"
+    else:
+        e_shen_desc = "无显著恶神或恶神已有制化"
+    
     return {
         "career_direction": ge_info["direction"],
         "career_desc": ge_info["desc"],
@@ -289,6 +302,8 @@ def analyze_career(ri_zhu: str, bazi_gans: list[str], bazi_zhis: list[str],
         "fame_analysis": fame_items,
         "entrepreneurship": entrepreneurship,
         "best_path": best_path,
+        "e_shen_zhi_hua": e_shen_desc,
+        "key_career_years": [],  # 由调用方填充
     }
 
 
@@ -805,14 +820,19 @@ def run_comprehensive_engine(bazi: BaZi,
             "sheng_yu_potential": c.get("时支生育力", ""),
             "child_achievement": c.get("子女成就", "普通"),
             "thin_factors": c.get("缘薄因素", []),
+            "child_birth_years": c.get("子女出生年份", []),
+            "part_detail": c.get("子女宫", {}).get("时柱", ""),
+            "sheng_yu_detail": c.get("生育能力", {}),
         }
     def _map_health(h):
+        base = h.get("元数据", {})
         return {
-            "constitution": h.get("元数据", {}).get("体质", "中等"),
+            "constitution": base.get("体质", "中等"),
             "wu_xing_over_three": h.get("五行过三", []),
-            "qi_sha_risks": h.get("七杀实疾", []),
-            "pian_yin_risks": h.get("偏印淤堵", []),
-            "wu_xing_battles": h.get("五行相冲", []),
+            "qi_sha_risks": {"detail": "; ".join(str(x) for x in h.get("七杀实疾", [])) if h.get("七杀实疾") else "无显著信号"},
+            "pian_yin_risks": {"detail": "; ".join(str(x) for x in h.get("偏印淤堵", [])) if h.get("偏印淤堵") else "无明显淤堵"},
+            "wu_xing_battles": {"detail": "; ".join(str(x) for x in h.get("五行相冲", [])) if h.get("五行相冲") else "无明显交战"},
+            "protect_years": [str(y) for y in base.get("重点防护年份", [])][:5],
         }
     
     return {

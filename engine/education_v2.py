@@ -283,17 +283,90 @@ def analyze_education(
     # 文昌补文昌（日干查补运）
     bu_wen_chang_zhi = WEN_CHANG_MAP.get(ri_zhu, "")
     
+    # 六步详细推理
+    step_details = _build_step_details(year_check, six_steps, nian_check, wen_chang, da_yun_gans, da_yun_zhis, da_yun_start_ages, shen_score, shen_label)
+    
+    # 学校等级推理
+    school_reason = _build_school_reasoning(year_check, six_steps, wen_chang, shen_label, nian_check)
+    
+    # 学历层级推理
+    degree_reason = _build_degree_reasoning(degree, da_yun_gans, da_yun_zhis, da_yun_start_ages, shen_label)
+    
+    # 大运窗口
+    edu_da_yun_windows = []
+    for i, dg in enumerate(da_yun_gans):
+        if i < len(da_yun_start_ages):
+            age = da_yun_start_ages[i]
+            if 6 <= age <= 25:
+                edu_da_yun_windows.append(f"{dg}{da_yun_zhis[i] if i < len(da_yun_zhis) else ''}运(~{int(age)}岁)")
+    
     return {
         "school_level": school_level,
         "degree": degree,
         "display": f"🎓 {school_level}·{degree}",
         "year_pillar_check": year_check,
         "nian_gan_check": nian_check,
-        "wen_chang_ming_li": wen_chang,  # 年干查命理
-        "wen_chang_bu_yun": {"zhi": bu_wen_chang_zhi},  # 日干查补运
+        "wen_chang_ming_li": wen_chang,
+        "wen_chang_bu_yun": {"zhi": bu_wen_chang_zhi},
         "six_steps": six_steps,
         "final_note": final_note,
+        "six_step_details": step_details,
+        "school_reasoning": school_reason,
+        "degree_reasoning": degree_reason,
+        "edu_da_yun_windows": edu_da_yun_windows,
     }
+
+
+def _build_step_details(year_check, six_steps, nian_check, wen_chang, dy_gans, dy_zhis, dy_ages, score, label):
+    """构建六步详细推理"""
+    details = []
+    if year_check.get("has_yin"):
+        details.append(f"年柱有印（{year_check.get('yin_detail','')}）→学业基因✅")
+    else:
+        details.append("年柱无印→学业基因偏弱")
+    if nian_check.get("shi_shen") == "伤官":
+        details.append(f"年干伤官→少年叛逆，非学历导向【素材12行517】")
+    if wen_chang.get("exist"):
+        details.append(f"文昌在局（{wen_chang.get('detail','')}）→学业助力✅")
+    else:
+        details.append("原局无文昌→需大运文昌补救")
+    details.append(f"六步排查通过{six_steps.get('passed',0)}项/{six_steps.get('total',6)}项")
+    if isinstance(dy_gans, list):
+        for i, dg in enumerate(dy_gans):
+            if i < len(dy_ages) and 6 <= dy_ages[i] <= 25:
+                details.append(f"学龄期大运{dg}{dy_zhis[i] if i < len(dy_zhis) else ''}（~{int(dy_ages[i])}岁）→关键学习窗口")
+    return details
+
+
+def _build_school_reasoning(year_check, six_steps, wen_chang, label, nian_check):
+    """构建学校等级推理"""
+    passed = six_steps.get("passed", 0)
+    parts = []
+    if passed >= 5:
+        parts.append("≥5项通过→顶尖层级")
+    elif passed >= 3:
+        parts.append(f"≥3项通过（{passed}项）→985/211层级")
+    elif passed >= 2:
+        parts.append(f"≥2项通过（{passed}项）→普通本科层级")
+    else:
+        parts.append(f"≤1项通过→职校/初中学历")
+    if year_check.get("has_yin"):
+        parts.append("年柱有印保底")
+    if wen_chang.get("exist"):
+        parts.append("文昌加持")
+    if nian_check.get("shi_shen") == "伤官":
+        parts.append("但年干伤官拉低学历上限")
+    return "；".join(parts)
+
+
+def _build_degree_reasoning(degree, dy_gans, dy_zhis, dy_ages, label):
+    """构建学历层级推理"""
+    if "博士" in degree:
+        return "印运在22岁前到位+文昌强→博士层次"
+    elif "硕士" in degree:
+        return "印运在18-22岁到位→硕士窗口"
+    else:
+        return "印运在学龄后到位或兑现条件有限→本科/专科层次"
 
 
 def analyze_education_simple(

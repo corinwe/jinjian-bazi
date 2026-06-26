@@ -85,6 +85,15 @@ def analyze_nian_yue(
     elif month_shi_shen in ["七杀", "劫财"]:
         economy_level = "一般偏紧"
     
+    # ── 五行助力分析（源自bazi-foundation-analysis §30六亲助力规则）──
+    wx_help = {}
+    if shen_label == "身弱" and year_shi_shen in ["正印", "偏印"]:
+        wx_help["parent_help"] = "身弱得印→得父母/祖上荫庇"
+    elif shen_label == "身强" and year_shi_shen in ["正财", "偏财"]:
+        wx_help["parent_help"] = "身旺财旺→家业丰厚"
+    else:
+        wx_help["parent_help"] = "父母助力一般，需结合大运分析"
+    
     return {
         "nian_zhu": {
             "gan": year_gan,
@@ -101,6 +110,11 @@ def analyze_nian_yue(
         "family_economy": economy_level,
         "family_pressure": family_pressure or "无明显家庭压力",
         "summary": f"出身{economy_level}家庭，{year_meaning}。{month_meaning}。{family_pressure}",
+        "year_pillar": {"detail": f"年干{year_gan}={year_shi_shen}，{year_meaning}"},
+        "month_pillar": {"detail": f"月干{month_gan}={month_shi_shen}，{month_meaning}"},
+        "day_pillar": {"detail": f"日支为配偶宫，由§12婚姻分析详细展开"},
+        "hour_pillar": {"detail": f"时柱为子女宫，由§13子女分析详细展开"},
+        "wu_xing_analysis": wx_help,
     }
 
 

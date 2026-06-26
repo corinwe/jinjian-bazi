@@ -439,5 +439,6 @@ def analyze_career_full(
         "entrepreneurship": entrepreneurship,
         "best_path": best_path,
         "social_circle": social_circle,
-        "detail_analysis": detail_analysis,  # 🆕 深度报告用
+        "detail_analysis": detail_analysis,
+        "e_shen_zhi_hua": guan_sha_analysis,
     }

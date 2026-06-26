@@ -31,6 +31,7 @@ from character import analyze_character
 from family import analyze_nian_yue
 from comprehensive_v2 import run_comprehensive_engine
 from misfortune_analysis import analyze_misfortune, analyze_remission
+from _gen_detail_analysis import attach_detail_analysis
 
 
 # ── 地支藏干映射 ──
@@ -546,6 +547,9 @@ def run_pipeline(name: str, gender: str,
     )
     
     result = run_v5(bazi, birth_year, birth_month_lunar, qi_yun_days)
+    
+    # 🆕 为所有21个§附加详细规则分析文本
+    result = attach_detail_analysis(result)
     
     # 构造兼容旧接口的输出
     energy_profile = compute_energy_profile(bazi)

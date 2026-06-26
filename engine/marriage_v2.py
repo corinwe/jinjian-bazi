@@ -344,8 +344,11 @@ def analyze_marriage(
         "ri_zhi_analysis": fufu,
         "spouse_traits": traits,
         "spouse_description": "·".join(traits) if traits else "性格温和",
-        "marriage_windows": windows[:3],  # 最多3个窗口
+        "marriage_windows": windows[:3],
         "best_window_age": f"{best_window_age}岁",
         "quality": quality["quality"],
         "quality_score": quality["score"],
+        "pei_ou_detail": f"配偶星{'存在' if pei_ou.get('has_primary') else '缺失'}",
+        "fuqi_gong_shi_shen": fufu.get("master_ss", ""),
+        "signal_detail": f"窗口{'、'.join([w['reason'][:15] for w in windows[:3] if 'reason' in w])}" if windows else "无显著结婚信号",
     }
