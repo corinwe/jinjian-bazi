@@ -100,14 +100,38 @@ def adapt_engine_to_report(bazi_result: dict, name: str, gender: str) -> dict:
 
     adapted_dy = {"list": adapted_dy_list, "qi_yun_age": dy.get("qi_yun_age", 0)}
 
-    # ─── 五行能量 ──────────────────────────────────
-    energy = analysis.get("energy", {})
-    pct = energy.get("percentages", {})
+    # ─── 五行能量（从四柱藏干计算）──────────────────
+    wx_map_inv = {"甲":"木","乙":"木","丙":"火","丁":"火","戊":"土",
+                  "己":"土","庚":"金","辛":"金","壬":"水","癸":"水"}
+    cang_gan_weight = {"子":[("癸",100)],"丑":[("己",100),("癸",60),("辛",30)],
+        "寅":[("甲",100),("丙",60),("戊",30)],"卯":[("乙",100)],
+        "辰":[("戊",100),("乙",60),("癸",30)],"巳":[("丙",100),("戊",60),("庚",30)],
+        "午":[("丁",100),("己",60)],"未":[("己",100),("丁",60),("乙",30)],
+        "申":[("庚",100),("壬",60),("戊",30)],"酉":[("辛",100)],
+        "戌":[("戊",100),("辛",60),("丁",30)],"亥":[("壬",100),("甲",60)]}
+    wx_energy = {"木":0.0,"火":0.0,"土":0.0,"金":0.0,"水":0.0}
+    # 天干贡献（每干1分）
+    for g in [basic.get("nian_gan",""),basic.get("yue_gan",""),basic.get("ri_gan",""),basic.get("shi_gan","")]:
+        if g in wx_map_inv:
+            wx_energy[wx_map_inv[g]] += 1.0
+    # 地支藏干贡献（按权重比例）
+    for z in [basic.get("nian_zhi",""),basic.get("yue_zhi",""),basic.get("ri_zhi",""),basic.get("shi_zhi","")]:
+        for cg, w in cang_gan_weight.get(z, []):
+            if cg in wx_map_inv:
+                wx_energy[wx_map_inv[cg]] += w / 100.0
+    # 计算百分比
+    total = sum(wx_energy.values())
+    pct = {}
+    for k, v in wx_energy.items():
+        pct[k] = round(v / total * 100, 1) if total > 0 else 0.0
+    sorted_wx = sorted(wx_energy.items(), key=lambda x: x[1], reverse=True)
+    strongest = sorted_wx[0][0] if sorted_wx else ""
+    weakest = sorted_wx[-1][0] if sorted_wx else ""
     adapted_energy = {
         "wu_xing": {k: f"{v}%" for k, v in pct.items()},
         "wu_xing_energy": {k: v for k, v in pct.items()},
-        "strongest_wx": energy.get("strongest", ""),
-        "weakest_wx": energy.get("weakest", ""),
+        "strongest_wx": strongest,
+        "weakest_wx": weakest,
     }
 
     # ─── 维度评分 ──────────────────────────────────
