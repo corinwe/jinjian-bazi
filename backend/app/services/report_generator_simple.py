@@ -187,8 +187,12 @@ def _ss_star(ss: str) -> str:
 
 
 def _get_xi_yong_wx(ss_type: str, ri_wx: str) -> str:
-    """根据十神类型和日主五行，推算对应的实际五行"""
+    """根据十神类型和日主五行，推算对应的实际五行
+    如果输入已经是五行（木火土金水），直接返回"""
     wx_list = ["木", "火", "土", "金", "水"]
+    # 如果已经是五行，直接返回
+    if ss_type in wx_list:
+        return ss_type
     ri_idx = wx_list.index(ri_wx) if ri_wx in wx_list else 0
     map_def = {
         "印": (ri_idx + 4) % 5,
@@ -354,6 +358,16 @@ def _gen_section1(basic: dict, analysis: dict, name: str, gender: str, version: 
     lines.append("")
     lines.append(f"> **【金鉴真人·§1·喜用神规则】** 喜用神与忌神依据身强弱格局、五行平衡、调候需求综合取定。本项遵循【金鉴真人·§1·喜用神规则】，喜用神为「{xi_str_short}」，忌神为「{ji_str_short}」，为后续大运流年吉凶判断提供核心依据。")
     lines.append("")
+    # 最高学历推断：用文昌数据
+    edu_level = "🎓 **视大运而定**"
+    ss_flat = basic.get("shensha_flat", [])
+    if ss_flat:
+        has_wenchang = any("文昌" in str(s.get("name","")) for s in ss_flat)
+        if has_wenchang:
+            edu_level = "🎓 **本科及以上（文昌入命）**"
+        else:
+            edu_level = "🎓 **中等学历（无文昌助力）**"
+
     lines.append("**📊 第三段：量化评分（4项）**")
     lines.append("")
     lines.extend(_format_table(
@@ -361,7 +375,7 @@ def _gen_section1(basic: dict, analysis: dict, name: str, gender: str, version: 
         [
             ["13", "**财星分数**", f"**{cai_score}分**"],
             ["14", "**财富等级**", f"💰 **{wealth_level}**"],
-            ["15", "**最高学历**", "🎓 **视大运而定**"],
+            ["15", "**最高学历**", edu_level],
             ["16", "**事业等级**", f"🏢 **{ge_ju_str}格人才**"],
         ]
     ))
@@ -370,18 +384,40 @@ def _gen_section1(basic: dict, analysis: dict, name: str, gender: str, version: 
     lines.append("")
 
     best_dy = "—"
-    if len(dy_list) > 3:
-        best_dy = dy_list[3].get("gan_zhi", "—")
+    best_score = -1
     worst_dy = "—"
+    worst_score = 999
+    # 使用引擎da_yun_ji_xiong数据确定最佳/最差大运
+    dy_jx_sec1 = analysis.get("da_yun_ji_xiong", [])
+    if dy_jx_sec1 and len(dy_jx_sec1) == len(dy_list):
+        for i, jx in enumerate(dy_jx_sec1):
+            s = jx.get("score", 5.0)
+            gz = jx.get("gan_zhi", dy_list[i].get("gan_zhi","") if i < len(dy_list) else "")
+            if s > best_score:
+                best_score = s
+                best_dy = gz
+            if s < worst_score:
+                worst_score = s
+                worst_dy = gz
+    elif len(dy_list) > 3:
+        best_dy = dy_list[3].get("gan_zhi", "—")
     if dy_list:
-        worst_dy = dy_list[0].get("gan_zhi", "—")
+        worst_dy = dy_list[0].get("gan_zhi", "—") if worst_dy == "—" else worst_dy
 
     current_dy = dy_list[0].get("gan_zhi", "—") if dy_list else "—"
-    # 发财年份推断
-    if xi_list:
+    # 发财年份推断：用da_yun_ji_xiong找出财星大运
+    fa_cai_year = "视大运财星窗口"
+    if dy_jx_sec1:
+        cai_years = []
+        for jx in dy_jx_sec1:
+            ss = jx.get("gan_ss", "")
+            if ss in ("正财", "偏财"):
+                cai_years.append(jx.get("gan_zhi", ""))
+        if cai_years:
+            fa_cai_year = f"{'、'.join(cai_years[:2])}运（财星大运）"
+    elif xi_list:
         fa_cai_year = "视喜用神大运流年组合"
-    else:
-        fa_cai_year = "视大运流年配合"
+    
 
     lines.extend(_format_table(
         ["序号", "项目", "内容"],
@@ -1141,15 +1177,31 @@ def _gen_section4(basic: dict, analysis: dict) -> list:
     # 4.2 大运补用神窗口
     lines.append("### 4.2 大运补用神窗口")
     lines.append("")
-    lines.extend(_format_table(
-        ["大运", "补益十神", "效果评估"],
-        [
-            [d.get("gan_zhi", ""),
-             ", ".join([xi for xi in xi_list if TIAN_GAN_WU_XING.get(d.get("gan", ""), "") == _get_xi_yong_wx(xi, ri_wx)]) or "—",
-             _get_narrative_by_score(d.get("index", 0), "强力补益", "温和补益", "无直接补益", 5, 2)]
-            for d in dy_list[:8]
-        ]
-    ))
+    # 使用引擎da_yun_ji_xiong数据评估每步大运的用神补益效果
+    dy_jx_4 = analysis.get("da_yun_ji_xiong", [])
+    dy_table_4 = []
+    for i, d in enumerate(dy_list[:8]):
+        gz = d.get("gan_zhi", "")
+        d_gan = d.get("gan", gz[0] if len(gz)>0 else "")
+        # 找到匹配的十神
+        bu_yi_ss = []
+        for xi in xi_list:
+            xi_wx = _get_xi_yong_wx(xi, ri_wx)
+            if xi_wx and TIAN_GAN_WU_XING.get(d_gan, "") == xi_wx:
+                bu_yi_ss.append(xi)
+        bu_yi_str = "、".join(bu_yi_ss) if bu_yi_ss else "—"
+        # 用da_yun_ji_xiong评分判断效果
+        effect = "—"
+        if i < len(dy_jx_4):
+            s = dy_jx_4[i].get("score", 0)
+            if bu_yi_ss:
+                effect = "强力补益" if s >= 7 else "温和补益"
+            else:
+                effect = "无直接补益" if s < 5 else "间接补益"
+        else:
+            effect = _get_narrative_by_score(0, "强力补益", "温和补益", "无直接补益", 5, 2)
+        dy_table_4.append([gz, bu_yi_str, effect])
+    lines.extend(_format_table(["大运", "补益十神", "效果评估"], dy_table_4))
     lines.append("")
 
     # 4.3 忌神问题
@@ -2341,30 +2393,74 @@ def _gen_section8(basic: dict, analysis: dict) -> list:
         lines.append("")
     lines.append("")
 
-    # ─── 8.6 第六层：大运窗口精确化 ───
+    # ─── 8.6 第六层：大运窗口精确化（v8.3：使用引擎da_yun_ji_xiong数据）───
     lines.append("### 8.6 第六层：大运财星窗口精确化")
     lines.append("")
-    lines.append("【金鉴真人·§8·大运窗口规则】大运财星到位为窗口期，食伤生财为次窗口。")
+    lines.append("【金鉴真人·§8·大运窗口规则】大运财星到位为窗口期，食伤生财为次窗口。以下按引擎推算的各步大运吉凶评分排序。")
     lines.append("")
-    ds = []
-    for d in dy_list:
-        dw = TIAN_GAN_WU_XING.get(d.get("gan",""),"")
-        zw = DI_ZHI_WU_XING.get(d.get("zhi",""),"")
-        sd = (10 if dw==cai_wx else 0)+(5 if zw==cai_wx else 0)
-        sw = wx_ord[(ri_idx+1)%5]
-        sd += (3 if dw==sw else 0)+(2 if zw==sw else 0)
-        if is_cr:
-            qw = wx_ord[(ri_idx+3)%5]
-            sd += (8 if dw==qw else 0)+(4 if zw==qw else 0)
-        ds.append((d,sd))
-    ds.sort(key=lambda x:x[1], reverse=True)
-    t3 = ds[:3]
-    if t3:
-        lines.extend(_format_table(["大运","年龄段","财星等级","窗口类型"],
-            [[d.get("gan_zhi",""),f"{d.get('start_age',0):.0f}~{d.get('end_age',0):.0f}岁",
-              f"{cai_wx}财{s}分","窗口" if s>=8 else "次窗口" if s>=5 else "一般"] for d,s in t3]))
-        lines.append("")
-        lines.append(f"**最佳窗口**：{t3[0][0].get('gan_zhi','')}运({t3[0][0].get('start_age',0):.0f}~{t3[0][0].get('end_age',0):.0f}岁){t3[0][1]}分。")
+    # 使用引擎的da_yun_ji_xiong数据
+    dy_jx = analysis.get("da_yun_ji_xiong", [])
+    if dy_jx:
+        # 计算每步大运的财星助力分：正财/偏财=满分，食伤=半支持，凶运减分
+        scored = []
+        for d in dy_jx:
+            gz = d.get("gan_zhi", "")
+            ss = d.get("gan_ss", "")
+            jx = d.get("ji_xiong", "平")
+            base_score = d.get("score", 5.0)
+            # 十神财星助力：正财偏财直接支持，食伤生财间接支持
+            if ss in ("正财", "偏财"):
+                cai_score_dy = min(base_score * 1.2, 10)
+                window_type = "窗口期"
+            elif ss in ("食神", "伤官"):
+                cai_score_dy = min(base_score * 0.6, 7)
+                window_type = "次窗口"
+            elif "凶" in jx:
+                cai_score_dy = max(base_score * 0.2, 1)
+                window_type = "风险期"
+            else:
+                cai_score_dy = max(base_score * 0.4, 2)
+                window_type = "一般"
+            scored.append((d, round(cai_score_dy, 1), window_type))
+        scored.sort(key=lambda x: -x[1])
+        t3 = scored[:3]
+        # 匹配年龄
+        dy_raw = dy_data.get("da_yun", [])
+        def find_age(gz):
+            for r in dy_raw:
+                if r.get("gan_zhi","") == gz:
+                    return f"{r.get('start_age',0):.0f}~{r.get('end_age',0):.0f}岁"
+            return ""
+        if t3:
+            lines.extend(_format_table(["大运","年龄段","财星助力","窗口类型"],
+                [[d.get("gan_zhi",""), find_age(d.get("gan_zhi","")),
+                  f"{s}分", wt] for d,s,wt in scored[:5]]))
+            lines.append("")
+            lines.append(f"**最佳窗口**：{t3[0][0].get('gan_zhi','')}运({find_age(t3[0][0].get('gan_zhi',''))})，财星助力{t3[0][1]}分。")
+            lines.append("")
+            # 白话解读：结合八字具体说
+            ri_wx_desc = {"金":"刚毅果断","木":"仁慈宽厚","水":"智慧灵动","火":"热情开朗","土":"稳重诚信"}
+            best_gz = t3[0][0].get('gan_zhi','')
+            best_ss = t3[0][0].get('gan_ss','')
+            best_jx = t3[0][0].get('ji_xiong','')
+            lines.append(f"🗣️ **白话解读**：您是{ri_gan}命（{ri_wx}·{'阳' if ri_gan in '甲丙戊庚壬' else '阴'}），{'身强' if sq_score>60 else '身弱' if sq_score<40 else '中和'}")
+            lines.append(f" 喜用神为{'/'.join(xi_list)}，忌神为{'/'.join(ji_list)}。")
+            lines.append(f" {best_gz}运（{find_age(best_gz)}）天干为{best_ss}，{best_jx}，")
+            if best_ss in ("正财","偏财"):
+                wx = TIAN_GAN_WU_XING.get(best_gz[0] if best_gz else "","")
+                lines.append(f" 财星十神到位，是**财富积累的最佳窗口期**。此运中喜用神{''.join(xi_list)}受生扶，")
+                if sq_score > 60:
+                    lines.append(f" 身强足以担财，可积极投资、拓展事业版图。")
+                elif sq_score < 40:
+                    lines.append(f" 身弱宜合作求财，借力打力，避免单打独斗。")
+                else:
+                    lines.append(f" 中和平衡，进可攻退可守，把握节奏稳健推进。")
+            elif best_ss in ("食神","伤官"):
+                lines.append(f" 食伤生财，才华和技能可转化为财富，**次窗口期**仍值得布局。")
+            elif "凶" in best_jx:
+                lines.append(f" 此运财务压力较大，宜守不宜攻，控制负债和风险敞口。")
+            else:
+                lines.append(f" 此运财运平稳，按部就班顺势而为即可。")
     lines.append("")
 
     # ─── 8.7 第七层：九龙道长五级对照 ───
@@ -2402,13 +2498,29 @@ def _gen_section8(basic: dict, analysis: dict) -> list:
         if dy_list: lines.append(f"⚠️ 风险：{dy_list[0].get('gan_zhi','')}运前后机会稍纵即逝，注意把握。")
     else:
         el = _get_wealth_detail_level(es, sq_level, has_ku, xi_list, ji_list)
-        dg = any(TIAN_GAN_WU_XING.get(d.get('gan',''),'')==cai_wx for d in dy_list[:4])
-        dk = any(TIAN_GAN_WU_XING.get(d.get('gan',''),'')==cai_wx for d in dy_list)
+        # 修正"身弱财弱"标签：中和时应显示"中和财弱"
+        sq_display = sq_level
+        if "身弱" in sq_level.lower():
+            sq_display = "身弱"
+        elif "中和" in sq_level:
+            sq_display = "中和"
+        elif "身强" in sq_level:
+            sq_display = "身强"
+        dg = any(TIAN_GAN_WU_XING.get(d.get('gan', d.get('gan_zhi','')[:1] or ''),'')==cai_wx for d in dy_list[:4])
+        dk = any(TIAN_GAN_WU_XING.get(d.get('gan', d.get('gan_zhi','')[:1] or ''),'')==cai_wx for d in dy_list)
         lines.append(f"**评定：{el}**")
-        lines.append(f"- 身弱：{sq_score}分({sq_level}) | 财星：{cai_score}分(有效{es:.1f}分)")
+        lines.append(f"- {sq_display}：{sq_score}分({sq_level}) | 财星：{cai_score}分(有效{es:.1f}分)")
         lines.append(f"- 财库：{'有'+cai_ku if has_ku else '无'} | 大运：{'好' if dg else '中' if dk else '差'}")
         lines.append(f"- 日常量级：{es:.0f}万~{es*10:.0f}万/年 | 天花板：{es*10:.0f}万~{es*50:.0f}万")
-        if t3: lines.append(f"- 最佳窗口：{t3[0][0].get('gan_zhi','')}运({t3[0][0].get('start_age',0):.0f}~{t3[0][0].get('end_age',0):.0f}岁)")
+        if t3: 
+            # 从原始dy_list匹配年龄
+            t3_gz = t3[0][0].get('gan_zhi','')
+            t3_age = ""
+            for rd in dy_list:
+                if rd.get('gan_zhi','') == t3_gz:
+                    t3_age = f"{rd.get('start_age',0):.0f}~{rd.get('end_age',0):.0f}岁"
+                    break
+            lines.append(f"- 最佳窗口：{t3_gz}运({t3_age or '?'})")
         if dy_list: lines.append(f"- 风险：{dy_list[0].get('gan_zhi','')}运前后注意财务风险")
         lines.append("")
         lines.append(f"🗣️ **白话解读**：命局属{el}格局。{'财库齐全善积累' if has_ku else '缺财库需主动蓄财'}。"
@@ -2443,6 +2555,10 @@ def _gen_section9(basic: dict, analysis: dict) -> list:
     ji_list = xys.get("ji_shen", [])
     dy_data = analysis.get("da_yun", {})
     dy_list = dy_data.get("da_yun", [])
+    wx_ord = ["木","火","土","金","水"]
+    ri_idx = wx_ord.index(ri_wx) if ri_wx in wx_ord else 2
+    yin_wx = wx_ord[(ri_idx + 4) % 5]  # 生我=印
+    cai_wx = wx_ord[(ri_idx + 1) % 5]  # 我克=财
 
     # ── 9.1 不动产特征（印星为房·财星为产）─────────────────────────
     lines.append("### 9.1 不动产特征（印星为房·财星为产）")
@@ -2469,14 +2585,14 @@ def _gen_section9(basic: dict, analysis: dict) -> list:
                     cai_positions.append(f"{pos_key}柱{ss}({cg.get('gan','')},权重{w:.1f})")
 
     # 印为房
-    lines.append('**【金鉴真人·§9·印星为房规则】**印星主文书、契约、庇护，在命理中代表"房"——'
-                 "房屋的所有权、签约文件、居住保障。印旺则置业条件好，易得房产之利。")
+    lines.append('**【金鉴真人·§9·印星为房规则】**印星代表房产、不动产、居住环境，是命理中判断"房"的核心指标。'
+                 '印旺则置业能力强，易得房产或居住条件优越。')
     if yin_count >= 1.5:
-        lines.append(f"✅ **印星较旺**（强度{yin_count:.1f}）：置业条件好，购房资质足，"
-                     f"有产权意识，善于通过房产获得安全感。")
+        lines.append(f"✅ **印星有力**（强度{yin_count:.1f}）：置业能力强，"
+                     f"有家族房产传承或自身购房机缘好。")
     elif yin_count >= 0.5:
-        lines.append(f"🔶 **印星有根**（强度{yin_count:.1f}）：有一定置业能力，"
-                     f"但需借助大运流年印星到位方可落地。")
+        lines.append(f"🔶 **印星有根**（强度{yin_count:.1f}）：有一定置业能力，")
+        lines.append(f"    宜在印星大运（{'/'.join([d.get('gan_zhi','') for d in dy_list[:8] if TIAN_GAN_WU_XING.get(d.get('gan',''),'')==yin_wx][:2]) or '后续'}）落地。")
     else:
         lines.append(f"❌ **印星偏弱**（强度{yin_count:.1f}）：置业意愿不强或条件受限，"
                      f"购房需慎重评估自身能力，切忌盲目上车。")
@@ -2491,8 +2607,8 @@ def _gen_section9(basic: dict, analysis: dict) -> list:
         lines.append(f"✅ **财星有力**（强度{cai_count:.1f}）：房产投资意识强，"
                      f"善选地段，有通过房产升值的潜力。")
     elif cai_count >= 0.5:
-        lines.append(f"🔶 **财星有气**（强度{cai_count:.1f}）：有一定房产投资眼光，"
-                     f"但需结合大运财星到位方可出手。")
+        lines.append(f"🔶 **财星有气**（强度{cai_count:.1f}）：有一定房产投资眼光，")
+        lines.append(f"    宜在财星大运（{'/'.join([d.get('gan_zhi','') for d in dy_list[:8] if TIAN_GAN_WU_XING.get(d.get('gan',''),'')==cai_wx][:2]) or '后续'}）出手。")
     else:
         lines.append(f"❌ **财星偏弱**（强度{cai_count:.1f}）：房产投资获利能力有限，"
                      f"置业以自住实用为主，不宜投机。")
@@ -2965,8 +3081,11 @@ def _gen_section10(basic: dict, analysis: dict, birth_year: int) -> list:
     # 中等（默认兜底）
     else:
         level_tag = "中等"
+        xi_wx_list = [_get_xi_yong_wx(xi, ri_wx) for xi in xi_list]
+        xi_dy = [d.get('gan_zhi','') for d in dy_list[:8] if TIAN_GAN_WU_XING.get(d.get('gan',''),'') in xi_wx_list]
+        xi_dy_str = '、'.join(xi_dy[:2]) if xi_dy else '后续喜用神'
         reasons += [
-            f"格局+{sq_level}：各方面平衡，事业级别主要取决于大运配合",
+            f"格局+{sq_level}：各方面平衡，事业级别取决于喜用神大运是否发力——{xi_dy_str}运为事业上升关键期",
             "无明显的恶神制化信号，也无身弱拖累",
             "结论：中等事业格局，大运助力可升级1~2级",
         ]
@@ -5474,6 +5593,19 @@ def _gen_section17(basic: dict, analysis: dict, birth_year: int) -> list:
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     # 引言 — 大运总规则
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # 合并引擎da_yun_ji_xiong数据到dy_list（v8.3）
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    dy_jx = analysis.get("da_yun_ji_xiong", [])
+    if dy_jx and len(dy_jx) == len(dy_list):
+        for i, d in enumerate(dy_list):
+            if i < len(dy_jx):
+                jx = dy_jx[i]
+                d["score"] = jx.get("score", d.get("score", 5.0))
+                d["ji_xiong_label"] = jx.get("ji_xiong", "平")
+                d["gan_ss_engine"] = jx.get("gan_ss", d.get("gan_ss", ""))
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
     lines.append(f"【金鉴真人·§17·大运规则】大运是八字命局在时间维度上的动态展开，每十年一换，共十步至百岁。")
     lines.append(f"大运的干支五行与命主的喜用神、忌神相互作用，决定了每个十年的吉凶基调。")
     lines.append(f"命主为{ri_gan}日主（{ri_wx}），{sq_level}（{sq_score}分），{ge_ju_str}。")
