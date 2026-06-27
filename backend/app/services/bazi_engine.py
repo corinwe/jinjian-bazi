@@ -337,27 +337,53 @@ GE_JU_NAME = {"食神":"食神格","伤官":"伤官格",
 def get_ge_ju(ri_gan: str, yue_zhi: str,
               nian_gan: str = "", yue_gan: str = "", shi_gan: str = "") -> str:
     """
-    格局 v7.0：透干定格局 + 比劫不入格局
-    规则：
-    1. 取月令藏干（本气→中气→余气依次）检查透干
-    2. 透干=年/月/时天干出现该藏干对应五行
-    3. 比劫不入格局，遇比劫跳过
-    4. 无人透干时：取首个非比劫的本气/中气/余气
-    5. 全部比劫→返回"无正格"
+    格局 v7.3：严格遵循知识库正格判定规则
+    ────────────────
+    核心规则（每格）：「月令本气为日主X，或月干透出X」
+    ────────────────
+    判定流程（四维）：
+      第1维：月令本气 → 取月支主气藏干的十神
+        如为正八格之一 → 直接取格
+        如为比劫 → 不入格，进入下一维
+      
+      第2维：月干透出 → 月柱天干的十神
+        如为正八格之一 → 取该格
+      
+      第3维：月令中/余气透干
+        月支中气/余气的十神如在正八格中
+        且该藏干字符在年/月/时天干中出现(字符匹配) → 取该格
+      
+      第4维：月令中/余气取首个非比劫
+        无人透干时，取月令中/余气中首个在正八格的
+      
+      均不匹配 → 返回"无正格"
     """
     tian_gan = [nian_gan, yue_gan, shi_gan]
+    cang_gan_list = DI_ZHI_CANG_GAN[yue_zhi]  # [本气, 中气, 余气]
     
-    for cg, wt in DI_ZHI_CANG_GAN[yue_zhi]:
+    # ── 第1维：月令本气 ──
+    ben_qi_gan = cang_gan_list[0][0]  # 本气对应的天干
+    ben_qi_ss = shi_shen(ri_gan, ben_qi_gan)
+    if ben_qi_ss in ZHENG_BA_GE:
+        return GE_JU_NAME[ben_qi_ss]
+    
+    # ── 第2维：月干透出 ──
+    if yue_gan:
+        yue_gan_ss = shi_shen(ri_gan, yue_gan)
+        if yue_gan_ss in ZHENG_BA_GE:
+            return GE_JU_NAME[yue_gan_ss]
+    
+    # ── 第3维：月令中/余气透干（字符匹配）──
+    for cg, wt in cang_gan_list[1:]:  # 跳过本气
         cg_ss = shi_shen(ri_gan, cg)
         if cg_ss not in ZHENG_BA_GE:
-            continue  # 比劫跳过
-        # 检查是否透干
+            continue
         for tg in tian_gan:
-            if tg and tg == cg:
+            if tg and tg == cg:  # 字符匹配
                 return GE_JU_NAME[cg_ss]
     
-    # 无人透干：取首个非比劫
-    for cg, wt in DI_ZHI_CANG_GAN[yue_zhi]:
+    # ── 第4维：月令中/余气取首个非比劫 ──
+    for cg, wt in cang_gan_list:
         cg_ss = shi_shen(ri_gan, cg)
         if cg_ss in ZHENG_BA_GE:
             return GE_JU_NAME[cg_ss]
