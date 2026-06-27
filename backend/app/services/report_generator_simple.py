@@ -1399,6 +1399,57 @@ def _gen_section5(basic: dict, analysis: dict) -> list:
     lines.append("该规避的规避，该补益的补益，日子照样过得精彩。")
     lines.append("")
 
+    # 5.6 刑冲合害能量分析（基于energy_engine数据）
+    lines.append("### 5.6 刑冲合害能量分析")
+    lines.append("")
+    energy_data = analysis.get("energy_analysis", {})
+    xys_ss = analysis.get("xi_yong_shen", {})
+    xi_list_ss5 = xys_ss.get("xi_shen", [])
+    ji_list_ss5 = xys_ss.get("ji_shen", [])
+    rels = energy_data.get("relationships", [])
+    if rels:
+        lines.append("**刑冲合害关系及其能量倍数（总纲v1.0）：**")
+        lines.append("")
+        for rel in rels:
+            mult = rel.get("multiplier", 0)
+            detail = rel.get("detail", "")
+            zhi_a = rel.get("zhi_a", "")
+            zhi_b = rel.get("zhi_b", "")
+            wx_a = DI_ZHI_WU_XING.get(zhi_a, "")
+            wx_b = DI_ZHI_WU_XING.get(zhi_b, "")
+            a_in_ji = wx_a in ji_list_ss5 if wx_a else False
+            b_in_ji = wx_b in ji_list_ss5 if wx_b else False
+            a_in_xi = wx_a in xi_list_ss5 if wx_a else False
+            b_in_xi = wx_b in xi_list_ss5 if wx_b else False
+
+            if mult >= 10:
+                if (a_in_ji or b_in_ji):
+                    tag = " 🔴 **高能量忌神冲突，需注意**"
+                elif (a_in_xi or b_in_xi):
+                    tag = " 🟢 **高能量喜用组合，有利**"
+                else:
+                    tag = f" ⚡ 能量倍数{mult}倍（高能）"
+            else:
+                tag = f" 能量倍数{mult}倍"
+            lines.append(f"- {detail} → {tag}")
+        lines.append("")
+        lines.append(f"**能量汇总：** 共{energy_data.get('count', 0)}组关系，总能量倍数{energy_data.get('total_multiplier', 0)}倍。")
+        lines.append("")
+        # 神煞关联提醒
+        ss_sum = analysis.get("shensha_summary", {})
+        inaus_list = ss_sum.get("inauspicious_list", [])
+        zai_xue = [item for item in inaus_list if isinstance(item, dict) and item.get("name") in ["灾煞", "血刃"]]
+        if zai_xue:
+            lines.append("**神煞关联提醒：**")
+            lines.append("")
+            for item in zai_xue:
+                lines.append(f"- {item.get('name')}出现在{item.get('position_label', '')}，与上述刑冲关系叠加时需格外留意。")
+            lines.append("")
+        lines.append("> 根据总纲v1.0理论：断事结果 = 能量倍数 × 喜忌方向。以上能量关系是命局固有的能量场，在对应的大运和流年中被激活，直接影响灾祸/疾病/搬迁等事项的吉凶程度。")
+    else:
+        lines.append("原局无明显刑冲合害关系，能量场相对平和。")
+    lines.append("")
+
     lines.append("---")
     lines.append("")
     return lines
@@ -5058,6 +5109,31 @@ def _gen_section16(basic: dict, analysis: dict, birth_year: int) -> list:
     lines.append(f"> **事件总计：** {event_id} 条（满足≥70条要求）")
     lines.append("")
 
+    # 能量倍数标注（基于energy_engine数据）
+    energy_data_s16 = analysis.get("energy_analysis", {})
+    if energy_data_s16 and energy_data_s16.get("relationships"):
+        lines.append("**⚡ 能量倍数标注（基于命局刑冲合害）：**")
+        lines.append("")
+        total_mult_s16 = energy_data_s16.get("total_multiplier", 0)
+        count_s16 = energy_data_s16.get("count", 0)
+        lines.append(f"命局刑冲合害能量分析：共{count_s16}组关系，总能量倍数{total_mult_s16}倍。")
+        lines.append("")
+        for rel_s16 in energy_data_s16["relationships"]:
+            mult_s16 = rel_s16.get("multiplier", 0)
+            detail_s16 = rel_s16.get("detail", "")
+            if mult_s16 >= 10:
+                tag_s16 = "🔴 **高能(10x+)**"
+            elif mult_s16 < 5:
+                tag_s16 = "🟢 **低能(<5x)**"
+            else:
+                tag_s16 = f"**中能({mult_s16}x)**"
+            lines.append(f"- {detail_s16} → {tag_s16}")
+        lines.append("")
+        lines.append("以上刑冲合害关系为命局固有的能量场，在对应的流年和大运年份会被激活。")
+        lines.append("事件表中标注的「高能」年份，往往是这些能量关系被触发的关键时期。")
+        lines.append("> 根据总纲v1.0理论：断事结果 = 能量倍数 × 喜忌方向。喜用神方向的高倍能量为吉，忌神方向的高倍能量为凶。")
+        lines.append("")
+
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     # 白话解读收尾
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -5739,6 +5815,43 @@ def _gen_section17(basic: dict, analysis: dict, birth_year: int) -> list:
                                        score, step_idx, stage_name)
         lines.append(baihua)
         lines.append("")
+
+        # ════════════════════════════════════════════
+        # 8. 能量倍数分析（基于energy_engine数据）— §17新增
+        # ════════════════════════════════════════════
+        energy_s17 = analysis.get("energy_analysis", {})
+        if energy_s17 and energy_s17.get("relationships"):
+            rels_s17 = energy_s17["relationships"]
+            lines.append("**⚡ 能量倍数与刑冲合害分析：**")
+            lines.append("")
+            lines.append(f"命局内部刑冲合害关系共{energy_s17.get('count',0)}组，总能量倍数{energy_s17.get('total_multiplier',0)}倍。")
+            high_rels = [r for r in rels_s17 if r.get("multiplier", 0) >= 10]
+            if high_rels:
+                lines.append("涉及的高能关系（≥10倍，需重点关注）：")
+                for hr in high_rels:
+                    lines.append(f"- {hr.get('detail','')}（{hr.get('multiplier',0)}倍）")
+            # 此大运与命局能量关系的互动
+            if is_xi:
+                lines.append(f"此运天干{dy_gan}（{dy_gan_wx}）为喜用神，有利于激活命局中的正面能量关系，高能关系对命主更为有利。")
+                xys_s17 = analysis.get("xi_yong_shen", {})
+                xi_list_s17 = xys_s17.get("xi_shen", [])
+                for hr in high_rels:
+                    zhi_a_s17 = hr.get("zhi_a", "")
+                    zhi_b_s17 = hr.get("zhi_b", "")
+                    wx_a_s17 = DI_ZHI_WU_XING.get(zhi_a_s17, "")
+                    wx_b_s17 = DI_ZHI_WU_XING.get(zhi_b_s17, "")
+                    if wx_a_s17 in xi_list_s17 or wx_b_s17 in xi_list_s17:
+                        lines.append(f"  🟢 其中{hr.get('name','')}涉及喜用神五行，此运中可转化为积极助力。")
+            elif is_ji:
+                lines.append(f"此运天干{dy_gan}（{dy_gan_wx}）为忌神，需留意高能关系可能被忌神方向激活，产生负面效应。")
+            else:
+                lines.append(f"此运天干{dy_gan}（{dy_gan_wx}）中性，高能关系的影响程度取决于具体流年的引动。")
+            lines.append("")
+            lines.append(f"> 根据总纲v1.0理论（断事结果 = 能量倍数 × 喜忌方向），此运喜忌方向为{'喜用神' if is_xi else '忌神' if is_ji else '中性'}，{'宜顺势把握能量' if is_xi else '宜谨慎应对高能冲突' if is_ji else '需根据流年灵活应对'}。")
+            lines.append("")
+        else:
+            lines.append("**⚡ 能量倍数分析：** 命局无明显刑冲合害关系，能量场平和。")
+            lines.append("")
 
         lines.append("---")
         lines.append("")
