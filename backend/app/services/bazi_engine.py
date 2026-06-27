@@ -328,10 +328,10 @@ def calc_shen_qiang_ruo(ri_gan: str, nian_gan: str, yue_gan: str, shi_gan: str,
     if yz_wx == bi_wx:
         if sz_wx == bi_wx:
             score += 8
-            details.append(f"月令{bi_wx}+时支{bi_wx}同气 +8")
+            details.append(f"月令{bi_wx}时支{bi_wx}同气 +8")
         if rz_wx == bi_wx:
             score += 6
-            details.append(f"月令{bi_wx}+日支{bi_wx}同气 +6")
+            details.append(f"月令{bi_wx}日支{bi_wx}同气 +6")
     
     # 9. 印星生扶加成（年支/日支/时支五行生日主）
     zhi_wx_list = [
@@ -556,6 +556,28 @@ def calc_da_yun(nian_gan: str, nian_zhi: str, gender: int,
         days_diff = (birth - prev_term).total_seconds() / 86400
         step_sign = -1  # 逆排递减
 
+    # 起运岁数
+    qi_yun = round(days_diff / 3, 2)
+
+    # 月柱干支为基础
+    yue_gan, yue_zhi = get_yue_zhu(year, month, day, nian_gan)
+    yg_idx = TIAN_GAN.index(yue_gan)
+    yz_idx = DI_ZHI.index(yue_zhi)
+
+    # 逆排：从月柱前一个干支开始（step从1开始）
+    # 顺排：从月柱下一个干支开始（step从1开始）
+    da_yun = []
+    for step in range(1, 9):
+        gi = (yg_idx + step_sign * step) % 10
+        zi = (yz_idx + step_sign * step) % 12
+        gz = TIAN_GAN[gi] + DI_ZHI[zi]
+        sa = round(qi_yun + (step-1)*10, 1)
+        ea = round(qi_yun + step*10, 1)
+        da_yun.append({"index":step-1, "gan_zhi":gz, "start_age":sa, "end_age":ea})
+
+    return {"is_shun_pai": is_shun, "qi_yun_age": qi_yun,
+            "qi_yun_year": int(qi_yun), "da_yun": da_yun}
+
 
 def calc_wu_xing_energy(nian_gan: str, yue_gan: str, ri_gan: str, shi_gan: str,
                          nian_zhi: str, yue_zhi: str, ri_zhi: str, shi_zhi: str) -> dict:
@@ -586,28 +608,6 @@ def calc_wu_xing_energy(nian_gan: str, yue_gan: str, ri_gan: str, shi_gan: str,
     # 排序：从高到低
     sorted_result = dict(sorted(result.items(), key=lambda x: -x[1]))
     return sorted_result
-    
-    # 起运岁数
-    qi_yun = round(days_diff / 3, 2)
-    
-    # 月柱干支为基础
-    yue_gan, yue_zhi = get_yue_zhu(year, month, day, nian_gan)
-    yg_idx = TIAN_GAN.index(yue_gan)
-    yz_idx = DI_ZHI.index(yue_zhi)
-    
-    # 逆排：从月柱前一个干支开始（step从1开始）
-    # 顺排：从月柱下一个干支开始（step从1开始）
-    da_yun = []
-    for step in range(1, 9):
-        gi = (yg_idx + step_sign * step) % 10
-        zi = (yz_idx + step_sign * step) % 12
-        gz = TIAN_GAN[gi] + DI_ZHI[zi]
-        sa = round(qi_yun + (step-1)*10, 1)
-        ea = round(qi_yun + step*10, 1)
-        da_yun.append({"index":step-1, "gan_zhi":gz, "start_age":sa, "end_age":ea})
-    
-    return {"is_shun_pai": is_shun, "qi_yun_age": qi_yun,
-            "qi_yun_year": int(qi_yun), "da_yun": da_yun}
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 主入口 v7.0
