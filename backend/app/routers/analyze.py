@@ -1,9 +1,13 @@
 """八字分析路由"""
+import os
+import tempfile
 import logging
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import FileResponse
 from app.schemas.analyze import AnalyzeRequest, AnalyzeResponse
 from app.services.bazi_engine import calculate_bazi
 from app.services.report_generator_simple import generate_report
+from app.services.pdf_service import generate_pdf
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["analyze"])
@@ -81,4 +85,28 @@ async def get_analysis(analysis_id: int):
         report_md=a["report_md"],
         line_count=a["line_count"],
         pdf_url=f"/api/v1/analyses/{analysis_id}/pdf",
+    )
+
+
+@router.get("/analyses/{analysis_id}/pdf")
+async def download_pdf(analysis_id: int):
+    if analysis_id not in _analyses:
+        raise HTTPException(status_code=404, detail="分析结果不存在")
+    a = _analyses[analysis_id]
+    md_text = a["report_md"]
+    name = a["name"]
+
+    # Generate PDF to temp file
+    fd, pdf_path = tempfile.mkstemp(suffix=".pdf", prefix=f"jinjian_{analysis_id}_")
+    os.close(fd)
+
+    pdf_path = generate_pdf(md_text, pdf_path)
+    if not pdf_path or not os.path.exists(pdf_path) or os.path.getsize(pdf_path) == 0:
+        raise HTTPException(status_code=500, detail="PDF生成失败")
+
+    return FileResponse(
+        pdf_path,
+        media_type="application/pdf",
+        filename=f"金鉴真人_八字命理报告_{name}.pdf",
+        headers={"Content-Disposition": f'attachment; filename="jinjian_report_{analysis_id}.pdf"'},
     )
