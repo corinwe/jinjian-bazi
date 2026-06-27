@@ -1,4 +1,4 @@
-"""FastAPI主入口 v1.1 — 带OpenAPI文档配置"""
+"""FastAPI主入口 v1.2 — 带可观测性（结构化日志+RED指标）"""
 
 import os
 
@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 
 from api.routers import analyze, health
 from database.connection import init_db
+from api.observability import ObservabilityMiddleware, get_metrics_response, logger
 
 app = FastAPI(
     title="金鉴真人·八字命理分析API",
@@ -38,6 +39,9 @@ app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"]
 )
 
+# 注册可观测中间件（放在CORS之后）
+app.add_middleware(ObservabilityMiddleware)
+
 # 注册路由
 app.include_router(health.router)
 app.include_router(analyze.router)
@@ -52,3 +56,15 @@ if os.path.exists(frontend_dir):
 async def startup():
     """启动时初始化数据库"""
     init_db()
+    logger.bind(service="api", trace_id="system").info("API服务启动完成")
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    logger.bind(service="api", trace_id="system").info("API服务关闭")
+
+
+@app.get("/metrics")
+async def metrics():
+    """Prometheus指标端点（供监控系统抓取）"""
+    return get_metrics_response()

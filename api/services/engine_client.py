@@ -3,8 +3,10 @@
 import json
 import os
 import subprocess
+import time
 
 from api.config import ENGINE_PIPELINE, ENGINE_TIMEOUT
+from api.observability import logger, METRIC_ENGINE_CALLS
 
 
 def call_engine(
@@ -50,20 +52,51 @@ def call_engine(
     if lunar_day is not None:
         cmd.extend(["--lunar-day", str(lunar_day)])
 
+    trace_id = os.environ.get("TRACE_ID", "unknown")
+    start = time.time()
+
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=ENGINE_TIMEOUT)
+        duration = time.time() - start
 
         if result.returncode != 0:
             error_msg = result.stderr[:500] if result.stderr else "未知错误"
+            METRIC_ENGINE_CALLS.labels(module="pipeline_v5", status="fail").inc()
+            logger.bind(service="engine", trace_id=trace_id).error(
+                "引擎调用失败 ({duration:.2f}s): {name} {gender} {year}-{month}-{day} → {error}",
+                duration=duration, name=name, gender=gender, year=year, month=month, day=day, error=error_msg,
+            )
             return {"success": False, "error": error_msg, "stderr": result.stderr}
 
         data = json.loads(result.stdout)
         data["success"] = True
+        METRIC_ENGINE_CALLS.labels(module="pipeline_v5", status="success").inc()
+
+        if duration > 5.0:
+            logger.bind(service="engine", trace_id=trace_id).warning(
+                "引擎调用偏慢 ({duration:.2f}s): {name}",
+                duration=duration, name=name,
+            )
+
         return data
 
     except subprocess.TimeoutExpired:
+        duration = time.time() - start
+        METRIC_ENGINE_CALLS.labels(module="pipeline_v5", status="timeout").inc()
+        logger.bind(service="engine", trace_id=trace_id).error(
+            "引擎超时 ({duration:.2f}s): {name} {gender}",
+            duration=duration, name=name, gender=gender,
+        )
         return {"success": False, "error": "引擎超时（超过30秒）"}
     except json.JSONDecodeError as e:
+        METRIC_ENGINE_CALLS.labels(module="pipeline_v5", status="json_error").inc()
+        logger.bind(service="engine", trace_id=trace_id).error(
+            "引擎输出非JSON: {error}", error=e,
+        )
         return {"success": False, "error": f"引擎输出非JSON: {e}"}
     except Exception as e:
+        METRIC_ENGINE_CALLS.labels(module="pipeline_v5", status="exception").inc()
+        logger.bind(service="engine", trace_id=trace_id).error(
+            "引擎异常: {error}", error=e,
+        )
         return {"success": False, "error": str(e)}
