@@ -1,14 +1,20 @@
-"""FastAPI主入口 v1.2 — 带可观测性（结构化日志+RED指标）"""
+"""FastAPI主入口 v1.2 — 带可观测性（结构化日志+RED指标）+ 安全加固"""
 
 import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from api.routers import analyze, health
 from database.connection import init_db
 from api.observability import ObservabilityMiddleware, get_metrics_response, logger
+
+# ── 速率限制 ──
+limiter = Limiter(key_func=get_remote_address, default_limits=["30/minute"])
 
 app = FastAPI(
     title="金鉴真人·八字命理分析API",
@@ -33,6 +39,9 @@ app = FastAPI(
     redoc_url="/redoc",
     openapi_url="/openapi.json",
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS（允许前端跨域）
 app.add_middleware(
