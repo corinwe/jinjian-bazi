@@ -6,9 +6,9 @@
 ## GitHub
 
 - 仓库: corinwe/jinjian-bazi
-- 完整PAT: ghp_zM...swnG（已存memory，此处不重复明文）
-- PAT权限: repo（完整） + workflow（需要手动在GitHub Settings加）
-- 远程: https://corinwe:{PAT}@github.com/corinwe/jinjian-bazi.git
+- 完整PAT: 存于本地文件，未提交到Git（安全保护✅）
+- PAT权限: repo + workflow（完整权限）
+- 远程: 使用PAT认证的git remote
 
 ### PAT注意事项
 - 推 workflow 文件（.github/workflows/*）需要 `workflow` scope
