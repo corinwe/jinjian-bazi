@@ -3971,7 +3971,7 @@ def generate_report(bazi_result: dict, name: str, gender: str,
     lines.append(f"#PIPELINE-SIG v1.0 | {name}报告-金鉴真人AI生成-{datetime.now().strftime('%Y%m%d')}")
     lines.append("")
 
-    content_md = "\n".join(lines)
+    content_md = "\n".join(str(l) if not isinstance(l, str) else l for l in lines)
     line_count = len(lines)
 
     return {
