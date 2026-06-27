@@ -53,8 +53,8 @@ class UserRepository(BaseRepository):
         """按精确出生信息查找已有用户"""
         cur = self.conn.execute(
             """
-            SELECT * FROM users 
-            WHERE name = ? AND gender = ? 
+            SELECT * FROM users
+            WHERE name = ? AND gender = ?
               AND birth_year = ? AND birth_month = ? AND birth_day = ?
               AND birth_hour = ?
             ORDER BY id DESC LIMIT 1

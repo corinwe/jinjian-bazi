@@ -21,6 +21,7 @@ sys.path.insert(0, os.path.join(BASE_DIR, "engine"))
 PASS = 0
 FAIL = 0
 
+
 def check(name, passed, detail=""):
     global PASS, FAIL
     if passed:
@@ -30,16 +31,20 @@ def check(name, passed, detail=""):
     status = "✅" if passed else "❌"
     print(f"  {status} {name}" + (f" — {detail}" if detail else ""))
 
+
 def api_get(path, base_url="http://localhost:8000"):
     import urllib.request
+
     try:
         r = urllib.request.urlopen(f"{base_url}{path}", timeout=10)
         return json.loads(r.read().decode())
     except Exception as e:
         return {"error": str(e)}
 
+
 def api_post(path, data, base_url="http://localhost:8000"):
     import urllib.request
+
     try:
         req = urllib.request.Request(
             f"{base_url}{path}",
@@ -52,11 +57,11 @@ def api_post(path, data, base_url="http://localhost:8000"):
     except Exception as e:
         return {"error": str(e)}
 
+
 def main():
     parser = argparse.ArgumentParser(description="金鉴真人 E2E 测试")
     parser.add_argument("--remote", action="store_true", help="测试远程服务器")
-    parser.add_argument("--base-url", default="http://localhost:8000",
-                        help="API基础URL (默认: http://localhost:8000)")
+    parser.add_argument("--base-url", default="http://localhost:8000", help="API基础URL (默认: http://localhost:8000)")
     args = parser.parse_args()
 
     if args.remote:
@@ -64,14 +69,15 @@ def main():
     else:
         base_url = args.base_url
 
-    print(f"\n{'═'*50}")
+    print(f"\n{'═' * 50}")
     print(f"  金鉴真人·E2E 端到端测试")
     print(f"  目标: {base_url}")
-    print(f"{'═'*50}\n")
+    print(f"{'═' * 50}\n")
 
     # ── 1. 前端 ──
     print("〖1/6〗 前端加载")
     import urllib.request
+
     try:
         r = urllib.request.urlopen(f"{base_url}/", timeout=10)
         html = r.read().decode()
@@ -100,7 +106,7 @@ def main():
     for tc in test_cases:
         r = api_post("/api/v1/analyze", tc, base_url)
         ok = "analysis_id" in r and "status" in r
-        detail = r.get("basic",{}).get("bazi","?") if ok else str(r.get("error","?"))[:40]
+        detail = r.get("basic", {}).get("bazi", "?") if ok else str(r.get("error", "?"))[:40]
         check(f"分析: {tc['name']}", ok, detail)
 
     # ── 4. 报告生成 ──
@@ -124,23 +130,32 @@ def main():
     # ── 6. 农历转换 ──
     print("〖6/6〗 农历验证")
     # 农历1990年五月初五 → 公历1990-05-28
-    r = api_post("/api/v1/analyze", {
-        "name": "农历测试", "gender": "男",
-        "birth_year": 1988, "birth_month": 5, "birth_day": 23,
-        "birth_hour": 8, "is_lunar": True
-    }, base_url)
+    r = api_post(
+        "/api/v1/analyze",
+        {
+            "name": "农历测试",
+            "gender": "男",
+            "birth_year": 1988,
+            "birth_month": 5,
+            "birth_day": 23,
+            "birth_hour": 8,
+            "is_lunar": True,
+        },
+        base_url,
+    )
     check("农历分析", r.get("status") == "success" or "error" not in r)
 
     # ── 结果 ──
-    print(f"\n{'═'*50}")
+    print(f"\n{'═' * 50}")
     total = PASS + FAIL
     print(f"  E2E 测试完成: {PASS}/{total} 通过")
     if FAIL == 0:
         print(f"  {'✅ 全部通过！'}")
     else:
         print(f"  {'❌ 有 ' + str(FAIL) + ' 项失败'}")
-    print(f"{'═'*50}")
+    print(f"{'═' * 50}")
     return 0 if FAIL == 0 else 1
+
 
 if __name__ == "__main__":
     sys.exit(main())

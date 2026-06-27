@@ -76,7 +76,7 @@ def analyze_marriage(
     # ── 结婚窗口 ──
     marriage_windows = []
 
-    for i, (dg, dz, sa) in enumerate(zip(da_yun_gans, da_yun_zhis, da_yun_start_ages)):
+    for i, (dg, dz, sa) in enumerate(zip(da_yun_gans, da_yun_zhis, da_yun_start_ages, strict=False)):
         if sa < 20 or sa > 55:
             continue
         if sa > 45:

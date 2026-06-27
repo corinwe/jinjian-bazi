@@ -168,7 +168,7 @@ def _check_six_steps(
     # Step 4: 18岁前走喜用还是忌神？
     pre_18_positive = 0
     pre_18_negative = 0
-    for dg, dz, sa in zip(da_yun_gans, da_yun_zhis, da_yun_start_ages):
+    for dg, dz, sa in zip(da_yun_gans, da_yun_zhis, da_yun_start_ages, strict=False):
         if sa < 18 and sa < len(da_yun_gans):
             dg_wx = TIAN_GAN_WU_XING[dg]
             if dg_wx in xi_yong:
@@ -184,7 +184,7 @@ def _check_six_steps(
 
     # Step 5: 印运在学习窗口（7-25岁）内到来？
     yin_window = False
-    for dg, sa in zip(da_yun_gans, da_yun_start_ages):
+    for dg, sa in zip(da_yun_gans, da_yun_start_ages, strict=False):
         dg_ss = get_shi_shen_for_gan(dg, ri_zhu)
         if dg_ss in ("正印", "偏印") and 7 <= sa <= 25:
             yin_window = True

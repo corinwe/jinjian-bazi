@@ -180,7 +180,7 @@ def _calculate_marriage_windows(
     """结婚窗口分析 — 四大信号强度排序"""
     windows = []
 
-    for dg, dz, sa in zip(da_yun_gans, da_yun_zhis, da_yun_start_ages):
+    for dg, dz, sa in zip(da_yun_gans, da_yun_zhis, da_yun_start_ages, strict=False):
         if sa < 20 or sa > 55:
             continue
 

@@ -41,7 +41,7 @@ def get_shi_shen_all_dry(bazi: BaZi) -> list[dict]:
     result = []
     pillars = bazi.all_pillars()
     names = ["年柱", "月柱", "日柱", "时柱"]
-    for pillar, name in zip(pillars, names):
+    for pillar, name in zip(pillars, names, strict=False):
         shi_shen = get_shi_shen_for_gan(pillar.gan, ri_zhu)
         result.append(
             {
@@ -68,7 +68,7 @@ def get_all_cang_gan_shi_shen(bazi: BaZi) -> list[dict]:
     result = []
     pillars = bazi.all_pillars()
     names = ["年柱", "月柱", "日柱", "时柱"]
-    for pillar, name in zip(pillars, names):
+    for pillar, name in zip(pillars, names, strict=False):
         for cg, ratio in pillar.cang_gan:
             shi_shen = get_shi_shen_for_cang_gan(cg, ri_zhu)
             result.append(

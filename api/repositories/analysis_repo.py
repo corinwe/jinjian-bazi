@@ -134,7 +134,7 @@ class AnalysisRepository(BaseRepository):
     def get_user_analyses(self, user_id: int, limit: int = 20) -> list[dict]:
         cur = self.conn.execute(
             """
-            SELECT * FROM analyses WHERE user_id = ? 
+            SELECT * FROM analyses WHERE user_id = ?
             ORDER BY created_at DESC LIMIT ?
         """,
             (user_id, limit),

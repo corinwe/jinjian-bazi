@@ -108,7 +108,7 @@ def analyze_education(
 
     # ── Step 5: 大运配合 ──
     da_yun_edu_score = 0
-    for dg, dz, sa in zip(da_yun_gans[:4], da_yun_zhis[:4], da_yun_start_ages[:4]):
+    for dg, dz, sa in zip(da_yun_gans[:4], da_yun_zhis[:4], da_yun_start_ages[:4], strict=False):
         dg_ss = get_shi_shen_for_gan(dg, ri_zhu)
         if dg_ss in ["正印", "偏印"] and sa >= 6 and sa <= 30:
             da_yun_edu_score += 1
