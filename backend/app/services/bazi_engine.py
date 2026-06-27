@@ -52,6 +52,28 @@ SAN_HE = {frozenset(["申","子","辰"]):"水", frozenset(["亥","卯","未"]):"
 # 燥土地支（未/戌）
 ZAO_TU = {"未","戌"}
 
+# ── 六害（六穿）：子未·丑午·寅巳·卯辰·申亥·酉戌 ──
+LIU_HAI = {"子":"未","丑":"午","寅":"巳","卯":"辰","辰":"卯","巳":"寅",
+            "午":"丑","未":"子","申":"亥","酉":"戌","戌":"酉","亥":"申"}
+
+# ── 六破：子酉·寅亥·辰丑·午卯·申巳·戌未 ──
+LIU_PO = {"子":"酉","丑":"辰","寅":"亥","卯":"午","辰":"丑","巳":"申",
+           "午":"卯","未":"戌","申":"巳","酉":"子","戌":"未","亥":"寅"}
+
+# ── 三会局 ──
+SAN_HUI = {frozenset(["寅","卯","辰"]):"木", frozenset(["巳","午","未"]):"火",
+           frozenset(["申","酉","戌"]):"金", frozenset(["亥","子","丑"]):"水"}
+
+# ── 自刑地支 ──
+ZI_XING = {"辰","午","酉","亥"}
+
+# ── 能量倍数（总纲v1.0）──
+ENERGY_MULTIPLIER = {
+    "三会": 20, "三合": 15, "三刑": 15, "六冲": 10,
+    "六合": 10, "半三合": 10, "六害": 5, "六破": 3,
+    "自刑": 10, "透干": 3, "空亡": 0.5,
+}
+
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 60甲子纳音表（完整60柱）
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -241,6 +263,159 @@ def check_liu_he(zhi_list: list) -> list:
             if LIU_HE.get(z1) == z2 or LIU_HE.get(z2) == z1:
                 pairs.append((z1, z2))
     return pairs
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 能量倍数引擎（总纲v1.0核心公式）
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+def check_liu_hai(zhi_list: list) -> list:
+    """检查六害，返回所有六害对"""
+    pairs = []
+    for i, z1 in enumerate(zhi_list):
+        for z2 in zhi_list[i+1:]:
+            if LIU_HAI.get(z1) == z2 or LIU_HAI.get(z2) == z1:
+                pairs.append((z1, z2))
+    return pairs
+
+
+def check_liu_po(zhi_list: list) -> list:
+    """检查六破，返回所有六破对"""
+    pairs = []
+    for i, z1 in enumerate(zhi_list):
+        for z2 in zhi_list[i+1:]:
+            if LIU_PO.get(z1) == z2 or LIU_PO.get(z2) == z1:
+                pairs.append((z1, z2))
+    return pairs
+
+
+def check_san_hui(zhi_list: list) -> tuple:
+    """检查三会局。返回 (五行, 是否完整, 能量倍数)"""
+    zhi_set = set(zhi_list)
+    for he_set, wx in SAN_HUI.items():
+        present = zhi_set.intersection(he_set)
+        if len(present) == 3:
+            return (wx, True, ENERGY_MULTIPLIER["三会"])
+        elif len(present) >= 2:
+            return (wx, False, ENERGY_MULTIPLIER["半三合"] if len(present)==2 else 1)
+    return ("", False, 1)
+
+
+def check_san_xing(zhi_list: list) -> list:
+    """检查三刑，返回所有三刑组合及类型"""
+    results = []
+    zhi_set = list(zhi_list)
+    # 寅巳申三刑
+    if {"寅","巳","申"}.issubset(set(zhi_set)):
+        results.append(("寅巳申三刑", "无恩之刑", ENERGY_MULTIPLIER["三刑"]))
+    # 丑未戌三刑
+    if {"丑","未","戌"}.issubset(set(zhi_set)):
+        results.append(("丑未戌三刑", "恃势之刑", ENERGY_MULTIPLIER["三刑"]))
+    # 子卯刑
+    if {"子","卯"}.issubset(set(zhi_set)):
+        results.append(("子卯刑", "无礼之刑", ENERGY_MULTIPLIER["三刑"]))
+    # 自刑
+    for z in zhi_set:
+        if z in ZI_XING:
+            count = zhi_set.count(z)
+            if count >= 2:
+                results.append((f"{z}自刑", "自刑", ENERGY_MULTIPLIER["自刑"]))
+    return results
+
+
+def calc_energy_relationship(zhi_a: str, zhi_b: str) -> dict:
+    """计算两个地支之间的能量关系
+    返回 {"type":关系类型, "name":关系名称, "multiplier":能量倍数, "detail":描述}"""
+    # 六冲
+    if LIU_CHONG.get(zhi_a) == zhi_b:
+        wx_a = DI_ZHI_WU_XING[zhi_a]
+        wx_b = DI_ZHI_WU_XING[zhi_b]
+        return {"type":"六冲", "name":f"{zhi_a}{zhi_b}冲", "multiplier":ENERGY_MULTIPLIER["六冲"],
+                "detail":f"{zhi_a}与{zhi_b}相冲({wx_a}冲{wx_b})"}
+    # 六合
+    if LIU_HE.get(zhi_a) == zhi_b:
+        return {"type":"六合", "name":f"{zhi_a}{zhi_b}合", "multiplier":ENERGY_MULTIPLIER["六合"],
+                "detail":f"{zhi_a}与{zhi_b}六合"}
+    # 六害
+    if LIU_HAI.get(zhi_a) == zhi_b:
+        return {"type":"六害", "name":f"{zhi_a}{zhi_b}害", "multiplier":ENERGY_MULTIPLIER["六害"],
+                "detail":f"{zhi_a}与{zhi_b}相害"}
+    # 六破
+    if LIU_PO.get(zhi_a) == zhi_b:
+        return {"type":"六破", "name":f"{zhi_a}{zhi_b}破", "multiplier":ENERGY_MULTIPLIER["六破"],
+                "detail":f"{zhi_a}与{zhi_b}相破"}
+    # 三刑
+    for pair_key, (z1, z2) in [("子卯",("子","卯")),("寅巳",("寅","巳")),("巳申",("巳","申")),
+                                ("丑未",("丑","未")),("未戌",("未","戌")),("丑戌",("丑","戌"))]:
+        if {zhi_a, zhi_b} == {z1, z2}:
+            xing_name = "无礼之刑" if "子" in pair_key else "无恩之刑" if "寅" in pair_key or "巳" in pair_key or "申" in pair_key else "恃势之刑"
+            return {"type":"三刑", "name":f"{zhi_a}{zhi_b}刑", "multiplier":ENERGY_MULTIPLIER["三刑"],
+                    "detail":f"{zhi_a}与{zhi_b}相刑({xing_name})"}
+    # 自刑
+    if zhi_a == zhi_b and zhi_a in ZI_XING:
+        return {"type":"自刑", "name":f"{zhi_a}自刑", "multiplier":ENERGY_MULTIPLIER["自刑"],
+                "detail":f"{zhi_a}自刑"}
+    return {}
+
+
+def calc_bazi_energy_analysis(ri_gan: str, nian_zhi: str, yue_zhi: str, ri_zhi: str, shi_zhi: str,
+                               xi_shen: list = None) -> dict:
+    """八字全局能量分析
+    计算四柱地支之间的全部刑冲合害破关系及能量倍数
+    返回完整的关系列表和能量汇总"""
+    zhi_list = [nian_zhi, yue_zhi, ri_zhi, shi_zhi]
+    positions = ["年支","月支","日支","时支"]
+    results = []
+    total_energy = 0
+
+    # 两两检查
+    for i in range(4):
+        for j in range(i+1, 4):
+            rel = calc_energy_relationship(zhi_list[i], zhi_list[j])
+            if rel:
+                rel["zhi_a_pos"] = positions[i]
+                rel["zhi_b_pos"] = positions[j]
+                rel["zhi_a"] = zhi_list[i]
+                rel["zhi_b"] = zhi_list[j]
+                results.append(rel)
+                total_energy += rel["multiplier"]
+
+    # 三合局检查(完整三合)
+    sh_wx, sh_complete, sh_mult = check_san_he(zhi_list)
+    if sh_complete:
+        results.append({"type":"三合局", "name":f"{sh_wx}三合局", "multiplier":sh_mult,
+                        "detail":f"地支构成{sh_wx}三合局 +{sh_mult}倍"})
+        total_energy += sh_mult
+    # 半三合
+    elif sh_mult > 1:
+        results.append({"type":"半三合", "name":f"{sh_wx}半三合", "multiplier":sh_mult,
+                        "detail":f"地支构成{sh_wx}半三合 +{sh_mult}倍"})
+        total_energy += sh_mult
+
+    # 三会局检查
+    hui_wx, hui_complete, hui_mult = check_san_hui(zhi_list)
+    if hui_complete:
+        results.append({"type":"三会局", "name":f"{hui_wx}三会局", "multiplier":hui_mult,
+                        "detail":f"地支构成{hui_wx}三会局 +{hui_mult}倍"})
+        total_energy += hui_mult
+
+    # 三刑检查
+    xing_results = check_san_xing(zhi_list)
+    for xr in xing_results:
+        results.append({"type":"三刑", "name":xr[0], "multiplier":xr[2],
+                        "detail":f"{xr[0]}({xr[1]}) +{xr[2]}倍"})
+        total_energy += xr[2]
+
+    # 空亡减半
+    # (空亡在排盘阶段已计算，此处标记)
+    # 汇总
+    if xi_shen:
+        xi_set = set(xi_shen)
+        for r in results:
+            # 判断关系涉及的五行方向是否喜用
+            r["xi_ji"] = "喜" if r.get("multiplier",0) < 0 else "冲"  # placeholder for direction
+
+    return {"relationships": results, "total_multiplier": total_energy, "count": len(results)}
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 身强弱评分（九龙道长原始规则 v7.0）
@@ -1126,6 +1301,7 @@ def calculate_bazi(year: int, month: int, day: int,
     ss_sha = calc_shensha(rg, rz, ng, nz, yg, yz, sg, sz, gender)
     ss_flat = calc_all_shensha_with_positions(rg, rz, ng, nz, yg, yz, sg, sz, gender)
     ss_summary = calc_shensha_summary(rg, rz, ng, nz, yg, yz, sg, sz, gender)
+    energy_analysis = calc_bazi_energy_analysis(rg, nz, yz, rz, sz, xys.get("xi_shen", []))
 
     basic = {"ba_zi":ba_zi,"ri_zhu":rg+rz,"ri_gan":rg,"ri_zhi":rz,
              "nian_gan":ng,"nian_zhi":nz,"yue_gan":yg,"yue_zhi":yz,
@@ -1138,6 +1314,6 @@ def calculate_bazi(year: int, month: int, day: int,
 
     analysis = {"shen_qiang_ruo":sqr,"ge_ju":gj,"xi_yong_shen":xys,
                 "cai_xing":cx,"da_yun":dy,"wu_xing_energy":wx_energy,
-                "shensha_summary":ss_summary}
+                "shensha_summary":ss_summary,"energy_analysis":energy_analysis}
     
     return {"basic":basic,"analysis":analysis}
