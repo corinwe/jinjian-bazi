@@ -23,17 +23,20 @@
 """
 
 from __future__ import annotations
-import json, os, math
-from dataclasses import dataclass, field
-from typing import Optional
+
+import json
+import os
+from dataclasses import dataclass
 
 # ── 加载配置文件 ──
 _CONFIG_DIR = os.path.join(os.path.dirname(__file__), "config")
 
+
 def _load_json(name: str) -> dict:
     path = os.path.join(_CONFIG_DIR, name)
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
+
 
 _CANG_GAN = _load_json("cang_gan.json")
 _NA_YIN = _load_json("na_yin.json")
@@ -43,80 +46,129 @@ _CHENG_GU = _load_json("cheng_gu.json")
 _NENG_LIANG = _load_json("neng_liang.json")
 
 # ── 基础常量 ──
-TIAN_GAN = ["甲","乙","丙","丁","戊","己","庚","辛","壬","癸"]
-TIAN_GAN_ORDER = {g:i for i,g in enumerate(TIAN_GAN)}
-DI_ZHI = ["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"]
-DI_ZHI_ORDER = {z:i for i,z in enumerate(DI_ZHI)}
+TIAN_GAN = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"]
+TIAN_GAN_ORDER = {g: i for i, g in enumerate(TIAN_GAN)}
+DI_ZHI = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"]
+DI_ZHI_ORDER = {z: i for i, z in enumerate(DI_ZHI)}
 
 # 五行映射
-TIAN_GAN_WU_XING = {"甲":"木","乙":"木","丙":"火","丁":"火",
-                    "戊":"土","己":"土","庚":"金","辛":"金","壬":"水","癸":"水"}
-DI_ZHI_WU_XING = {"子":"水","丑":"土","寅":"木","卯":"木","辰":"土",
-                  "巳":"火","午":"火","未":"土","申":"金","酉":"金","戌":"土","亥":"水"}
-TIAN_GAN_YIN_YANG = {"甲":"阳","乙":"阴","丙":"阳","丁":"阴",
-                     "戊":"阳","己":"阴","庚":"阳","辛":"阴","壬":"阳","癸":"阴"}
-DI_ZHI_YIN_YANG = {"子":"阳","丑":"阴","寅":"阳","卯":"阴","辰":"阳",
-                   "巳":"阴","午":"阳","未":"阴","申":"阳","酉":"阴","戌":"阳","亥":"阴"}
+TIAN_GAN_WU_XING = {
+    "甲": "木",
+    "乙": "木",
+    "丙": "火",
+    "丁": "火",
+    "戊": "土",
+    "己": "土",
+    "庚": "金",
+    "辛": "金",
+    "壬": "水",
+    "癸": "水",
+}
+DI_ZHI_WU_XING = {
+    "子": "水",
+    "丑": "土",
+    "寅": "木",
+    "卯": "木",
+    "辰": "土",
+    "巳": "火",
+    "午": "火",
+    "未": "土",
+    "申": "金",
+    "酉": "金",
+    "戌": "土",
+    "亥": "水",
+}
+TIAN_GAN_YIN_YANG = {
+    "甲": "阳",
+    "乙": "阴",
+    "丙": "阳",
+    "丁": "阴",
+    "戊": "阳",
+    "己": "阴",
+    "庚": "阳",
+    "辛": "阴",
+    "壬": "阳",
+    "癸": "阴",
+}
+DI_ZHI_YIN_YANG = {
+    "子": "阳",
+    "丑": "阴",
+    "寅": "阳",
+    "卯": "阴",
+    "辰": "阳",
+    "巳": "阴",
+    "午": "阳",
+    "未": "阴",
+    "申": "阳",
+    "酉": "阴",
+    "戌": "阳",
+    "亥": "阴",
+}
 
 # 五行生克
-WU_XING_SHENG = {"木":"火","火":"土","土":"金","金":"水","水":"木"}
-WU_XING_KE = {"木":"土","土":"水","水":"火","火":"金","金":"木"}
+WU_XING_SHENG = {"木": "火", "火": "土", "土": "金", "金": "水", "水": "木"}
+WU_XING_KE = {"木": "土", "土": "水", "水": "火", "火": "金", "金": "木"}
+
 
 # ── 数据类型 ──
 @dataclass
 class PillarData:
     """一柱的完整数据"""
-    shi_shen: str                # 天干十神
-    tian_gan: str                # 天干
-    di_zhi: str                  # 地支
-    cang_gan: list[dict]         # 藏干列表 [{gan, shi_shen, percent}]
-    na_yin: str                  # 纳音
-    kong_wang: str               # 空亡（申酉等）
-    shen_sha: list[str]          # 神煞列表
+
+    shi_shen: str  # 天干十神
+    tian_gan: str  # 天干
+    di_zhi: str  # 地支
+    cang_gan: list[dict]  # 藏干列表 [{gan, shi_shen, percent}]
+    na_yin: str  # 纳音
+    kong_wang: str  # 空亡（申酉等）
+    shen_sha: list[str]  # 神煞列表
+
 
 @dataclass
 class BasicData:
     """第一大步输出：八字全部基础信息"""
+
     # 11行×4列核心数据
     year: PillarData
     month: PillarData
     day: PillarData
     hour: PillarData
-    
+
     # 日主信息
-    ri_zhu_gan: str              # 日干
-    ri_zhu_wx: str               # 日主五行
-    ri_zhu_yy: str               # 日主阴阳
-    
+    ri_zhu_gan: str  # 日干
+    ri_zhu_wx: str  # 日主五行
+    ri_zhu_yy: str  # 日主阴阳
+
     # 干支留意
-    tian_gan_notes: list[str]    # 天干留意（合/冲）
-    di_zhi_notes: list[str]      # 地支留意（刑冲合害）
-    
+    tian_gan_notes: list[str]  # 天干留意（合/冲）
+    di_zhi_notes: list[str]  # 地支留意（刑冲合害）
+
     # 称骨
-    cheng_gu_weight: str         # 称骨重量（如"五两二钱"）
-    cheng_gu_comment: str        # 称骨评语
+    cheng_gu_weight: str  # 称骨重量（如"五两二钱"）
+    cheng_gu_comment: str  # 称骨评语
 
 
 # ═══════════════════════════════════════════
 # 十神判定
 # ═══════════════════════════════════════════
 
+
 def _get_shi_shen(gan: str, ri_zhu: str, is_ri_zhu: bool = False, gender: str = "男") -> str:
     """判定天干对日主的十神"""
     if is_ri_zhu:
         return "元男" if gender == "男" else "元女"
-    
+
     if gan == ri_zhu:
         # 其他柱天干与日主相同→比肩
         return "比肩"
-    
+
     gan_wx = TIAN_GAN_WU_XING[gan]
     ri_wx = TIAN_GAN_WU_XING[ri_zhu]
     gan_yy = TIAN_GAN_YIN_YANG[gan]
     ri_yy = TIAN_GAN_YIN_YANG[ri_zhu]
-    
-    same_yy = (gan_yy == ri_yy)
-    
+
+    same_yy = gan_yy == ri_yy
+
     # 生我者为印
     if WU_XING_SHENG[gan_wx] == ri_wx:
         return "偏印" if same_yy else "正印"
@@ -132,7 +184,7 @@ def _get_shi_shen(gan: str, ri_zhu: str, is_ri_zhu: bool = False, gender: str = 
     # 同我者为比劫
     if gan_wx == ri_wx:
         return "比肩" if same_yy else "劫财"
-    
+
     return ""
 
 
@@ -142,9 +194,9 @@ def _get_cang_gan_shi_shen(cg: str, ri_zhu: str) -> str:
     ri_wx = TIAN_GAN_WU_XING[ri_zhu]
     cg_yy = TIAN_GAN_YIN_YANG[cg]
     ri_yy = TIAN_GAN_YIN_YANG[ri_zhu]
-    
-    same_yy = (cg_yy == ri_yy)
-    
+
+    same_yy = cg_yy == ri_yy
+
     if WU_XING_SHENG[cg_wx] == ri_wx:
         return "偏印" if same_yy else "正印"
     if WU_XING_SHENG[ri_wx] == cg_wx:
@@ -162,6 +214,7 @@ def _get_cang_gan_shi_shen(cg: str, ri_zhu: str) -> str:
 # 纳音
 # ═══════════════════════════════════════════
 
+
 def _get_na_yin(gan: str, zhi: str) -> str:
     """获取一柱的纳音"""
     key = gan + zhi
@@ -173,9 +226,8 @@ def _get_na_yin(gan: str, zhi: str) -> str:
 # ═══════════════════════════════════════════
 
 # ── 旬首表（60甲子→所属旬）──
-XUN_SHOU = {
-    0: "甲子", 1: "甲戌", 2: "甲申", 3: "甲午", 4: "甲辰", 5: "甲寅",
-}
+XUN_SHOU = {0: "甲子", 1: "甲戌", 2: "甲申", 3: "甲午", 4: "甲辰", 5: "甲寅"}
+
 
 def _get_gan_zhi_index(gan: str, zhi: str) -> int:
     """获取干支的60甲子索引"""
@@ -187,6 +239,7 @@ def _get_gan_zhi_index(gan: str, zhi: str) -> int:
             return idx
     return 0
 
+
 def _get_kong_wang_for_pillar(gan: str, zhi: str) -> str:
     """
     获取一柱的空亡（每柱独立计算）
@@ -196,7 +249,7 @@ def _get_kong_wang_for_pillar(gan: str, zhi: str) -> str:
     """
     idx = _get_gan_zhi_index(gan, zhi)
     xun_idx = idx // 10  # 0=甲子, 1=甲戌, 2=甲申, 3=甲午, 4=甲辰, 5=甲寅
-    
+
     KONG_WANG_MAP = {
         0: "戌亥",  # 甲子旬
         1: "申酉",  # 甲戌旬
@@ -212,27 +265,28 @@ def _get_kong_wang_for_pillar(gan: str, zhi: str) -> str:
 # 神煞
 # ═══════════════════════════════════════════
 
+
 def _get_shen_sha_for_pillar(zhi: str, nian_gan: str, ri_gan: str) -> list[str]:
     """
     获取一柱的神煞
     同时查年干和日干的神煞规则，合并去重
     """
     result = []
-    
+
     rules = _SHEN_SHA_RULES
-    
+
     # 以年干和日干分别查，合并
     for gan in [nian_gan, ri_gan]:
         # 天乙贵人
         ty = rules["tian_yi"].get(gan, [])
         if isinstance(ty, list) and zhi in ty:
             result.append("天乙贵人")
-        
+
         # 文昌贵人
         wc = rules["wen_chang"].get(gan, "")
         if wc == zhi:
             result.append("文昌贵人")
-        
+
         # 驿马
         ym = rules["yi_ma"].get(zhi, "")
         if ym and ym in [rules["yi_ma"].get(zhi, "")]:
@@ -241,29 +295,27 @@ def _get_shen_sha_for_pillar(zhi: str, nian_gan: str, ri_gan: str) -> list[str]:
             for k, v in ym_rule.items():
                 if k == zhi and v:
                     pass  # 下面有独立逻辑
-    
+
     # 驿马：以年支/日支查对冲的地支
     for ref_zhi in [nian_gan, ri_gan]:
         if ref_zhi in TIAN_GAN:
             continue  # 天干跳过
     # 实际驿马以年支/日支的地支来查
     nian_zhi_for_yima = ""  # 需要知道年支
-    ri_zhi_for_yima = ""    # 需要知道日支
-    
+    ri_zhi_for_yima = ""  # 需要知道日支
+
     # 这部分在外部传入
     return result
 
 
-def compute_shen_sha_for_pillar(
-    zhi: str, nian_zhi: str, ri_zhi: str
-) -> list[str]:
+def compute_shen_sha_for_pillar(zhi: str, nian_zhi: str, ri_zhi: str) -> list[str]:
     """
     计算一柱的神煞（完整版）
     神煞规则以年支/日支查对地支的对应
     """
     result = set()
     rules = _SHEN_SHA_RULES
-    
+
     # ── 名称映射（配置键名→中文） ──
     SHEN_SHA_CN = {
         "tian_yi": "天乙贵人",
@@ -286,7 +338,7 @@ def compute_shen_sha_for_pillar(
         "sang_men": "丧门",
         "tai_ji": "太极贵人",
     }
-    
+
     # ── 以年支查 ──
     for shen_sha_name, rule_table in rules.items():
         target = rule_table.get(nian_zhi, None)
@@ -300,7 +352,7 @@ def compute_shen_sha_for_pillar(
             if zhi in target:
                 cn_name = SHEN_SHA_CN.get(shen_sha_name, shen_sha_name)
                 result.add(cn_name)
-    
+
     # ── 以日支查 ──
     for shen_sha_name, rule_table in rules.items():
         target = rule_table.get(ri_zhi, None)
@@ -314,7 +366,7 @@ def compute_shen_sha_for_pillar(
             if zhi in target:
                 cn_name = SHEN_SHA_CN.get(shen_sha_name, shen_sha_name)
                 result.add(cn_name)
-    
+
     # 灾煞：以年支查（独立处理）
     zai_sha_target = rules.get("zai_sha", {}).get(nian_zhi, "")
     if zai_sha_target == zhi:
@@ -322,12 +374,12 @@ def compute_shen_sha_for_pillar(
     zai_sha_target2 = rules.get("zai_sha", {}).get(ri_zhi, "")
     if zai_sha_target2 == zhi:
         result.add("灾煞")
-    
+
     # 特殊神煞：女孤鸾煞（日柱亥日）
     # 简化版：日柱地支为特定值
     if zhi == ri_zhi and ri_zhi == "亥":
         result.add("女孤鸾煞")
-    
+
     return sorted(result)
 
 
@@ -337,23 +389,36 @@ def compute_shen_sha_for_pillar(
 
 # 天干五合
 TIAN_GAN_HE = {
-    ("甲","己"): "甲己合化土", ("己","甲"): "甲己合化土",
-    ("乙","庚"): "乙庚合化金", ("庚","乙"): "乙庚合化金",
-    ("丙","辛"): "丙辛合化水", ("辛","丙"): "丙辛合化水",
-    ("丁","壬"): "丁壬合化木", ("壬","丁"): "丁壬合化木",
-    ("戊","癸"): "戊癸合化火", ("癸","戊"): "戊癸合化火",
+    ("甲", "己"): "甲己合化土",
+    ("己", "甲"): "甲己合化土",
+    ("乙", "庚"): "乙庚合化金",
+    ("庚", "乙"): "乙庚合化金",
+    ("丙", "辛"): "丙辛合化水",
+    ("辛", "丙"): "丙辛合化水",
+    ("丁", "壬"): "丁壬合化木",
+    ("壬", "丁"): "丁壬合化木",
+    ("戊", "癸"): "戊癸合化火",
+    ("癸", "戊"): "戊癸合化火",
 }
 
 # 天干相冲
 TIAN_GAN_CHONG = {
-    ("甲","庚"): "甲庚冲", ("庚","甲"): "甲庚冲",
-    ("乙","辛"): "乙辛冲", ("辛","乙"): "乙辛冲",
-    ("丙","壬"): "丙壬冲", ("壬","丙"): "丙壬冲",
-    ("丁","癸"): "丁癸冲", ("癸","丁"): "丁癸冲",
-    ("戊","甲"): "戊甲冲", ("甲","戊"): "戊甲冲",
-    ("己","乙"): "己乙冲", ("乙","己"): "己乙冲",
-    ("丙","庚"): "丙庚冲", ("庚","丙"): "丙庚冲",
-    ("丁","辛"): "丁辛冲", ("辛","丁"): "丁辛冲",
+    ("甲", "庚"): "甲庚冲",
+    ("庚", "甲"): "甲庚冲",
+    ("乙", "辛"): "乙辛冲",
+    ("辛", "乙"): "乙辛冲",
+    ("丙", "壬"): "丙壬冲",
+    ("壬", "丙"): "丙壬冲",
+    ("丁", "癸"): "丁癸冲",
+    ("癸", "丁"): "丁癸冲",
+    ("戊", "甲"): "戊甲冲",
+    ("甲", "戊"): "戊甲冲",
+    ("己", "乙"): "己乙冲",
+    ("乙", "己"): "己乙冲",
+    ("丙", "庚"): "丙庚冲",
+    ("庚", "丙"): "丙庚冲",
+    ("丁", "辛"): "丁辛冲",
+    ("辛", "丁"): "丁辛冲",
 }
 
 
@@ -366,7 +431,7 @@ def compute_tian_gan_notes(gans: list[str]) -> list[str]:
     notes = []
     # 检查所有两两组合
     for i in range(len(gans)):
-        for j in range(i+1, len(gans)):
+        for j in range(i + 1, len(gans)):
             pair = (gans[i], gans[j])
             if pair in TIAN_GAN_HE:
                 notes.append(TIAN_GAN_HE[pair])
@@ -381,71 +446,109 @@ def compute_tian_gan_notes(gans: list[str]) -> list[str]:
 
 # 六冲
 LIU_CHONG = {
-    "子":"午","午":"子","丑":"未","未":"丑",
-    "寅":"申","申":"寅","卯":"酉","酉":"卯",
-    "辰":"戌","戌":"辰","巳":"亥","亥":"巳",
+    "子": "午",
+    "午": "子",
+    "丑": "未",
+    "未": "丑",
+    "寅": "申",
+    "申": "寅",
+    "卯": "酉",
+    "酉": "卯",
+    "辰": "戌",
+    "戌": "辰",
+    "巳": "亥",
+    "亥": "巳",
 }
 
 # 三刑
-SAN_XING = {
-    ("寅","巳","申"): "寅巳申三刑",
-    ("丑","未","戌"): "丑未戌三刑",
-    ("子","卯"): "子卯无礼之刑",
-}
+SAN_XING = {("寅", "巳", "申"): "寅巳申三刑", ("丑", "未", "戌"): "丑未戌三刑", ("子", "卯"): "子卯无礼之刑"}
 
 # 六害
 LIU_HAI = {
-    "子":"未","未":"子","丑":"午","午":"丑",
-    "寅":"巳","巳":"寅","卯":"辰","辰":"卯",
-    "申":"亥","亥":"申","酉":"戌","戌":"酉",
+    "子": "未",
+    "未": "子",
+    "丑": "午",
+    "午": "丑",
+    "寅": "巳",
+    "巳": "寅",
+    "卯": "辰",
+    "辰": "卯",
+    "申": "亥",
+    "亥": "申",
+    "酉": "戌",
+    "戌": "酉",
 }
 
 # 六合
 LIU_HE = {
-    ("子","丑"): "子丑合土", ("丑","子"): "子丑合土",
-    ("寅","亥"): "寅亥合木", ("亥","寅"): "寅亥合木",
-    ("卯","戌"): "卯戌合火", ("戌","卯"): "卯戌合火",
-    ("辰","酉"): "辰酉合金", ("酉","辰"): "辰酉合金",
-    ("巳","申"): "巳申合水", ("申","巳"): "巳申合水",
-    ("午","未"): "午未合火土", ("未","午"): "午未合火土",
+    ("子", "丑"): "子丑合土",
+    ("丑", "子"): "子丑合土",
+    ("寅", "亥"): "寅亥合木",
+    ("亥", "寅"): "寅亥合木",
+    ("卯", "戌"): "卯戌合火",
+    ("戌", "卯"): "卯戌合火",
+    ("辰", "酉"): "辰酉合金",
+    ("酉", "辰"): "辰酉合金",
+    ("巳", "申"): "巳申合水",
+    ("申", "巳"): "巳申合水",
+    ("午", "未"): "午未合火土",
+    ("未", "午"): "午未合火土",
 }
 
 # 三合
 SAN_HE = {
-    ("申","子","辰"): "申子辰合水",
-    ("亥","卯","未"): "亥卯未合木",
-    ("寅","午","戌"): "寅午戌合火",
-    ("巳","酉","丑"): "巳酉丑合金",
+    ("申", "子", "辰"): "申子辰合水",
+    ("亥", "卯", "未"): "亥卯未合木",
+    ("寅", "午", "戌"): "寅午戌合火",
+    ("巳", "酉", "丑"): "巳酉丑合金",
 }
 
 # 半三合
 BAN_SAN_HE = {
-    ("申","子"): "申子半合水", ("子","申"): "申子半合水",
-    ("子","辰"): "子辰半合水", ("辰","子"): "子辰半合水",
-    ("亥","卯"): "亥卯半合木", ("卯","亥"): "亥卯半合木",
-    ("卯","未"): "卯未半合木", ("未","卯"): "卯未半合木",
-    ("寅","午"): "寅午半合火", ("午","寅"): "寅午半合火",
-    ("午","戌"): "午戌半合火", ("戌","午"): "午戌半合火",
-    ("巳","酉"): "巳酉半合金", ("酉","巳"): "巳酉半合金",
-    ("酉","丑"): "酉丑半合金", ("丑","酉"): "酉丑半合金",
+    ("申", "子"): "申子半合水",
+    ("子", "申"): "申子半合水",
+    ("子", "辰"): "子辰半合水",
+    ("辰", "子"): "子辰半合水",
+    ("亥", "卯"): "亥卯半合木",
+    ("卯", "亥"): "亥卯半合木",
+    ("卯", "未"): "卯未半合木",
+    ("未", "卯"): "卯未半合木",
+    ("寅", "午"): "寅午半合火",
+    ("午", "寅"): "寅午半合火",
+    ("午", "戌"): "午戌半合火",
+    ("戌", "午"): "午戌半合火",
+    ("巳", "酉"): "巳酉半合金",
+    ("酉", "巳"): "巳酉半合金",
+    ("酉", "丑"): "酉丑半合金",
+    ("丑", "酉"): "酉丑半合金",
 }
 
 # 暗合
 AN_HE = {
-    ("卯","申"): "卯申暗合金", ("申","卯"): "卯申暗合金",
-    ("午","亥"): "午亥暗合木", ("亥","午"): "午亥暗合木",
-    ("巳","子"): "巳子暗合火", ("子","巳"): "巳子暗合火",
-    ("寅","丑"): "寅丑暗合土", ("丑","寅"): "寅丑暗合土",
+    ("卯", "申"): "卯申暗合金",
+    ("申", "卯"): "卯申暗合金",
+    ("午", "亥"): "午亥暗合木",
+    ("亥", "午"): "午亥暗合木",
+    ("巳", "子"): "巳子暗合火",
+    ("子", "巳"): "巳子暗合火",
+    ("寅", "丑"): "寅丑暗合土",
+    ("丑", "寅"): "寅丑暗合土",
 }
 
 # 六破
 LIU_PO = {
-    ("子","酉"): "子酉破", ("酉","子"): "子酉破",
-    ("寅","亥"): "寅亥破", ("亥","寅"): "寅亥破",
-    ("辰","丑"): "辰丑破", ("丑","辰"): "辰丑破",
-    ("午","卯"): "午卯破", ("卯","午"): "午卯破",
-    ("申","巳"): "申巳破", ("巳","申"): "申巳破",
-    ("戌","未"): "戌未破", ("未","戌"): "戌未破",
+    ("子", "酉"): "子酉破",
+    ("酉", "子"): "子酉破",
+    ("寅", "亥"): "寅亥破",
+    ("亥", "寅"): "寅亥破",
+    ("辰", "丑"): "辰丑破",
+    ("丑", "辰"): "辰丑破",
+    ("午", "卯"): "午卯破",
+    ("卯", "午"): "午卯破",
+    ("申", "巳"): "申巳破",
+    ("巳", "申"): "申巳破",
+    ("戌", "未"): "戌未破",
+    ("未", "戌"): "戌未破",
 }
 
 
@@ -457,42 +560,42 @@ def compute_di_zhi_notes(zhis: list[str]) -> list[str]:
     """
     notes = []
     all_combos = []
-    
+
     # 所有两两组合
     for i in range(len(zhis)):
-        for j in range(i+1, len(zhis)):
+        for j in range(i + 1, len(zhis)):
             pair = (zhis[i], zhis[j])
-            
+
             # 六冲
             if zhis[i] in LIU_CHONG and LIU_CHONG[zhis[i]] == zhis[j]:
                 notes.append(f"{zhis[i]}{zhis[j]}相冲")
-            
+
             # 六害
             if zhis[i] in LIU_HAI and LIU_HAI[zhis[i]] == zhis[j]:
                 notes.append(f"{zhis[i]}{zhis[j]}相害")
-            
+
             # 六合
             if pair in LIU_HE:
                 notes.append(LIU_HE[pair])
-            
+
             # 半三合
             if pair in BAN_SAN_HE:
                 notes.append(BAN_SAN_HE[pair])
-            
+
             # 暗合
             if pair in AN_HE:
                 notes.append(AN_HE[pair])
-            
+
             # 六破
             if pair in LIU_PO:
                 notes.append(LIU_PO[pair])
-            
+
             all_combos.append(pair)
-    
+
     # 三合（需要三个地支同时出现）
     # 检查四柱中是否包含三合局的三个地支
     zhi_set = set(zhis)
-    for (a,b,c), desc in SAN_HE.items():
+    for (a, b, c), desc in SAN_HE.items():
         if a in zhi_set and b in zhi_set and c in zhi_set:
             # 只加一次，避免重复
             already = False
@@ -502,7 +605,7 @@ def compute_di_zhi_notes(zhis: list[str]) -> list[str]:
                     break
             if not already:
                 notes.append(desc)
-    
+
     # 三刑
     # 寅巳申三刑
     if "寅" in zhi_set and "巳" in zhi_set and "申" in zhi_set:
@@ -519,7 +622,7 @@ def compute_di_zhi_notes(zhis: list[str]) -> list[str]:
                 break
         if not has_zi_mao:
             notes.append("子卯无礼之刑")
-    
+
     # 去重
     seen = set()
     unique_notes = []
@@ -527,7 +630,7 @@ def compute_di_zhi_notes(zhis: list[str]) -> list[str]:
         if n not in seen:
             seen.add(n)
             unique_notes.append(n)
-    
+
     return unique_notes
 
 
@@ -607,44 +710,42 @@ CHENG_GU_COMMENTS = {
 }
 
 
-def compute_cheng_gu(
-    year_gan_zhi: str, month_lunar: int, day_lunar: int, hour_idx: int
-) -> tuple[str, str]:
+def compute_cheng_gu(year_gan_zhi: str, month_lunar: int, day_lunar: int, hour_idx: int) -> tuple[str, str]:
     """
     计算称骨重量和评语
     输入：年柱干支, 农历月(1-12), 农历日(1-30), 时辰索引(0-11)
     输出：(重量描述, 评语)
     """
     cg = _CHENG_GU
-    
+
     # 年柱重量
     year_weight = cg["year"].get(year_gan_zhi, 0.0)
-    
+
     # 月柱重量
     month_weight = cg["month"].get(month_lunar, 0.0)
-    
+
     # 日柱重量
     day_weight = cg["day"].get(day_lunar, 0.5)
-    
+
     # 时柱重量
     hour_weight = cg["hour"].get(hour_idx, 0.0)
-    
+
     total = year_weight + month_weight + day_weight + hour_weight
-    
+
     # 转中文重量描述
     liang = int(total)
     qian = int(round((total - liang) * 10))
-    
+
     if liang > 0 and qian > 0:
         weight_str = f"{liang}两{qian}钱"
     elif liang > 0:
         weight_str = f"{liang}两"
     else:
         weight_str = f"{qian}钱"
-    
+
     # 查找最接近的评语
     comment = CHENG_GU_COMMENTS.get(round(total, 1), "命局特殊，福禄自定。")
-    
+
     return weight_str, comment
 
 
@@ -652,22 +753,27 @@ def compute_cheng_gu(
 # 主函数：计算八字基础数据
 # ═══════════════════════════════════════════
 
+
 def compute_basic_data(
-    year_gan: str, year_zhi: str,
-    month_gan: str, month_zhi: str,
-    day_gan: str, day_zhi: str,
-    hour_gan: str, hour_zhi: str,
+    year_gan: str,
+    year_zhi: str,
+    month_gan: str,
+    month_zhi: str,
+    day_gan: str,
+    day_zhi: str,
+    hour_gan: str,
+    hour_zhi: str,
     gender: str = "男",
-    lunar_month: Optional[int] = None,
-    lunar_day: Optional[int] = None,
-    hour_idx: Optional[int] = None,
+    lunar_month: int | None = None,
+    lunar_day: int | None = None,
+    hour_idx: int | None = None,
 ) -> dict:
     """
     第一大步：计算八字全部基础数据
-    
+
     输入：四柱天干地支 + 性别
     输出：完整结构化JSON（11行×4列 + 附加信息）
-    
+
     参数说明：
       - year_gan/year_zhi: 年柱天干地支
       - month_gan/month_zhi: 月柱天干地支
@@ -680,65 +786,59 @@ def compute_basic_data(
     ri_zhu = day_gan  # 日主
     all_gans = [year_gan, month_gan, day_gan, hour_gan]
     all_zhis = [year_zhi, month_zhi, day_zhi, hour_zhi]
-    
+
     # ── 各柱的十神 ──
     year_shi_shen = _get_shi_shen(year_gan, ri_zhu)
     month_shi_shen = _get_shi_shen(month_gan, ri_zhu)
     day_shi_shen = _get_shi_shen(day_gan, ri_zhu, is_ri_zhu=True, gender=gender)
     hour_shi_shen = _get_shi_shen(hour_gan, ri_zhu)
     shi_shens = [year_shi_shen, month_shi_shen, day_shi_shen, hour_shi_shen]
-    
+
     # ── 各柱藏干（含十神） ──
     def _build_cang_gan(zhi: str, ri_zhu: str) -> list[dict]:
         cg_list = _CANG_GAN.get(zhi, [])
         result = []
         for cg, percent in cg_list:
             ss = _get_cang_gan_shi_shen(cg, ri_zhu)
-            result.append({
-                "gan": cg,
-                "shi_shen": ss,
-                "percent": percent
-            })
+            result.append({"gan": cg, "shi_shen": ss, "percent": percent})
         return result
-    
+
     year_cang_gan = _build_cang_gan(year_zhi, ri_zhu)
     month_cang_gan = _build_cang_gan(month_zhi, ri_zhu)
     day_cang_gan = _build_cang_gan(day_zhi, ri_zhu)
     hour_cang_gan = _build_cang_gan(hour_zhi, ri_zhu)
-    
+
     # ── 纳音 ──
     year_na_yin = _get_na_yin(year_gan, year_zhi)
     month_na_yin = _get_na_yin(month_gan, month_zhi)
     day_na_yin = _get_na_yin(day_gan, day_zhi)
     hour_na_yin = _get_na_yin(hour_gan, hour_zhi)
-    
+
     # ── 空亡（每柱独立计算）──
     year_kw = _get_kong_wang_for_pillar(year_gan, year_zhi)
     month_kw = _get_kong_wang_for_pillar(month_gan, month_zhi)
     day_kw = _get_kong_wang_for_pillar(day_gan, day_zhi)
     hour_kw = _get_kong_wang_for_pillar(hour_gan, hour_zhi)
-    
+
     # ── 神煞（需要年支和日支） ──
     year_shen_sha = compute_shen_sha_for_pillar(year_zhi, year_zhi, day_zhi)
     month_shen_sha = compute_shen_sha_for_pillar(month_zhi, year_zhi, day_zhi)
     day_shen_sha = compute_shen_sha_for_pillar(day_zhi, year_zhi, day_zhi)
     hour_shen_sha = compute_shen_sha_for_pillar(hour_zhi, year_zhi, day_zhi)
-    
+
     # ── 天干留意 ──
     tian_gan_notes = compute_tian_gan_notes(all_gans)
-    
+
     # ── 地支留意 ──
     di_zhi_notes = compute_di_zhi_notes(all_zhis)
-    
+
     # ── 称骨 ──
     cheng_gu_weight = ""
     cheng_gu_comment = ""
     if lunar_month is not None and lunar_day is not None and hour_idx is not None:
         year_gan_zhi = year_gan + year_zhi
-        cheng_gu_weight, cheng_gu_comment = compute_cheng_gu(
-            year_gan_zhi, lunar_month, lunar_day, hour_idx
-        )
-    
+        cheng_gu_weight, cheng_gu_comment = compute_cheng_gu(year_gan_zhi, lunar_month, lunar_day, hour_idx)
+
     # ── 组装输出 ──
     result = {
         # 11行×4列核心网格
@@ -781,11 +881,7 @@ def compute_basic_data(
             },
         },
         # 日主信息
-        "ri_zhu": {
-            "gan": ri_zhu,
-            "wu_xing": TIAN_GAN_WU_XING[ri_zhu],
-            "yin_yang": TIAN_GAN_YIN_YANG[ri_zhu],
-        },
+        "ri_zhu": {"gan": ri_zhu, "wu_xing": TIAN_GAN_WU_XING[ri_zhu], "yin_yang": TIAN_GAN_YIN_YANG[ri_zhu]},
         # 性别
         "gender": gender,
         # 八字字符串
@@ -794,18 +890,16 @@ def compute_basic_data(
         "tian_gan_notes": tian_gan_notes,
         "di_zhi_notes": di_zhi_notes,
         # 称骨
-        "cheng_gu": {
-            "weight": cheng_gu_weight,
-            "comment": cheng_gu_comment,
-        } if cheng_gu_weight else None,
+        "cheng_gu": {"weight": cheng_gu_weight, "comment": cheng_gu_comment} if cheng_gu_weight else None,
     }
-    
+
     return result
 
 
 # ═══════════════════════════════════════════
 # 格式化输出（前端渲染用）
 # ═══════════════════════════════════════════
+
 
 def format_basic_data_table(data: dict) -> list[list]:
     """
@@ -818,12 +912,22 @@ def format_basic_data_table(data: dict) -> list[list]:
         ["十神", p["year"]["shi_shen"], p["month"]["shi_shen"], p["day"]["shi_shen"], p["hour"]["shi_shen"]],
         ["天干", p["year"]["tian_gan"], p["month"]["tian_gan"], p["day"]["tian_gan"], p["hour"]["tian_gan"]],
         ["地支", p["year"]["di_zhi"], p["month"]["di_zhi"], p["day"]["di_zhi"], p["hour"]["di_zhi"]],
-        ["藏干", _fmt_cang_gan(p["year"]["cang_gan"]), _fmt_cang_gan(p["month"]["cang_gan"]),
-                _fmt_cang_gan(p["day"]["cang_gan"]), _fmt_cang_gan(p["hour"]["cang_gan"])],
+        [
+            "藏干",
+            _fmt_cang_gan(p["year"]["cang_gan"]),
+            _fmt_cang_gan(p["month"]["cang_gan"]),
+            _fmt_cang_gan(p["day"]["cang_gan"]),
+            _fmt_cang_gan(p["hour"]["cang_gan"]),
+        ],
         ["纳音", p["year"]["na_yin"], p["month"]["na_yin"], p["day"]["na_yin"], p["hour"]["na_yin"]],
         ["空亡", p["year"]["kong_wang"], p["month"]["kong_wang"], p["day"]["kong_wang"], p["hour"]["kong_wang"]],
-        ["神煞", " ".join(p["year"]["shen_sha"]), " ".join(p["month"]["shen_sha"]),
-                " ".join(p["day"]["shen_sha"]), " ".join(p["hour"]["shen_sha"])],
+        [
+            "神煞",
+            " ".join(p["year"]["shen_sha"]),
+            " ".join(p["month"]["shen_sha"]),
+            " ".join(p["day"]["shen_sha"]),
+            " ".join(p["hour"]["shen_sha"]),
+        ],
     ]
     return table
 
@@ -840,17 +944,24 @@ def _fmt_cang_gan(cg_list: list[dict]) -> str:
 if __name__ == "__main__":
     # 测试家主的八字：庚申 癸未 辛亥 辛卯
     result = compute_basic_data(
-        year_gan="庚", year_zhi="申",
-        month_gan="癸", month_zhi="未",
-        day_gan="辛", day_zhi="亥",
-        hour_gan="辛", hour_zhi="卯",
+        year_gan="庚",
+        year_zhi="申",
+        month_gan="癸",
+        month_zhi="未",
+        day_gan="辛",
+        day_zhi="亥",
+        hour_gan="辛",
+        hour_zhi="卯",
         gender="男",
-        lunar_month=6, lunar_day=26, hour_idx=3
+        lunar_month=6,
+        lunar_day=26,
+        hour_idx=3,
     )
-    
+
     import json
+
     print(json.dumps(result, ensure_ascii=False, indent=2))
-    
+
     print("\n\n=== 表格格式 ===")
     table = format_basic_data_table(result)
     for row in table:

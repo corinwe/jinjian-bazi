@@ -1,12 +1,11 @@
 """用户路由: 注册/登录/信息"""
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from datetime import datetime
 
+from app.auth import require_user
 from app.database import get_db
 from app.models import User
-from app.schemas import UserRegister, UserLogin, TokenResponse, UserInfo
-from app.auth import get_current_user, require_user
+from app.schemas import TokenResponse, UserInfo, UserLogin, UserRegister
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/users", tags=["用户"])
 
@@ -18,25 +17,16 @@ def register(data: UserRegister, db: Session = Depends(get_db)):
     existing = db.query(User).filter(User.phone == data.phone).first()
     if existing:
         raise HTTPException(status_code=400, detail="该手机号已注册")
-    
-    user = User(
-        phone=data.phone,
-        nickname=data.nickname or f"用户{data.phone[-4:]}",
-        level="free",
-        credits=5,
-    )
+
+    user = User(phone=data.phone, nickname=data.nickname or f"用户{data.phone[-4:]}", level="free", credits=5)
     user.set_password(data.password)
     db.add(user)
     db.commit()
     db.refresh(user)
-    
+
     token = user.generate_token()
     return TokenResponse(
-        access_token=token,
-        user_id=user.id,
-        nickname=user.nickname,
-        level=user.level,
-        credits=user.credits,
+        access_token=token, user_id=user.id, nickname=user.nickname, level=user.level, credits=user.credits
     )
 
 
@@ -46,14 +36,10 @@ def login(data: UserLogin, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.phone == data.phone).first()
     if not user or not user.check_password(data.password):
         raise HTTPException(status_code=401, detail="手机号或密码错误")
-    
+
     token = user.generate_token()
     return TokenResponse(
-        access_token=token,
-        user_id=user.id,
-        nickname=user.nickname,
-        level=user.level,
-        credits=user.credits,
+        access_token=token, user_id=user.id, nickname=user.nickname, level=user.level, credits=user.credits
     )
 
 
@@ -72,8 +58,7 @@ def get_me(user: User = Depends(require_user)):
 
 
 @router.post("/credits")
-def buy_credits(amount: int, user: User = Depends(require_user),
-                db: Session = Depends(get_db)):
+def buy_credits(amount: int, user: User = Depends(require_user), db: Session = Depends(get_db)):
     """购买次数（简化）"""
     if amount <= 0:
         raise HTTPException(status_code=400, detail="数量必须大于0")

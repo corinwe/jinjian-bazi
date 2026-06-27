@@ -1,11 +1,12 @@
 """FastAPI主入口 v1.1 — 带OpenAPI文档配置"""
+
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import JSONResponse
-import os
 
-from api.routers import health, analyze
+from api.routers import analyze, health
 from database.connection import init_db
 
 app = FastAPI(
@@ -25,13 +26,8 @@ app = FastAPI(
 3. `POST /api/v1/report` — 生成完整命理报告
 4. `POST /api/v1/engine/debug` — 调试模式查看引擎原始数据
     """,
-    contact={
-        "name": "金鉴真人",
-        "url": "https://github.com/corinwe/jinjian-bazi",
-    },
-    license_info={
-        "name": "MIT",
-    },
+    contact={"name": "金鉴真人", "url": "https://github.com/corinwe/jinjian-bazi"},
+    license_info={"name": "MIT"},
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
@@ -39,11 +35,7 @@ app = FastAPI(
 
 # CORS（允许前端跨域）
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"]
 )
 
 # 注册路由

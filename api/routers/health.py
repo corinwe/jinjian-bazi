@@ -1,6 +1,8 @@
 """健康检查路由 v1.1 — 修复路径+添加详情"""
+
+import os
+
 from fastapi import APIRouter
-import os, sys
 
 router = APIRouter(tags=["health"])
 
@@ -30,11 +32,7 @@ async def health():
     return {
         "status": "healthy" if all_ok else "degraded",
         "version": "5.0.0",
-        "engine": {
-            "available": all_ok,
-            "modules": engine_checks,
-            "dir": ENGINE_DIR,
-        },
+        "engine": {"available": all_ok, "modules": engine_checks, "dir": ENGINE_DIR},
         "service": "金鉴真人·八字命理分析平台",
     }
 

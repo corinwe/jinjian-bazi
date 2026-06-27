@@ -1,0 +1,89 @@
+# ═══════════════════════════════════════════════
+# 金鉴真人·八字命理平台 — Pre-commit Hooks
+# ═══════════════════════════════════════════════
+# 安装: pre-commit install
+# 手动运行: pre-commit run --all-files
+# ═══════════════════════════════════════════════
+
+repos:
+  # ── ruff: lint + format ──
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.0
+    hooks:
+      - id: ruff
+        name: ruff-lint
+        description: "Python linter — 捕获逻辑错误、风格问题、导入排序"
+        args: [--fix, --exit-non-zero-on-fix]
+        types_or: [python, pyi]
+      - id: ruff-format
+        name: ruff-format
+        description: "Python formatter — 自动格式化代码"
+        types_or: [python, pyi]
+
+  # ── mypy: 类型检查 ──
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.14.0
+    hooks:
+      - id: mypy
+        name: mypy-type-check
+        description: "Python类型检查 — 捕获类型错误"
+        args: [--ignore-missing-imports, --check-untyped-defs]
+        additional_dependencies: []
+        exclude: "tests/|engine/tests/"
+        types_or: [python, pyi]
+        # mypy在现有代码上可能失败，设置为warning模式
+        verbose: true
+
+  # ── 通用hooks ──
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        name: trim-trailing-whitespace
+        description: "删除行尾多余空格"
+      - id: end-of-file-fixer
+        name: ensure-eof-newline
+        description: "确保文件末尾有换行符"
+      - id: check-yaml
+        name: check-yaml-syntax
+        description: "检查YAML文件语法"
+      - id: check-added-large-files
+        name: check-large-files
+        description: "检查是否添加了大文件(>500KB)"
+        args: [--maxkb=500]
+      - id: check-merge-conflict
+        name: check-merge-conflict
+        description: "检查是否残留合并冲突标记"
+      - id: check-json
+        name: check-json-syntax
+        description: "检查JSON文件格式"
+      - id: detect-private-key
+        name: detect-private-key
+        description: "检查是否意外提交私钥"
+      - id: check-case-conflict
+        name: check-case-conflict
+        description: "检查文件名大小写冲突"
+
+  # ── Python专用安全检查 ──
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.8.3
+    hooks:
+      - id: bandit
+        name: bandit-security
+        description: "Python安全扫描 — 检测潜在安全漏洞"
+        args: [-ll, -x, "tests,engine/tests,api/repositories"]
+        types_or: [python, pyi]
+        # 不强制通过，只出警告
+        verbose: true
+
+  # ── 测试自动运行 ──
+  - repo: local
+    hooks:
+      - id: pytest-check
+        name: pytest-minimal
+        description: "提交前自动运行关键测试 — 模块导入验证"
+        entry: python3 -m pytest engine/tests/test_imports.py -v --tb=short
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]  # 只在push时跑（提交时太慢）

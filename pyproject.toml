@@ -1,0 +1,151 @@
+# ═══════════════════════════════════════════════
+# 金鉴真人·八字命理分析平台 — 项目配置
+# ═══════════════════════════════════════════════
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+# ── 项目元数据 ──
+[project]
+name = "jinjian-bazi"
+version = "5.0.0"
+description = "确定性规则驱动的八字命理分析引擎"
+requires-python = ">=3.11"
+
+# ── ruff: Python linter (取代 flake8 + isort + pydocstyle) ──
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+exclude = [
+    ".git",
+    ".github",
+    "__pycache__",
+    "*.pyc",
+    ".venv",
+    "venv",
+    "node_modules",
+]
+
+[tool.ruff.lint]
+select = [
+    "F",   # pyflakes — 逻辑错误
+    "E",   # pycodestyle — 风格错误
+    "W",   # pycodestyle — 风格警告
+    "I",   # isort — 导入排序
+    "N",   # pep8-naming — 命名规范
+    "UP",  # pyupgrade — Python升级语法
+    "B",   # bugbear — 潜在bug
+    "SIM", # simplify — 简化代码
+    "ARG", # unused arguments — 未使用参数
+    "RUF", # ruff特定规则
+]
+ignore = [
+    "E501",    # 行长由formatter处理
+    "E741",    # 允许单字母变量名（八字命理常用）
+    "N801",    # 允许类名不规范（兼容现有代码）
+    "N802",    # 允许函数名不规范（兼容现有代码）
+    "N806",    # 允许变量名不规范（兼容现有代码）
+    "UP007",   # 允许X | None语法（兼容3.11）
+    "B904",    # 允许raise without from
+    "ARG001",  # 允许未使用的函数参数（回调兼容）
+    "ARG002",  # 允许未使用的方法参数
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ALL"]      # 测试文件全跳过
+"engine/tests/*" = ["ALL"]
+"__init__.py" = ["F401"] # __init__.py 允许未使用的导入
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+
+[tool.ruff.lint.isort]
+known-first-party = ["engine", "api", "database"]
+order-by-type = true
+
+# ── mypy: 类型检查 ──
+[tool.mypy]
+python_version = "3.11"
+strict = false  # 现有代码不严格，逐步收紧
+ignore_missing_imports = true
+check_untyped_defs = false
+disallow_untyped_defs = false
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+exclude = [
+    "tests/",
+    "engine/tests/",
+    ".git/",
+    ".github/",
+]
+
+# ── pytest: 测试配置 ──
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = [
+    "engine/tests",
+]
+python_files = ["test_*.py"]
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
+]
+
+# ── coverage: 覆盖率配置 ──
+[tool.coverage.run]
+source = ["engine", "api", "database"]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/migrations/*",
+    # 旧版引擎（已废弃）
+    "engine/comprehensive.py",
+    "engine/education.py",
+    "engine/marriage.py",
+    "engine/paipan.py",
+    "engine/pipeline.py",
+    "engine/pipeline_v2.py",
+    "engine/pipeline_v3.py",
+    "engine/pipeline_v4.py",
+    "engine/pipeline_product.py",
+    "engine/report_generator.py",
+    "engine/step1_basic.py",
+    "engine/dimensions.py",
+    "engine/liu_nian.py",
+    "engine/lunar.py",
+]
+relative_files = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "if __name__ == .__main__.:",
+    "pragma: no cover",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "def __repr__",
+    "def __str__",
+]
+fail_under = 45  # Phase 1基线（排除废弃模块后）
+precision = 1
+
+# ── black: 代码格式化 ──
+[tool.black]
+line-length = 120
+target-version = ["py311"]
+skip-string-normalization = false
+include = '\.py$'
+extend-exclude = '''
+/(
+    \.git
+  | \.github
+  | __pycache__
+  | \.venv
+  | venv
+  | node_modules
+)/
+'''

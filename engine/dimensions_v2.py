@@ -8,18 +8,13 @@ v2.1 修复大运赋能: 新增da_yun_list参数, 由调用方传入真实大运
 """
 
 from __future__ import annotations
-from dataclasses import dataclass
-from typing import Optional
 
-from constants import (
-    BaZi, DimensionScore, TIAN_GAN_WU_XING, DI_ZHI_WU_XING,
-    DI_ZHI_CANG_GAN, WU_XING_SHENG, WU_XING_KE, DaYun,
-)
-from shen_qiang_ruo import compute_shen_qiang_ruo
 from cai_xing import compute_cai_xing
-from shi_shen import get_shi_shen_for_gan, get_shi_shen_all_dry
-from ge_ju import determine_xi_yong_shen, determine_ge_ju
-from da_yun import compute_da_yun, compute_da_yun_scores
+from constants import TIAN_GAN_WU_XING, WU_XING_KE, BaZi, DaYun, DimensionScore
+from da_yun import compute_da_yun_scores
+from ge_ju import determine_ge_ju, determine_xi_yong_shen
+from shen_qiang_ruo import compute_shen_qiang_ruo
+from shi_shen import get_shi_shen_all_dry
 
 
 def _get_da_yun_bonus(bazi: BaZi, da_yun_list: list[DaYun]) -> float:
@@ -76,12 +71,10 @@ def score_cai_fu(bazi: BaZi, xi_yong: list[str], da_yun_list: list[DaYun]) -> Di
     base = max(0, min(7, base))
     bonus = _get_da_yun_bonus(bazi, da_yun_list)
 
-    return DimensionScore(base=round(base, 1), da_yun_bonus=bonus,
-                          total=round(min(10, base + bonus), 1))
+    return DimensionScore(base=round(base, 1), da_yun_bonus=bonus, total=round(min(10, base + bonus), 1))
 
 
-def score_shi_ye(bazi: BaZi, xi_yong: list[str], ge_ju_main: str,
-                 da_yun_list: list[DaYun]) -> DimensionScore:
+def score_shi_ye(bazi: BaZi, xi_yong: list[str], ge_ju_main: str, da_yun_list: list[DaYun]) -> DimensionScore:
     """事业发展评分 — 校准版"""
     base = 3.5
     all_ss = [s["shi_shen"] for s in get_shi_shen_all_dry(bazi)]
@@ -107,8 +100,7 @@ def score_shi_ye(bazi: BaZi, xi_yong: list[str], ge_ju_main: str,
     base = max(0, min(7, base))
     bonus = _get_da_yun_bonus(bazi, da_yun_list)
 
-    return DimensionScore(base=round(base, 1), da_yun_bonus=bonus,
-                          total=round(min(10, base + bonus), 1))
+    return DimensionScore(base=round(base, 1), da_yun_bonus=bonus, total=round(min(10, base + bonus), 1))
 
 
 def score_hun_yin(bazi: BaZi, xi_yong: list[str], da_yun_list: list[DaYun]) -> DimensionScore:
@@ -130,8 +122,7 @@ def score_hun_yin(bazi: BaZi, xi_yong: list[str], da_yun_list: list[DaYun]) -> D
     base = max(0, min(7, base))
     bonus = _get_da_yun_bonus(bazi, da_yun_list) * 0.6  # 婚姻受大运影响约60%
 
-    return DimensionScore(base=round(base, 1), da_yun_bonus=round(bonus, 1),
-                          total=round(min(10, base + bonus), 1))
+    return DimensionScore(base=round(base, 1), da_yun_bonus=round(bonus, 1), total=round(min(10, base + bonus), 1))
 
 
 def score_xue_li(bazi: BaZi, xi_yong: list[str], da_yun_list: list[DaYun]) -> DimensionScore:
@@ -143,16 +134,13 @@ def score_xue_li(bazi: BaZi, xi_yong: list[str], da_yun_list: list[DaYun]) -> Di
         base += 1.5
     elif "偏印" in all_ss:
         base += 1.0
-    if "伤官" in all_ss:
-        base += 0.5
-    elif "食神" in all_ss:
+    if "伤官" in all_ss or "食神" in all_ss:
         base += 0.5
 
     base = max(0, min(7, base))
     bonus = _get_da_yun_bonus(bazi, da_yun_list) * 0.4  # 学历受大运影响约40%
 
-    return DimensionScore(base=round(base, 1), da_yun_bonus=round(bonus, 1),
-                          total=round(min(10, base + bonus), 1))
+    return DimensionScore(base=round(base, 1), da_yun_bonus=round(bonus, 1), total=round(min(10, base + bonus), 1))
 
 
 def score_zi_nv(bazi: BaZi, da_yun_list: list[DaYun]) -> DimensionScore:
@@ -170,8 +158,7 @@ def score_zi_nv(bazi: BaZi, da_yun_list: list[DaYun]) -> DimensionScore:
     base = max(0, min(7, base))
     bonus = _get_da_yun_bonus(bazi, da_yun_list) * 0.5  # 子女约50%
 
-    return DimensionScore(base=round(base, 1), da_yun_bonus=round(bonus, 1),
-                          total=round(min(10, base + bonus), 1))
+    return DimensionScore(base=round(base, 1), da_yun_bonus=round(bonus, 1), total=round(min(10, base + bonus), 1))
 
 
 def score_jian_kang(bazi: BaZi, da_yun_list: list[DaYun]) -> DimensionScore:
@@ -200,8 +187,7 @@ def score_jian_kang(bazi: BaZi, da_yun_list: list[DaYun]) -> DimensionScore:
     base = max(0, min(7, base))
     bonus = _get_da_yun_bonus(bazi, da_yun_list) * 0.3  # 健康约30%
 
-    return DimensionScore(base=round(base, 1), da_yun_bonus=round(bonus, 1),
-                          total=round(min(10, base + bonus), 1))
+    return DimensionScore(base=round(base, 1), da_yun_bonus=round(bonus, 1), total=round(min(10, base + bonus), 1))
 
 
 def DEFAULT_DIMENSIONS(bazi: BaZi, da_yun_list: list[DaYun] = None) -> dict[str, DimensionScore]:
@@ -226,10 +212,14 @@ def DEFAULT_DIMENSIONS(bazi: BaZi, da_yun_list: list[DaYun] = None) -> dict[str,
         "学业学历": score_xue_li(bazi, xi_yong, da_yun_list),
         "子女运势": score_zi_nv(bazi, da_yun_list),
         "健康体质": score_jian_kang(bazi, da_yun_list),
-        "人际贵人": DimensionScore(base=4.0,
-                                   da_yun_bonus=round(_get_da_yun_bonus(bazi, da_yun_list) * 0.3, 1),
-                                   total=round(min(10, 4.0 + _get_da_yun_bonus(bazi, da_yun_list) * 0.3), 1)),
-        "综合家运": DimensionScore(base=4.0,
-                                   da_yun_bonus=round(_get_da_yun_bonus(bazi, da_yun_list) * 0.4, 1),
-                                   total=round(min(10, 4.0 + _get_da_yun_bonus(bazi, da_yun_list) * 0.4), 1)),
+        "人际贵人": DimensionScore(
+            base=4.0,
+            da_yun_bonus=round(_get_da_yun_bonus(bazi, da_yun_list) * 0.3, 1),
+            total=round(min(10, 4.0 + _get_da_yun_bonus(bazi, da_yun_list) * 0.3), 1),
+        ),
+        "综合家运": DimensionScore(
+            base=4.0,
+            da_yun_bonus=round(_get_da_yun_bonus(bazi, da_yun_list) * 0.4, 1),
+            total=round(min(10, 4.0 + _get_da_yun_bonus(bazi, da_yun_list) * 0.4), 1),
+        ),
     }

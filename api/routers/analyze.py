@@ -1,16 +1,20 @@
 """八字分析路由 v2.1 — 农历转公历支持 + 完整端点"""
+
+import asyncio
+import os
+import sys
+from concurrent.futures import ThreadPoolExecutor
+
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import HTMLResponse
+
 from api.schemas.request import AnalyzeRequest
 from api.schemas.response import AnalyzeResponse
 from api.services.analysis_service import AnalysisService
-from concurrent.futures import ThreadPoolExecutor
-import asyncio, json, os, sys, datetime
 
 # 引入引擎模块
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "engine"))
-from report_generator import generate_report as gen_report
 from lunar import lunar_to_solar
+from report_generator import generate_report as gen_report
 
 router = APIRouter(prefix="/api/v1", tags=["analyze"])
 
@@ -19,9 +23,14 @@ _executor = ThreadPoolExecutor(max_workers=4)
 _service = AnalysisService()
 
 
-def _ensure_solar_date(birth_year: int, birth_month: int, birth_day: int,
-                        calendar_type: str = "solar",
-                        lunar_month: int = None, lunar_day: int = None):
+def _ensure_solar_date(
+    birth_year: int,
+    birth_month: int,
+    birth_day: int,
+    calendar_type: str = "solar",
+    lunar_month: int = None,
+    lunar_day: int = None,
+):
     """
     如果用户选择农历，将出生日期转为公历
     返回 (solar_year, solar_month, solar_day)
@@ -37,19 +46,25 @@ def _ensure_solar_date(birth_year: int, birth_month: int, birth_day: int,
     return (birth_year, birth_month, birth_day)
 
 
-def _call_engine_direct(name, gender, birth_year, birth_month, birth_day,
-                         birth_hour, birth_minute=0,
-                         calendar_type="solar",
-                         lunar_month=None, lunar_day=None) -> dict:
+def _call_engine_direct(
+    name,
+    gender,
+    birth_year,
+    birth_month,
+    birth_day,
+    birth_hour,
+    birth_minute=0,
+    calendar_type="solar",
+    lunar_month=None,
+    lunar_day=None,
+) -> dict:
     """统一引擎调用入口（含农历转换）"""
     from api.services.engine_client import call_engine
 
     # 农历→公历转换
-    sy, sm, sd = _ensure_solar_date(birth_year, birth_month, birth_day,
-                                     calendar_type, lunar_month, lunar_day)
+    sy, sm, sd = _ensure_solar_date(birth_year, birth_month, birth_day, calendar_type, lunar_month, lunar_day)
 
-    return call_engine(name, gender, sy, sm, sd, birth_hour, birth_minute,
-                        lunar_month, lunar_day)
+    return call_engine(name, gender, sy, sm, sd, birth_hour, birth_minute, lunar_month, lunar_day)
 
 
 @router.post("/analyze", response_model=AnalyzeResponse)
@@ -59,10 +74,7 @@ async def analyze(request: AnalyzeRequest):
     result = await loop.run_in_executor(_executor, _run_analysis, request)
 
     if result.get("status") == "failed":
-        raise HTTPException(
-            status_code=500,
-            detail=result.get("error", "分析失败")
-        )
+        raise HTTPException(status_code=500, detail=result.get("error", "分析失败"))
 
     return AnalyzeResponse(
         analysis_id=result["analysis_id"],
@@ -78,16 +90,26 @@ def _run_analysis(request: AnalyzeRequest) -> dict:
     svc = AnalysisService()
     # 先转公历
     sy, sm, sd = _ensure_solar_date(
-        request.birth_year, request.birth_month, request.birth_day,
-        request.calendar_type, request.lunar_month, request.lunar_day)
+        request.birth_year,
+        request.birth_month,
+        request.birth_day,
+        request.calendar_type,
+        request.lunar_month,
+        request.lunar_day,
+    )
     return svc.analyze(
-        name=request.name, gender=request.gender,
-        birth_year=sy, birth_month=sm, birth_day=sd,
+        name=request.name,
+        gender=request.gender,
+        birth_year=sy,
+        birth_month=sm,
+        birth_day=sd,
         birth_hour=request.birth_hour,
         birth_minute=request.birth_minute,
         calendar_type=request.calendar_type,
-        lunar_month=request.lunar_month, lunar_day=request.lunar_day,
-        notes=request.notes, tags=request.tags,
+        lunar_month=request.lunar_month,
+        lunar_day=request.lunar_day,
+        notes=request.notes,
+        tags=request.tags,
     )
 
 
@@ -110,11 +132,20 @@ async def get_user_analyses(user_id: int, limit: int = 20):
 async def debug_analyze(request: AnalyzeRequest):
     """调试模式：返回规则引擎完整JSON（含农历支持）"""
     loop = asyncio.get_event_loop()
-    result = await loop.run_in_executor(_executor, _call_engine_direct,
-        request.name, request.gender,
-        request.birth_year, request.birth_month, request.birth_day,
-        request.birth_hour, request.birth_minute,
-        request.calendar_type, request.lunar_month, request.lunar_day)
+    result = await loop.run_in_executor(
+        _executor,
+        _call_engine_direct,
+        request.name,
+        request.gender,
+        request.birth_year,
+        request.birth_month,
+        request.birth_day,
+        request.birth_hour,
+        request.birth_minute,
+        request.calendar_type,
+        request.lunar_month,
+        request.lunar_day,
+    )
     return result
 
 
@@ -122,11 +153,20 @@ async def debug_analyze(request: AnalyzeRequest):
 async def report_endpoint(request: AnalyzeRequest):
     """生成完整命理报告（含农历支持）"""
     loop = asyncio.get_event_loop()
-    result = await loop.run_in_executor(_executor, _call_engine_direct,
-        request.name, request.gender,
-        request.birth_year, request.birth_month, request.birth_day,
-        request.birth_hour, request.birth_minute,
-        request.calendar_type, request.lunar_month, request.lunar_day)
+    result = await loop.run_in_executor(
+        _executor,
+        _call_engine_direct,
+        request.name,
+        request.gender,
+        request.birth_year,
+        request.birth_month,
+        request.birth_day,
+        request.birth_hour,
+        request.birth_minute,
+        request.calendar_type,
+        request.lunar_month,
+        request.lunar_day,
+    )
 
     if not result.get("success"):
         return {"success": False, "error": result.get("error", "引擎调用失败")}

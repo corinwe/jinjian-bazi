@@ -7,7 +7,8 @@
 """
 
 import sys, json, traceback
-sys.path.insert(0, '/root/bazi-platform/engine')
+
+sys.path.insert(0, "/root/bazi-platform/engine")
 
 from constants import BaZi, Pillar, TIAN_GAN_WU_XING, DaYun
 from shen_qiang_ruo import compute_shen_qiang_ruo
@@ -25,58 +26,72 @@ from pipeline_v5 import run_v5, run_pipeline, format_21_section_report
 FAMILY = [
     {
         "name": "家主",
-        "bazi": BaZi(year=Pillar("庚","申"), month=Pillar("癸","未"),
-                      day=Pillar("辛","亥"), hour=Pillar("辛","卯"), gender="男"),
-        "birth_year": 1979, "birth_month": 7,
-        "expected": {
-            "shen_qiang_ruo": (64.0, "身强"),
-            "cai_xing": 31.2,
-            "ge_ju": "偏印格",
-        }
+        "bazi": BaZi(
+            year=Pillar("庚", "申"),
+            month=Pillar("癸", "未"),
+            day=Pillar("辛", "亥"),
+            hour=Pillar("辛", "卯"),
+            gender="男",
+        ),
+        "birth_year": 1979,
+        "birth_month": 7,
+        "expected": {"shen_qiang_ruo": (64.0, "身强"), "cai_xing": 31.2, "ge_ju": "偏印格"},
     },
     {
         "name": "主母",
-        "bazi": BaZi(year=Pillar("丁","卯"), month=Pillar("丁","未"),
-                      day=Pillar("庚","午"), hour=Pillar("壬","午"), gender="女"),
-        "birth_year": 1987, "birth_month": 7,
+        "bazi": BaZi(
+            year=Pillar("丁", "卯"),
+            month=Pillar("丁", "未"),
+            day=Pillar("庚", "午"),
+            hour=Pillar("壬", "午"),
+            gender="女",
+        ),
+        "birth_year": 1987,
+        "birth_month": 7,
         "expected": {
             "shen_qiang_ruo": (50.0, "从弱"),  # 燥土+丁火引化→从弱
             "cai_xing": 16.0,
             "ge_ju": "正印格",
-        }
+        },
     },
     {
         "name": "子源",
-        "bazi": BaZi(year=Pillar("辛","卯"), month=Pillar("癸","巳"),
-                      day=Pillar("丙","戌"), hour=Pillar("癸","巳"), gender="男"),
-        "birth_year": 2011, "birth_month": 4,
-        "expected": {
-            "shen_qiang_ruo": (55.6, "身强"),
-            "cai_xing": 30.8,
-            "ge_ju": "建禄格",
-        }
+        "bazi": BaZi(
+            year=Pillar("辛", "卯"),
+            month=Pillar("癸", "巳"),
+            day=Pillar("丙", "戌"),
+            hour=Pillar("癸", "巳"),
+            gender="男",
+        ),
+        "birth_year": 2011,
+        "birth_month": 4,
+        "expected": {"shen_qiang_ruo": (55.6, "身强"), "cai_xing": 30.8, "ge_ju": "建禄格"},
     },
     {
         "name": "父亲",
-        "bazi": BaZi(year=Pillar("己","丑"), month=Pillar("癸","酉"),
-                      day=Pillar("癸","亥"), hour=Pillar("戊","午"), gender="男"),
-        "birth_year": 1949, "birth_month": 8,
-        "expected": {
-            "shen_qiang_ruo": (66.4, "身强"),
-            "cai_xing": 12.0,
-            "ge_ju": "偏印格",
-        }
+        "bazi": BaZi(
+            year=Pillar("己", "丑"),
+            month=Pillar("癸", "酉"),
+            day=Pillar("癸", "亥"),
+            hour=Pillar("戊", "午"),
+            gender="男",
+        ),
+        "birth_year": 1949,
+        "birth_month": 8,
+        "expected": {"shen_qiang_ruo": (66.4, "身强"), "cai_xing": 12.0, "ge_ju": "偏印格"},
     },
     {
         "name": "立",
-        "bazi": BaZi(year=Pillar("辛","卯"), month=Pillar("癸","巳"),
-                      day=Pillar("甲","戌"), hour=Pillar("庚","午"), gender="男"),
-        "birth_year": 2011, "birth_month": 4,
-        "expected": {
-            "shen_qiang_ruo": (4.0, "身弱"),
-            "cai_xing": 43.2,
-            "ge_ju": "伤官格",
-        }
+        "bazi": BaZi(
+            year=Pillar("辛", "卯"),
+            month=Pillar("癸", "巳"),
+            day=Pillar("甲", "戌"),
+            hour=Pillar("庚", "午"),
+            gender="男",
+        ),
+        "birth_year": 2011,
+        "birth_month": 4,
+        "expected": {"shen_qiang_ruo": (4.0, "身弱"), "cai_xing": 43.2, "ge_ju": "伤官格"},
     },
 ]
 
@@ -88,6 +103,7 @@ pass_count = 0
 fail_count = 0
 test_results = []
 
+
 def check(name: str, passed: bool, detail: str = ""):
     global pass_count, fail_count
     status = "✅ PASS" if passed else "❌ FAIL"
@@ -98,12 +114,14 @@ def check(name: str, passed: bool, detail: str = ""):
     test_results.append((name, status, detail))
     print(f"  {status}: {name}" + (f" — {detail}" if detail else ""))
 
+
 def assert_approx(actual, expected, label: str, tolerance: float = 0.5):
     """近似相等检查（浮点数）"""
     if abs(actual - expected) <= tolerance:
         check(f"{label}: {expected}", True)
     else:
-        check(f"{label}: 期望{expected} 实际{actual}", False, f"偏差{abs(actual-expected):.1f}")
+        check(f"{label}: 期望{expected} 实际{actual}", False, f"偏差{abs(actual - expected):.1f}")
+
 
 def assert_eq(actual, expected, label: str):
     """严格相等检查"""
@@ -112,14 +130,16 @@ def assert_eq(actual, expected, label: str):
     else:
         check(f"{label}: 期望{expected} 实际{actual}", False)
 
+
 # ════════════════════════════════════════════
 # §A: 核心规则验证（5人）
 # ════════════════════════════════════════════
 
+
 def test_core_rules():
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("§A 核心规则验证（身强弱/财星/格局）")
-    print("="*60)
+    print("=" * 60)
 
     for person in FAMILY:
         p = person["bazi"]
@@ -144,25 +164,41 @@ def test_core_rules():
         else:
             check(f"{name}格局", False, f"未识别格局")
 
-    print(f"\n→ {pass_count}/{pass_count+fail_count}")
+    print(f"\n→ {pass_count}/{pass_count + fail_count}")
+
 
 # ════════════════════════════════════════════
 # §B: 21§完整性验证（5人）
 # ════════════════════════════════════════════
 
+
 def test_21_sections():
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("§B 21§完整性与结构验证")
-    print("="*60)
+    print("=" * 60)
 
     REQUIRED_SECTIONS = [
-        "sec_1_overview", "sec_2_ge_ju", "sec_3_shen_qiang_ruo",
-        "sec_4_xi_yong", "sec_5_zai_huo", "sec_6_character",
-        "sec_7_appearance", "sec_8_wealth", "sec_9_property",
-        "sec_10_career", "sec_11_education", "sec_12_marriage",
-        "sec_13_children", "sec_14_health", "sec_15_family",
-        "sec_16_events", "sec_17_da_yun_detail", "sec_18_verdicts",
-        "sec_19_overall", "sec_20_wu_xing_advice", "sec_21_advice",
+        "sec_1_overview",
+        "sec_2_ge_ju",
+        "sec_3_shen_qiang_ruo",
+        "sec_4_xi_yong",
+        "sec_5_zai_huo",
+        "sec_6_character",
+        "sec_7_appearance",
+        "sec_8_wealth",
+        "sec_9_property",
+        "sec_10_career",
+        "sec_11_education",
+        "sec_12_marriage",
+        "sec_13_children",
+        "sec_14_health",
+        "sec_15_family",
+        "sec_16_events",
+        "sec_17_da_yun_detail",
+        "sec_18_verdicts",
+        "sec_19_overall",
+        "sec_20_wu_xing_advice",
+        "sec_21_advice",
     ]
 
     for person in FAMILY:
@@ -194,16 +230,18 @@ def test_21_sections():
         else:
             check(f"{name}大运列表", False, "数据结构异常")
 
-    print(f"\n→ {pass_count}/{pass_count+fail_count}")
+    print(f"\n→ {pass_count}/{pass_count + fail_count}")
+
 
 # ════════════════════════════════════════════
 # §C: 特殊规则验证
 # ════════════════════════════════════════════
 
+
 def test_special_rules():
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("§C 特殊规则验证（燥土/从弱/财库/大运赋能）")
-    print("="*60)
+    print("=" * 60)
 
     # C1: 燥土规则 — 主母 丁卯 丁未 庚午 壬午
     # 未+天干丁火→当火看→不计印分→从弱(50分)
@@ -239,27 +277,27 @@ def test_special_rules():
         dy_list, qy_age, qy_year = compute_da_yun(p, person["birth_year"], 1.1)
         dims = DEFAULT_DIMENSIONS(p, dy_list)
         for dname, ds in dims.items():
-            check(f"C5{person['name']}{dname}:da_yun_bonus={ds.da_yun_bonus}",
-                  ds.da_yun_bonus >= 0)
-    
+            check(f"C5{person['name']}{dname}:da_yun_bonus={ds.da_yun_bonus}", ds.da_yun_bonus >= 0)
+
     # C6: 日支财库检测
     for person in FAMILY:
         p = person["bazi"]
         result = run_v5(p, person["birth_year"], person["birth_month"], 1.1, 2026)
         cai_ku = result.get("sec_8_wealth", {}).get("cai_ku", {})
-        check(f"C6{person['name']}财库结构:type={type(cai_ku).__name__}",
-              isinstance(cai_ku, dict))
+        check(f"C6{person['name']}财库结构:type={type(cai_ku).__name__}", isinstance(cai_ku, dict))
 
-    print(f"\n→ {pass_count}/{pass_count+fail_count}")
+    print(f"\n→ {pass_count}/{pass_count + fail_count}")
+
 
 # ════════════════════════════════════════════
 # §D: 接口兼容性验证
 # ════════════════════════════════════════════
 
+
 def test_api_compat():
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("§D 接口兼容性验证")
-    print("="*60)
+    print("=" * 60)
 
     # run_v5 → v5.0格式
     p = FAMILY[0]["bazi"]
@@ -267,8 +305,7 @@ def test_api_compat():
     assert_eq(result.get("meta", {}).get("version"), "5.0", "v5版本号")
 
     # run_pipeline → 旧接口格式
-    pipe_result = run_pipeline("家主", "男", "庚","申","癸","未","辛","亥","辛","卯",
-                                1979, 7, 1.1)
+    pipe_result = run_pipeline("家主", "男", "庚", "申", "癸", "未", "辛", "亥", "辛", "卯", 1979, 7, 1.1)
     assert_eq(pipe_result.get("success", True), True, "run_pipeline返回success")
     assert_eq("paipan" in pipe_result, True, "含paipan")
     assert_eq("analysis" in pipe_result, True, "含analysis")
@@ -281,16 +318,18 @@ def test_api_compat():
     except Exception as e:
         check("JSON序列化", False, str(e))
 
-    print(f"\n→ {pass_count}/{pass_count+fail_count}")
+    print(f"\n→ {pass_count}/{pass_count + fail_count}")
+
 
 # ════════════════════════════════════════════
 # §E: 边界条件验证
 # ════════════════════════════════════════════
 
+
 def test_edge_cases():
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("§E 边界条件验证")
-    print("="*60)
+    print("=" * 60)
 
     # E1: 所有天干地支都能被正确解析
     all_gans = "甲乙丙丁戊己庚辛壬癸"
@@ -309,7 +348,8 @@ def test_edge_cases():
             # Just check it doesn't crash
             check(f"E2干支{gan_zhi}", True)
 
-    print(f"\n→ {pass_count}/{pass_count+fail_count}")
+    print(f"\n→ {pass_count}/{pass_count + fail_count}")
+
 
 # ════════════════════════════════════════════
 # 主入口
@@ -318,7 +358,7 @@ def test_edge_cases():
 if __name__ == "__main__":
     print("金鉴真人·八字确定性引擎 — 全量测试套件")
     print(f"测试时间: {__import__('datetime').datetime.now().isoformat()}")
-    print("="*60)
+    print("=" * 60)
 
     test_core_rules()
     test_21_sections()
@@ -326,9 +366,9 @@ if __name__ == "__main__":
     test_api_compat()
     test_edge_cases()
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("测试总结")
-    print("="*60)
+    print("=" * 60)
     total = pass_count + fail_count
     print(f"总用例: {total}")
     print(f"PASS: {pass_count}")

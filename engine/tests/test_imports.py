@@ -31,6 +31,7 @@ MODULE_CHECKS = {
     "pipeline_v5": ["run_pipeline", "run_v5", "format_21_section_report"],
 }
 
+
 def test_all_modules_import():
     """验证所有模块可正确导入"""
     failed = []
@@ -39,7 +40,7 @@ def test_all_modules_import():
             importlib.import_module(mod_name)
         except ImportError as e:
             failed.append(f"  ✗ {mod_name}: {e}")
-    
+
     assert not failed, f"模块导入失败:\n" + "\n".join(failed)
     print(f"  ✓ 全部 {len(MODULE_CHECKS)} 个模块导入成功")
 
@@ -56,7 +57,7 @@ def test_all_expected_funcs():
                     failed.append(f"  ✗ {mod_name}.{func_name} 不存在")
         except ImportError as e:
             failed.append(f"  ✗ {mod_name}: {e}")
-    
+
     assert not failed, f"缺少预期函数:\n" + "\n".join(failed)
     print(f"  ✓ 全部预期函数存在")
 
@@ -65,4 +66,3 @@ if __name__ == "__main__":
     test_all_modules_import()
     test_all_expected_funcs()
     print("\n✅ 全部导入验证通过")
-

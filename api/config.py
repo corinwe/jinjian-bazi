@@ -1,4 +1,5 @@
 """API服务配置"""
+
 import os
 
 # 服务配置
@@ -13,9 +14,7 @@ BAZI_ENGINE = "/root/weiwuji-knowledge-base/07-国学哲学/八字命格/scripts
 
 # 如果bazi-engine.py在其他路径，自动查找
 if not os.path.exists(BAZI_ENGINE):
-    alt_paths = [
-        "/root/.hermes/profiles/jinjian-zhenren/scripts/bazi-engine.py",
-    ]
+    alt_paths = ["/root/.hermes/profiles/jinjian-zhenren/scripts/bazi-engine.py"]
     for p in alt_paths:
         if os.path.exists(p):
             BAZI_ENGINE = p

@@ -1,17 +1,20 @@
 """Pydantic schemas for API"""
-from pydantic import BaseModel, Field
-from typing import Optional, List
+
 from datetime import datetime
+
+from pydantic import BaseModel
 
 
 class UserRegister(BaseModel):
     phone: str
     password: str
-    nickname: Optional[str] = None
+    nickname: str | None = None
+
 
 class UserLogin(BaseModel):
     phone: str
     password: str
+
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -21,14 +24,16 @@ class TokenResponse(BaseModel):
     level: str
     credits: int
 
+
 class UserInfo(BaseModel):
     id: int
     nickname: str
-    phone: Optional[str]
+    phone: str | None
     level: str
     credits: int
     report_count: int
-    created_at: Optional[datetime]
+    created_at: datetime | None
+
 
 class AnalyzeRequest(BaseModel):
     year_gan: str
@@ -40,21 +45,24 @@ class AnalyzeRequest(BaseModel):
     hour_gan: str
     hour_zhi: str
     gender: str  # 男/女
-    birth_year: Optional[int] = 1980
-    birth_month_lunar: Optional[int] = 1
+    birth_year: int | None = 1980
+    birth_month_lunar: int | None = 1
+
 
 class ReportResponse(BaseModel):
     id: int
     bazi: str
     gender: str
     version: str
-    result: Optional[dict]
-    created_at: Optional[datetime]
+    result: dict | None
+    created_at: datetime | None
+
 
 class ReportListResponse(BaseModel):
     total: int
-    items: List[ReportResponse]
+    items: list[ReportResponse]
+
 
 class ErrorResponse(BaseModel):
     error: str
-    detail: Optional[str] = None
+    detail: str | None = None

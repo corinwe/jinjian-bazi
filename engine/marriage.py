@@ -18,17 +18,22 @@
 """
 
 from __future__ import annotations
-from constants import TIAN_GAN_WU_XING, DI_ZHI_WU_XING, DI_ZHI_CANG_GAN
-from shi_shen import get_shi_shen_for_gan, get_shi_shen_for_cang_gan, is_tou_gan
-from xing_chong_he_hua import check_chong, check_liu_he, check_xing
+
+from constants import DI_ZHI_CANG_GAN, DI_ZHI_WU_XING, TIAN_GAN_WU_XING
+from shi_shen import get_shi_shen_for_cang_gan, get_shi_shen_for_gan
+from xing_chong_he_hua import check_chong, check_liu_he
 
 
 def analyze_marriage(
-    ri_zhu: str, ri_zhi: str, gender: str,
+    ri_zhu: str,
+    ri_zhi: str,
+    gender: str,
     bazi_gans: list[str],
-    shen_label: str, shen_score: float,
+    shen_label: str,
+    shen_score: float,
     xi_yong: list[str],
-    da_yun_gans: list[str], da_yun_zhis: list[str],
+    da_yun_gans: list[str],
+    da_yun_zhis: list[str],
     da_yun_start_ages: list[int],
 ) -> dict:
     """
@@ -40,10 +45,10 @@ def analyze_marriage(
     for cg, ratio in ri_zhi_cangs:
         ss = get_shi_shen_for_cang_gan(cg, ri_zhu)
         ri_zhi_shi_shens.append({"cang_gan": cg, "shi_shen": ss, "ratio": ratio})
-    
+
     # 夫妻宫十神主星（本气）
     ri_zhi_master = ri_zhi_shi_shens[0]["shi_shen"] if ri_zhi_shi_shens else ""
-    
+
     # 配偶特征
     spouse_traits = []
     if ri_zhi_master == "正财":
@@ -64,27 +69,27 @@ def analyze_marriage(
         spouse_traits = ["温柔", "有才艺", "懂生活"]
     else:
         spouse_traits = ["普通人", "性格温和"]
-    
+
     # 配偶五行
     master_wx = TIAN_GAN_WU_XING[ri_zhi_cangs[0][0]] if ri_zhi_cangs else ""
-    
+
     # ── 结婚窗口 ──
     marriage_windows = []
-    
+
     for i, (dg, dz, sa) in enumerate(zip(da_yun_gans, da_yun_zhis, da_yun_start_ages)):
         if sa < 20 or sa > 55:
             continue
         if sa > 45:
             break
-        
+
         window_score = 0
         reasons = []
-        
+
         # 信号1: 夫妻宫引动
         if check_chong(dz, ri_zhi) or check_liu_he(dz, ri_zhi):
             window_score += 1
             reasons.append("夫妻宫引动")
-        
+
         # 信号2: 正财/正官到位（男财女官）
         dg_ss = get_shi_shen_for_gan(dg, ri_zhu)
         if gender == "男" and dg_ss == "正财":
@@ -93,52 +98,52 @@ def analyze_marriage(
         elif gender == "女" and dg_ss == "正官":
             window_score += 2
             reasons.append("正官到位")
-        
+
         # 信号3: 大运为喜用
         dg_wx = TIAN_GAN_WU_XING[dg]
         dz_wx = DI_ZHI_WU_XING[dz]
         if dg_wx in xi_yong or dz_wx in xi_yong:
             window_score += 1
             reasons.append("喜用大运")
-        
+
         # 信号4: 印星帮身（身弱可担家庭责任）
         if shen_label == "身弱" and dg_ss in ["正印", "偏印"]:
             window_score += 1
             reasons.append("印星扶身")
-        
+
         if window_score >= 2:
             label = "🏆最佳窗口" if window_score >= 4 else "✅次佳窗口" if window_score >= 3 else "⚠️一般窗口"
-            marriage_windows.append({
-                "da_yun": f"{dg}{dz}",
-                "age_range": f"{sa}~{sa+9}岁",
-                "score": window_score,
-                "label": label,
-                "reasons": reasons,
-            })
-    
+            marriage_windows.append(
+                {
+                    "da_yun": f"{dg}{dz}",
+                    "age_range": f"{sa}~{sa + 9}岁",
+                    "score": window_score,
+                    "label": label,
+                    "reasons": reasons,
+                }
+            )
+
     # 排序
     marriage_windows.sort(key=lambda w: w["score"], reverse=True)
-    
+
     # 最佳结婚年份估算
     best_window = marriage_windows[0] if marriage_windows else None
     if best_window:
         best_window_age = best_window["age_range"].split("~")[0]
     else:
         best_window_age = "暂无明显窗口"
-    
+
     # 感情质量评估
     quality = "中等"
     quality_score = 5
-    if ri_zhi_master == "正财" and gender == "男":
+    if (ri_zhi_master == "正财" and gender == "男") or (ri_zhi_master == "正官" and gender == "女"):
         quality_score += 1
-    elif ri_zhi_master == "正官" and gender == "女":
-        quality_score += 1
-    
+
     if shen_label == "身强":
         quality_score += 1
     elif shen_label == "身弱":
         quality_score -= 1
-    
+
     if quality_score >= 7:
         quality = "上等"
     elif quality_score >= 5:
@@ -147,7 +152,7 @@ def analyze_marriage(
         quality = "中等"
     else:
         quality = "下等"
-    
+
     return {
         "ri_zhi_analysis": {
             "zhi": ri_zhi,
@@ -167,12 +172,16 @@ def analyze_marriage(
 if __name__ == "__main__":
     # 测试: 子源 甲午日 男
     result = analyze_marriage(
-        "甲", "午", "男",
+        "甲",
+        "午",
+        "男",
         ["庚", "辛", "甲", "丙"],
-        "身弱", 12.0, ["水", "木"],
-        ["壬","癸","甲","乙","丙","丁","戊","己"],
-        ["午","未","申","酉","戌","亥","子","丑"],
-        [0,10,20,30,40,50,60,70]
+        "身弱",
+        12.0,
+        ["水", "木"],
+        ["壬", "癸", "甲", "乙", "丙", "丁", "戊", "己"],
+        ["午", "未", "申", "酉", "戌", "亥", "子", "丑"],
+        [0, 10, 20, 30, 40, 50, 60, 70],
     )
     print(f"配偶: {result['spouse_description']}")
     print(f"质量: {result['quality']}")

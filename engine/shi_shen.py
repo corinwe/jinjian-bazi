@@ -2,11 +2,7 @@
 十神判定引擎 v1.0 — 金鉴真人·金鉴真人原始规则
 """
 
-from constants import (
-    TIAN_GAN, TIAN_GAN_YIN_YANG, TIAN_GAN_WU_XING,
-    DI_ZHI, DI_ZHI_CANG_GAN, SHI_SHEN_MAP, WU_XING_SHENG, WU_XING_KE,
-    Pillar, BaZi,
-)
+from constants import SHI_SHEN_MAP, TIAN_GAN_WU_XING, TIAN_GAN_YIN_YANG, WU_XING_KE, WU_XING_SHENG, BaZi, Pillar
 
 
 def _wu_xing_relation(gan_wx: str, ri_zhu_wx: str) -> str:
@@ -17,13 +13,13 @@ def _wu_xing_relation(gan_wx: str, ri_zhu_wx: str) -> str:
     if gan_wx == ri_zhu_wx:
         return "同我"
     if WU_XING_SHENG[gan_wx] == ri_zhu_wx:
-        return "生我"       # gan生日主
+        return "生我"  # gan生日主
     if WU_XING_SHENG[ri_zhu_wx] == gan_wx:
-        return "我生"       # 日主生gan
+        return "我生"  # 日主生gan
     if WU_XING_KE[gan_wx] == ri_zhu_wx:
-        return "克我"       # gan克日主
+        return "克我"  # gan克日主
     if WU_XING_KE[ri_zhu_wx] == gan_wx:
-        return "我克"       # 日主克gan
+        return "我克"  # 日主克gan
     return "同我"  # fallback
 
 
@@ -47,13 +43,15 @@ def get_shi_shen_all_dry(bazi: BaZi) -> list[dict]:
     names = ["年柱", "月柱", "日柱", "时柱"]
     for pillar, name in zip(pillars, names):
         shi_shen = get_shi_shen_for_gan(pillar.gan, ri_zhu)
-        result.append({
-            "position": name,
-            "gan": pillar.gan,
-            "shi_shen": shi_shen,
-            "yin_yang": TIAN_GAN_YIN_YANG[pillar.gan],
-            "wu_xing": TIAN_GAN_WU_XING[pillar.gan],
-        })
+        result.append(
+            {
+                "position": name,
+                "gan": pillar.gan,
+                "shi_shen": shi_shen,
+                "yin_yang": TIAN_GAN_YIN_YANG[pillar.gan],
+                "wu_xing": TIAN_GAN_WU_XING[pillar.gan],
+            }
+        )
     return result
 
 
@@ -73,14 +71,16 @@ def get_all_cang_gan_shi_shen(bazi: BaZi) -> list[dict]:
     for pillar, name in zip(pillars, names):
         for cg, ratio in pillar.cang_gan:
             shi_shen = get_shi_shen_for_cang_gan(cg, ri_zhu)
-            result.append({
-                "position": name,
-                "zhi": pillar.zhi,
-                "cang_gan": cg,
-                "ratio": ratio,
-                "shi_shen": shi_shen,
-                "wu_xing": TIAN_GAN_WU_XING[cg],
-            })
+            result.append(
+                {
+                    "position": name,
+                    "zhi": pillar.zhi,
+                    "cang_gan": cg,
+                    "ratio": ratio,
+                    "shi_shen": shi_shen,
+                    "wu_xing": TIAN_GAN_WU_XING[cg],
+                }
+            )
     return result
 
 
@@ -105,12 +105,9 @@ def is_tou_gan(gan: str, bazi: BaZi, shi_shen_name: str = "") -> bool:
 if __name__ == "__main__":
     # 快速测试
     from constants import BaZi, Pillar
+
     test_bazi = BaZi(
-        year=Pillar("庚", "申"),
-        month=Pillar("辛", "巳"),
-        day=Pillar("甲", "午"),
-        hour=Pillar("丙", "寅"),
-        gender="男"
+        year=Pillar("庚", "申"), month=Pillar("辛", "巳"), day=Pillar("甲", "午"), hour=Pillar("丙", "寅"), gender="男"
     )
     print("天干十神:")
     for item in get_shi_shen_all_dry(test_bazi):

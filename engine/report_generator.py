@@ -6,8 +6,9 @@
 """
 
 from __future__ import annotations
-from typing import Any
+
 from datetime import datetime
+
 
 def _safe(d, key, default=""):
     """安全获取dict中的值"""
@@ -15,10 +16,12 @@ def _safe(d, key, default=""):
         return d.get(key, default)
     return default
 
+
 def _fmt_list(lst, joiner="、"):
     if not lst or not isinstance(lst, list):
         return ""
     return joiner.join(str(x) for x in lst)
+
 
 def generate_report(result: dict, name: str = "", gender: str = "") -> str:
     """生成标准格式命理报告（深版+标准版双输出）"""
@@ -27,6 +30,7 @@ def generate_report(result: dict, name: str = "", gender: str = "") -> str:
     # 深版
     try:
         from generate_deep_report import generate_deep_report
+
         deep = generate_deep_report({"paipan": {}, "basic_data": {}, "result": result}, name, gender)
         if len(deep.split("\n")) > len(standard.split("\n")):
             return deep
@@ -90,10 +94,10 @@ def _generate_standard_report(result: dict, name: str = "", gender: str = "") ->
     display_name = name or "命主"
     L(f"# {display_name}·完整八字命理深析报告 v2.0（标准格式·引擎数据校准版）")
     L("")
-    L(f"**编制人：** 金鉴真人")
+    L("**编制人：** 金鉴真人")
     L(f"**编制时间：** {today}")
-    L(f"**版本：** v2.0（标准格式·引擎数据校准版）")
-    L(f"**模板：** bazi-report-template v5.2")
+    L("**版本：** v2.0（标准格式·引擎数据校准版）")
+    L("**模板：** bazi-report-template v5.2")
     L(f"**八字：** {bazi}")
     L(f"**日主：** {ri_gan}（{ri_wx}）")
     L(f"**性别：** {gender_text}")
@@ -108,7 +112,7 @@ def _generate_standard_report(result: dict, name: str = "", gender: str = "") ->
     L("> ⑤ 大运覆盖8步完整序列；")
     L("> ⑥ 全报告约1700~1800行深度分析；")
     L("> ⑦ 所有数据源于bazi-engine引擎JSON校准；")
-    L(f"> ⑧ 身强弱评分采用金鉴真人原始评分规则（月令本气印=40分；其他位置印=0分）。")
+    L("> ⑧ 身强弱评分采用金鉴真人原始评分规则（月令本气印=40分；其他位置印=0分）。")
     L("")
 
     # ═══════════════════════════ §1 ═══════════════════════════
@@ -123,17 +127,17 @@ def _generate_standard_report(result: dict, name: str = "", gender: str = "") ->
     L(f"| 2 | **纳音** | {na_yin_str} |")
     L(f"| 3 | **日主** | {ri_gan}（{ri_wx}） |")
     L(f"| 4 | **性别** | {gender_text} |")
-    L(f"| 5 | **出生时间** | （引擎计算） |")
+    L("| 5 | **出生时间** | （引擎计算） |")
     L("")
     L("**第二段：核心命理（7项）**")
     L("")
     L(f"| 6 | **命格等级** | {ge_detail} |")
-    L(f"| 7 | **格局成立条件** | 月令定格局+透干确认 |")
+    L("| 7 | **格局成立条件** | 月令定格局+透干确认 |")
     L(f"| 8 | **身强身弱** | **{sqr_label}（{sqr_score}分）** |")
-    L(f"| 9 | **从弱格排查** | {'✅ 从弱' if sqr_label=='从弱' else '❌ 非从弱'} |")
+    L(f"| 9 | **从弱格排查** | {'✅ 从弱' if sqr_label == '从弱' else '❌ 非从弱'} |")
     L(f"| 10 | **喜用神（排序）** | 🟢 {' > '.join(str(x) for x in xi)} |")
     L(f"| 11 | **忌神（排序）** | 🔴 {' > '.join(str(x) for x in ji)} |")
-    L(f"| 12 | **空亡** | 以日柱推算 |")
+    L("| 12 | **空亡** | 以日柱推算 |")
     L("")
     L("**第三段：量化评分（4项）**")
     L("")
@@ -147,32 +151,35 @@ def _generate_standard_report(result: dict, name: str = "", gender: str = "") ->
     L("**第四段：大运综合（9项）**")
     L("")
     best_dy_name = _safe(best_dy, "gan_zhi", "")
-    best_dy_age = f"{_safe(best_dy,'start_age','')}~{_safe(best_dy,'end_age','')}岁" if best_dy else ""
+    best_dy_age = f"{_safe(best_dy, 'start_age', '')}~{_safe(best_dy, 'end_age', '')}岁" if best_dy else ""
     worst_dy_name = _safe(worst_dy, "gan_zhi", "")
-    worst_dy_age = f"{_safe(worst_dy,'start_age','')}~{_safe(worst_dy,'end_age','')}岁" if worst_dy else ""
+    worst_dy_age = f"{_safe(worst_dy, 'start_age', '')}~{_safe(worst_dy, 'end_age', '')}岁" if worst_dy else ""
     L(f"| 17 | **最佳大运** | 🏆 {best_dy_name}（{best_dy_age}） |")
-    L(f"| 18 | **起运年龄** | 0岁起运（引擎计算） |")
-    L(f"| 19 | **次佳大运** | 🥇 （按评分排序） |")
+    L("| 18 | **起运年龄** | 0岁起运（引擎计算） |")
+    L("| 19 | **次佳大运** | 🥇 （按评分排序） |")
     L(f"| 20 | **最差大运** | ⚠️ {worst_dy_name}（{worst_dy_age}） |")
-    L(f"| 21 | **现行大运** | {dy_list[0].get('gan_zhi','') if dy_list else ''} |")
-    L(f"| 22 | **发财最佳年份** | 🤑 大运财星窗口年 |")
-    L(f"| 23 | **健康注意方面** | 见§14健康分析 |")
+    L(f"| 21 | **现行大运** | {dy_list[0].get('gan_zhi', '') if dy_list else ''} |")
+    L("| 22 | **发财最佳年份** | 🤑 大运财星窗口年 |")
+    L("| 23 | **健康注意方面** | 见§14健康分析 |")
     L("| 24 | **四大特征** | 见各§详细分析 |")
     L("| 25 | **搬迁次数预测** | 🚚 见§5分析 |")
     L("")
 
     # 白话解读
-    L("> **🗣️ 白话：** " + f"{display_name}的八字为{bazi}，日主{ri_gan}属{ri_wx}，身{sqr_label}（{sqr_score}分）。" +
-      f"格局{ge_detail}。喜用{'、'.join(str(x) for x in xi)}，忌{'、'.join(str(x) for x in ji)}。" +
-      f"财星{cai_total}分，属{wealth_level}层次。" +
-      f"最佳大运在{best_dy_name}（{best_dy_age}），宜全力把握。" +
-      "本报告基于bazi-engine引擎结构化数据生成，遵循金鉴真人原始评级体系。")
+    L(
+        "> **🗣️ 白话：** "
+        + f"{display_name}的八字为{bazi}，日主{ri_gan}属{ri_wx}，身{sqr_label}（{sqr_score}分）。"
+        + f"格局{ge_detail}。喜用{'、'.join(str(x) for x in xi)}，忌{'、'.join(str(x) for x in ji)}。"
+        + f"财星{cai_total}分，属{wealth_level}层次。"
+        + f"最佳大运在{best_dy_name}（{best_dy_age}），宜全力把握。"
+        + "本报告基于bazi-engine引擎结构化数据生成，遵循金鉴真人原始评级体系。"
+    )
     L("")
 
     # ═══════════════════════════ §2 ═══════════════════════════
     L("## §2 格局分析")
     L("")
-    L(f"### 2.1 月令定性")
+    L("### 2.1 月令定性")
     L("")
     L(f"格局判定为{ge_detail}。月令为八字能量之源，决定格局的基调。")
     L(f"日主{ri_gan}{ri_wx}，与月令的五行生克关系构成了格局的基础框架。")
@@ -198,17 +205,17 @@ def _generate_standard_report(result: dict, name: str = "", gender: str = "") ->
     # ═══════════════════════════ §3 ═══════════════════════════
     L("## §3 身强弱详解")
     L("")
-    L(f"### 3.1 评分明细表（金鉴真人原始规则）")
+    L("### 3.1 评分明细表（金鉴真人原始规则）")
     L("")
     s3d = s3.get("details", {}) if isinstance(s3.get("details"), dict) else {}
-    L(f"| 维度 | 具体内容 | 计分 |")
-    L(f"|:----|:---------|:----:|")
-    L(f"| 月令印星 | 月令本气印星计分 | {_safe(s3d,'yue_yin',0)} |")
-    L(f"| 月令比劫 | 月令藏干比劫计分 | {_safe(s3d,'yue_bi',0)} |")
-    L(f"| 天干印 | 天干印星（非月令位置=0） | {_safe(s3d,'tg_yin',0)} |")
-    L(f"| 天干比劫 | 年干+月干+时干比劫 | {_safe(s3d,'tg_bi',0)} |")
-    L(f"| 日支印比 | 日支藏干印星比劫 | {_safe(s3d,'rz',0)} |")
-    L(f"| 年时支印比 | 年时支藏干印星比劫 | {_safe(s3d,'nsz',0)} |")
+    L("| 维度 | 具体内容 | 计分 |")
+    L("|:----|:---------|:----:|")
+    L(f"| 月令印星 | 月令本气印星计分 | {_safe(s3d, 'yue_yin', 0)} |")
+    L(f"| 月令比劫 | 月令藏干比劫计分 | {_safe(s3d, 'yue_bi', 0)} |")
+    L(f"| 天干印 | 天干印星（非月令位置=0） | {_safe(s3d, 'tg_yin', 0)} |")
+    L(f"| 天干比劫 | 年干+月干+时干比劫 | {_safe(s3d, 'tg_bi', 0)} |")
+    L(f"| 日支印比 | 日支藏干印星比劫 | {_safe(s3d, 'rz', 0)} |")
+    L(f"| 年时支印比 | 年时支藏干印星比劫 | {_safe(s3d, 'nsz', 0)} |")
     L(f"| **总分** | — | **{sqr_score}分** |")
     L("")
     L("### 3.2 判定结果")
@@ -226,7 +233,7 @@ def _generate_standard_report(result: dict, name: str = "", gender: str = "") ->
     if sqr_label == "从弱":
         L("✅ 从弱——命局印比全无或极弱，全局克泄耗，为真从弱格。")
     else:
-        L(f"❌ 非从弱——命局有印比支撑，不从。驳盘理由：存在印星或比劫生扶。")
+        L("❌ 非从弱——命局有印比支撑，不从。驳盘理由：存在印星或比劫生扶。")
     L("")
     L("### 3.4 假旺真弱排查（强制检查）")
     L("")
@@ -238,11 +245,13 @@ def _generate_standard_report(result: dict, name: str = "", gender: str = "") ->
     L("")
     L("### 4.1 用神层级")
     L("")
-    L(f"| 层级 | 五行 | 作用 |")
-    L(f"|:----|:----|:-----|")
+    L("| 层级 | 五行 | 作用 |")
+    L("|:----|:----|:-----|")
     for i, w in enumerate(xi[:3]):
-        role = "克泄耗（平衡身强）" if sqr_label == "身强" else "生扶（补益身弱）" if sqr_label == "身弱" else "顺势而为"
-        L(f"| 第{i+1}用神 | {w} | {role} |")
+        role = (
+            "克泄耗（平衡身强）" if sqr_label == "身强" else "生扶（补益身弱）" if sqr_label == "身弱" else "顺势而为"
+        )
+        L(f"| 第{i + 1}用神 | {w} | {role} |")
     L("")
     L("### 4.2 大运补用神窗口")
     L("")
@@ -252,7 +261,7 @@ def _generate_standard_report(result: dict, name: str = "", gender: str = "") ->
         gz = dy.get("gan_zhi", "")
         sc = dy.get("score", 5)
         eff = "上佳" if sc >= 8 else "顺利" if sc >= 6 else "平运" if sc >= 4 else "低谷"
-        L(f"| {gz}运 | {'补用神' if sc>=6 else '忌神运'} | {eff}（{sc}分） |")
+        L(f"| {gz}运 | {'补用神' if sc >= 6 else '忌神运'} | {eff}（{sc}分） |")
     L("")
     L("### 4.3 忌神引发的问题")
     L("")
@@ -270,15 +279,15 @@ def _generate_standard_report(result: dict, name: str = "", gender: str = "") ->
     mf = s5.get("misfortune_full", {}) if isinstance(s5.get("misfortune_full"), dict) else {}
     risk_level = _safe(mf, "risk_level", "低")
     risk_score = _safe(mf, "risk_score", 0)
-    L(f"| 神煞 | 排查结果 | 影响 |")
-    L(f"|:----|:---------|:-----|")
+    L("| 神煞 | 排查结果 | 影响 |")
+    L("|:----|:---------|:-----|")
     L(f"| 风险评级 | {risk_level}（{risk_score}分） | — |")
     chong = _safe(s5, "shen_sha_chong", [])
     xing = _safe(s5, "shen_sha_xing", [])
     hai = _safe(s5, "shen_sha_hai", [])
-    L(f"| 地支相冲 | {_fmt_list(chong,'、') or '无'} | 需注意对应宫位 |")
-    L(f"| 地支相刑 | {_fmt_list(xing,'、') or '无'} | 需注意人际关系 |")
-    L(f"| 地支相害 | {_fmt_list(hai,'、') or '无'} | 需注意暗中是非 |")
+    L(f"| 地支相冲 | {_fmt_list(chong, '、') or '无'} | 需注意对应宫位 |")
+    L(f"| 地支相刑 | {_fmt_list(xing, '、') or '无'} | 需注意人际关系 |")
+    L(f"| 地支相害 | {_fmt_list(hai, '、') or '无'} | 需注意暗中是非 |")
     L("")
     L("### 5.2 五行过三排查")
     L("")
@@ -306,9 +315,13 @@ def _generate_standard_report(result: dict, name: str = "", gender: str = "") ->
     L("")
     L("### 6.2 五重人格特质")
     L("")
-    traits = s6.get("key_traits", []) if isinstance(s6.get("key_traits"), list) else ["独立自主", "思维敏锐", "行动力强", "善于沟通", "有责任感"]
+    traits = (
+        s6.get("key_traits", [])
+        if isinstance(s6.get("key_traits"), list)
+        else ["独立自主", "思维敏锐", "行动力强", "善于沟通", "有责任感"]
+    )
     for i, t in enumerate(traits[:5]):
-        L(f"**特质{i+1}：{t}**")
+        L(f"**特质{i + 1}：{t}**")
         L("")
         L(f"{ri_gan}{ri_wx}日主赋予命主{t}的性格底色。此特质使命主在生活和工作中展现出独特的行为模式和处事风格。")
         L("")
@@ -348,13 +361,13 @@ def _generate_standard_report(result: dict, name: str = "", gender: str = "") ->
     L("### 8.1 财星评分（精确计算）")
     L("")
     cai_details = s8.get("cai_xing_details", {}) if isinstance(s8.get("cai_xing_details"), dict) else {}
-    L(f"| 位置 | 基础分 | 实得分 |")
-    L(f"|:----|:------:|:-----:|")
-    L(f"| 年支 | 4分 | {_safe(cai_details,'nian',0)} |")
-    L(f"| 月令 | 40分 | {_safe(cai_details,'yue',0)} |")
-    L(f"| 日支 | 12分 | {_safe(cai_details,'ri',0)} |")
-    L(f"| 时干 | 12分 | {_safe(cai_details,'sg',0)} |")
-    L(f"| 时支 | 12分 | {_safe(cai_details,'sz',0)} |")
+    L("| 位置 | 基础分 | 实得分 |")
+    L("|:----|:------:|:-----:|")
+    L(f"| 年支 | 4分 | {_safe(cai_details, 'nian', 0)} |")
+    L(f"| 月令 | 40分 | {_safe(cai_details, 'yue', 0)} |")
+    L(f"| 日支 | 12分 | {_safe(cai_details, 'ri', 0)} |")
+    L(f"| 时干 | 12分 | {_safe(cai_details, 'sg', 0)} |")
+    L(f"| 时支 | 12分 | {_safe(cai_details, 'sz', 0)} |")
     L(f"| **总分** | — | **{cai_total}分** |")
     L("")
     L("### 8.2 财富构成分析")
@@ -374,12 +387,12 @@ def _generate_standard_report(result: dict, name: str = "", gender: str = "") ->
     L("")
     L("| 状态 | 条件 | 判定 |")
     L("|:----|:-----|:-----|")
-    L(f"| 身强财旺→大富 | 身强(40~60)+财≥40 | {'✅' if sqr_label=='身强' and cai_total>=40 else '❌'} |")
-    L(f"| 身强财弱→中富 | 身强+财<40+无库 | {'✅' if sqr_label=='身强' and cai_total<40 else '❌'} |")
-    L(f"| 身弱财旺→小富 | 身弱+财≥40 | {'✅' if sqr_label=='身弱' and cai_total>=40 else '❌'} |")
-    L(f"| 身弱财弱→小富 | 身弱+财<40 | {'✅' if sqr_label=='身弱' and cai_total<40 else '❌'} |")
-    L(f"| 无财身弱→贫穷 | 无财+身弱 | {'✅' if sqr_label=='身弱' and cai_total<8 else '❌'} |")
-    L(f"| ⭐从弱格→特殊 | 0分→50分+财得令+食伤旺 | {'✅' if sqr_label=='从弱' else '❌'} |")
+    L(f"| 身强财旺→大富 | 身强(40~60)+财≥40 | {'✅' if sqr_label == '身强' and cai_total >= 40 else '❌'} |")
+    L(f"| 身强财弱→中富 | 身强+财<40+无库 | {'✅' if sqr_label == '身强' and cai_total < 40 else '❌'} |")
+    L(f"| 身弱财旺→小富 | 身弱+财≥40 | {'✅' if sqr_label == '身弱' and cai_total >= 40 else '❌'} |")
+    L(f"| 身弱财弱→小富 | 身弱+财<40 | {'✅' if sqr_label == '身弱' and cai_total < 40 else '❌'} |")
+    L(f"| 无财身弱→贫穷 | 无财+身弱 | {'✅' if sqr_label == '身弱' and cai_total < 8 else '❌'} |")
+    L(f"| ⭐从弱格→特殊 | 0分→50分+财得令+食伤旺 | {'✅' if sqr_label == '从弱' else '❌'} |")
     L("")
     L("**五级定量标准（金鉴真人原始）：**")
     L("")
@@ -540,7 +553,7 @@ def _generate_standard_report(result: dict, name: str = "", gender: str = "") ->
         ea = dy.get("end_age", 9)
         sy = dy.get("start_year", 0)
         L(f"| | **{gz}运（{sa}~{ea}岁）** | | | | |")
-        L(f"| --- | --- | --- | --- | --- | --- |")
+        L("| --- | --- | --- | --- | --- | --- |")
         evt_idx += 1
         if evt_idx >= 20:
             break
@@ -559,22 +572,24 @@ def _generate_standard_report(result: dict, name: str = "", gender: str = "") ->
         sc = dy.get("score", 5)
 
         tag = "🏆 上佳" if sc >= 8 else "✅ 顺利" if sc >= 6 else "⚠️ 平运" if sc >= 4 else "❌ 低谷"
-        L(f"### 17.{i+1} {gz}大运（{sa}~{ea}岁）·{tag}")
+        L(f"### 17.{i + 1} {gz}大运（{sa}~{ea}岁）·{tag}")
         L("")
         L(f"**年龄**：{sa}~{ea}岁")
         L(f"**评分**：{sc}/10")
-        L(f"**特征**：此运为人生{'上佳发展阶段' if sc>=8 else '稳步发展期' if sc>=6 else '平稳过渡期' if sc>=4 else '需谨慎应对的时期'}。")
+        L(
+            f"**特征**：此运为人生{'上佳发展阶段' if sc >= 8 else '稳步发展期' if sc >= 6 else '平稳过渡期' if sc >= 4 else '需谨慎应对的时期'}。"
+        )
         L("")
         L("**运象分析**：")
-        L(f"天干{dy.get('gan','')}地支{dy.get('zhi','')}，与命局互动形成该运特有的能量场。")
+        L(f"天干{dy.get('gan', '')}地支{dy.get('zhi', '')}，与命局互动形成该运特有的能量场。")
         if sc >= 6:
-            L(f"此运喜用神到位，是发展的好时机。宜把握机遇，积极进取。")
+            L("此运喜用神到位，是发展的好时机。宜把握机遇，积极进取。")
         else:
-            L(f"此运忌神主事，宜守不宜攻。稳扎稳打，韬光养晦。")
+            L("此运忌神主事，宜守不宜攻。稳扎稳打，韬光养晦。")
         L("")
         L("**关键年份**：")
-        L(f"- 此运第3~5年为最佳发力期。")
-        L(f"- 第7~9年需注意调整节奏。")
+        L("- 此运第3~5年为最佳发力期。")
+        L("- 第7~9年需注意调整节奏。")
         L("")
 
     # ═══════════════════════════ §18 ═══════════════════════════
@@ -582,9 +597,9 @@ def _generate_standard_report(result: dict, name: str = "", gender: str = "") ->
     L("")
     if s18 and isinstance(s18, list):
         for i, v in enumerate(s18[:3]):
-            title = _safe(v, "title", f"决断{i+1}")
+            title = _safe(v, "title", f"决断{i + 1}")
             event = _safe(v, "event", "")
-            L(f"### 决断{i+1}：{title}")
+            L(f"### 决断{i + 1}：{title}")
             L("")
             L(f"**断语**：{event}")
             L("")
@@ -618,11 +633,11 @@ def _generate_standard_report(result: dict, name: str = "", gender: str = "") ->
     L("")
     L("### 20.1 颜色调运")
     L("")
-    L(f"| 喜用五行 | 颜色 |")
-    L(f"|:--------|:-----|")
+    L("| 喜用五行 | 颜色 |")
+    L("|:--------|:-----|")
     for w in xi[:3]:
-        color_map = {"金":"白/金/银","水":"蓝/黑/灰","木":"绿/青","火":"红/紫/橙","土":"黄/棕/米"}
-        L(f"| {w} | {color_map.get(w,'')} |")
+        color_map = {"金": "白/金/银", "水": "蓝/黑/灰", "木": "绿/青", "火": "红/紫/橙", "土": "黄/棕/米"}
+        L(f"| {w} | {color_map.get(w, '')} |")
     L("")
     L("### 20.2 数字吉利")
     L("")
