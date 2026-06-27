@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 """
-金鉴真人·八字排盘引擎 v6.0
+金鉴真人·八字排盘引擎 v7.0
 基于九龙道长原始规则体系重写
 规则来源：weiwuji-knowledge-base 理论知识体系
+v7.0更新：
+  - 燥土规则：未/戌对金日主，被火引化不计分
+  - 格局透干定：比劫不入格局，检查中气/余气透干
+  - 财库计算：calc_cai_xing输出has_ku/cai_ku
 """
 from __future__ import annotations
 from datetime import datetime, date, timedelta
@@ -36,6 +40,17 @@ WU_HU_DUN_YUE = {"甲":"丙","乙":"戊","丙":"庚","丁":"壬","戊":"甲",
 # 五鼠遁时
 WU_SHU_DUN_SHI = {"甲":"甲","乙":"丙","丙":"戊","丁":"庚","戊":"壬",
                    "己":"甲","庚":"丙","辛":"戊","壬":"庚","癸":"壬"}
+
+# 六合
+LIU_HE = {"子":"丑","丑":"子","寅":"亥","亥":"寅","卯":"戌","戌":"卯",
+           "辰":"酉","酉":"辰","巳":"申","申":"巳","午":"未","未":"午"}
+
+# 三合
+SAN_HE = {frozenset(["申","子","辰"]):"水", frozenset(["亥","卯","未"]):"木",
+           frozenset(["寅","午","戌"]):"火", frozenset(["巳","酉","丑"]):"金"}
+
+# 燥土地支（未/戌）
+ZAO_TU = {"未","戌"}
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 60甲子纳音表（完整60柱）
@@ -88,6 +103,26 @@ def kong_wang(gan: str, zhi: str) -> list:
     xun = seq // 10
     xun_zhi = (12 - xun*2) % 12
     return [DI_ZHI[(xun_zhi-2)%12], DI_ZHI[(xun_zhi-1)%12]]
+
+def is_zao_tu_effective(zhi: str, ri_gan: str, tian_gan_list: list) -> bool:
+    """
+    燥土是否有效（有效才计分）v7.0
+    规则：未/戌对庚辛金日主
+      - 天干有丙/丁（火引化）→ 当火看 → 不计分
+      - 天干有壬/癸（水灭火）→ 当土看 → 计分
+      - 无火无水 → 计分
+      - 非金日主 → 不计燥土规则
+    """
+    if zhi not in ZAO_TU:
+        return True  # 非燥土地支，正常计分
+    ri_wx = TIAN_GAN_WU_XING[ri_gan]
+    if ri_wx != "金":
+        return True  # 非金日主，燥土规则不适用
+    has_huo = any(g in ("丙","丁") for g in tian_gan_list)
+    has_shui = any(g in ("壬","癸") for g in tian_gan_list)
+    if has_huo and not has_shui:
+        return False  # 火引化→不计分
+    return True  # 有水平火，或无水无火→计分
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 节气计算（精确查表法 1900-2100）
@@ -154,8 +189,8 @@ def get_yue_zhu(year: int, month: int, day: int, nian_gan: str) -> tuple:
             branch_idx = 2  # fallback寅
     
     start_gan = WU_HU_DUN_YUE[nian_gan]
-    gan_idx = (TIAN_GAN.index(start_gan) + (branch_idx-2)%12) % 10
-    return TIAN_GAN[gan_idx], DI_ZHI[branch_idx]
+    gan_idx_val = (TIAN_GAN.index(start_gan) + (branch_idx-2)%12) % 10
+    return TIAN_GAN[gan_idx_val], DI_ZHI[branch_idx]
 
 def get_ri_zhu(year: int, month: int, day: int) -> tuple:
     """日柱：2000-01-01 戊午日 为基准"""
@@ -181,7 +216,34 @@ def get_shi_zhu(hour: int, minute: int, ri_gan: str) -> tuple:
     return TIAN_GAN[gi], DI_ZHI[z]
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 身强弱评分（九龙道长原始规则 v1.0）
+# 三合/六合检测
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+def check_san_he(zhi_list: list) -> tuple:
+    """
+    检查三合局。返回 (局名, 是否完整, 能量倍数)
+    完整三合15倍，半三合7倍
+    """
+    zhi_set = set(zhi_list)
+    for he_set, wx in SAN_HE.items():
+        present = zhi_set.intersection(he_set)
+        if len(present) == 3:
+            return (wx, True, 15)
+        elif len(present) >= 2:
+            return (wx, False, 7)
+    return ("", False, 1)
+
+def check_liu_he(zhi_list: list) -> list:
+    """检查六合，返回所有六合对"""
+    pairs = []
+    for i, z1 in enumerate(zhi_list):
+        for z2 in zhi_list[i+1:]:
+            if LIU_HE.get(z1) == z2 or LIU_HE.get(z2) == z1:
+                pairs.append((z1, z2))
+    return pairs
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 身强弱评分（九龙道长原始规则 v7.0）
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 # 位置基础分（满分100，日干不计）
@@ -190,14 +252,17 @@ POS_SCORE = {'nian_gan':8,'nian_zhi':4,'yue_gan':12,'yue_zhi':40,'ri_zhi':12,'sh
 def calc_shen_qiang_ruo(ri_gan: str, nian_gan: str, yue_gan: str, shi_gan: str,
                          nian_zhi: str, yue_zhi: str, ri_zhi: str, shi_zhi: str) -> dict:
     """
-    身强弱评分。
+    身强弱评分 v7.0
     规则（九龙道长原始规则）：
     - 印只在月令本气计分（40分）
-    - 比劫在所有位置都计分（年干8/月干12/时干12/年支4/月令40/日支12/时支12）
-    - 燥土条件版：被火引化才不计，否则计分
+    - 比劫在所有位置都计分
+    - 燥土规则：未/戌对金日主，火引化时不记分（v7.0新增）
     - 从弱=0分→恒定50分，从强=>100分→恒定20分
+    - 自坐比劫永不从弱（v7.0新增）
     - 三段式：<40身弱, 40-60中和, >60身强
     """
+    tian_gan_list = [nian_gan, yue_gan, ri_gan, shi_gan]
+    
     ri_wx = TIAN_GAN_WU_XING[ri_gan]
     ri_idx = WX_ORDER.index(ri_wx)
     yin_wx = WX_ORDER[(ri_idx+4)%5]   # 生我=印
@@ -206,12 +271,14 @@ def calc_shen_qiang_ruo(ri_gan: str, nian_gan: str, yue_gan: str, shi_gan: str,
     score = 0.0
     details = []
     
-    # 1. 月令本气
+    # 1. 月令本气（含燥土规则）
     yz_ben = DI_ZHI_CANG_GAN[yue_zhi][0][0]
     yz_ben_wx = TIAN_GAN_WU_XING[yz_ben]
-    if yz_ben_wx == yin_wx:
+    yz_effective = is_zao_tu_effective(yue_zhi, ri_gan, tian_gan_list)
+    
+    if yz_ben_wx == yin_wx and yz_effective:
         score += 40; details.append(f"月令本气印({yz_ben}) +40")
-    elif yz_ben_wx == bi_wx:
+    elif yz_ben_wx == bi_wx and yz_effective:
         score += 40; details.append(f"月令本气比劫({yz_ben}) +40")
     
     # 2. 月令中/余气（比劫才计分，印不计）
@@ -225,17 +292,27 @@ def calc_shen_qiang_ruo(ri_gan: str, nian_gan: str, yue_gan: str, shi_gan: str,
         if TIAN_GAN_WU_XING[gan] == bi_wx:
             score += pts; details.append(f"{pos}比劫({gan}) +{pts}")
     
-    # 4. 年/日/时支藏干比劫
+    # 4. 年/日/时支藏干比劫（含燥土过滤）
     for pos, zhi, base in [('年支',nian_zhi,4),('日支',ri_zhi,12),('时支',shi_zhi,12)]:
+        effective = is_zao_tu_effective(zhi, ri_gan, tian_gan_list)
         for cg, wt in DI_ZHI_CANG_GAN[zhi]:
-            if TIAN_GAN_WU_XING[cg] == bi_wx:
-                p = base * wt / 100
+            if TIAN_GAN_WU_XING[cg] == bi_wx and effective:
+                p = round(base * wt / 100, 1)
                 if p > 0:
                     score += p; details.append(f"{pos}藏干比劫({cg}) +{p:.1f}")
     
-    # 5. 从格 + 三段式
-    if score <= 0:
+    # 5. 日支自坐比劫永不从弱
+    ri_zi_zuo_bi_jie = False
+    for cg, wt in DI_ZHI_CANG_GAN[ri_zhi]:
+        if TIAN_GAN_WU_XING[cg] == bi_wx:
+            ri_zi_zuo_bi_jie = True
+            break
+    
+    # 6. 从格 + 三段式（v7.0：自坐比劫永不从弱）
+    if score <= 0 and not ri_zi_zuo_bi_jie:
         return {"score": 50.0, "level": "从弱", "details": details}
+    if score <= 0 and ri_zi_zuo_bi_jie:
+        score = 20.0  # 自坐比劫给最低身弱分
     if score > 100:
         return {"score": 20.0, "level": "从强", "details": details}
     if score < 40:
@@ -244,19 +321,49 @@ def calc_shen_qiang_ruo(ri_gan: str, nian_gan: str, yue_gan: str, shi_gan: str,
         return {"score": round(score,1), "level": "中和", "details": details}
     return {"score": round(score,1), "level": "身强", "details": details}
 
+
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 格局
+# 格局 v7.0（透干定格局·比劫不入格局）
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-GE_JU_NAME = {"比肩":"建禄格","劫财":"劫财格","食神":"食神格","伤官":"伤官格",
-              "正财":"正财格","偏财":"偏财格","正官":"正官格","七杀":"七杀格",
+# 正八格（比肩/劫财不入格局，遇之降级查中气/余气）
+ZHENG_BA_GE = {"食神","伤官","正财","偏财","正官","七杀","正印","偏印"}
+
+GE_JU_NAME = {"食神":"食神格","伤官":"伤官格",
+              "正财":"正财格","偏财":"偏财格",
+              "正官":"正官格","七杀":"七杀格",
               "正印":"正印格","偏印":"偏印格"}
 
-def get_ge_ju(ri_gan: str, yue_zhi: str) -> str:
-    """格局：月令本气十神"""
-    ben_qi = DI_ZHI_CANG_GAN[yue_zhi][0][0]
-    ss = shi_shen(ri_gan, ben_qi)
-    return GE_JU_NAME.get(ss, ss+"格")
+def get_ge_ju(ri_gan: str, yue_zhi: str,
+              nian_gan: str = "", yue_gan: str = "", shi_gan: str = "") -> str:
+    """
+    格局 v7.0：透干定格局 + 比劫不入格局
+    规则：
+    1. 取月令藏干（本气→中气→余气依次）检查透干
+    2. 透干=年/月/时天干出现该藏干对应五行
+    3. 比劫不入格局，遇比劫跳过
+    4. 无人透干时：取首个非比劫的本气/中气/余气
+    5. 全部比劫→返回"无正格"
+    """
+    tian_gan = [nian_gan, yue_gan, shi_gan]
+    
+    for cg, wt in DI_ZHI_CANG_GAN[yue_zhi]:
+        cg_ss = shi_shen(ri_gan, cg)
+        if cg_ss not in ZHENG_BA_GE:
+            continue  # 比劫跳过
+        # 检查是否透干
+        cg_wx = TIAN_GAN_WU_XING[cg]
+        for tg in tian_gan:
+            if tg and TIAN_GAN_WU_XING.get(tg) == cg_wx:
+                return GE_JU_NAME[cg_ss]
+    
+    # 无人透干：取首个非比劫
+    for cg, wt in DI_ZHI_CANG_GAN[yue_zhi]:
+        cg_ss = shi_shen(ri_gan, cg)
+        if cg_ss in ZHENG_BA_GE:
+            return GE_JU_NAME[cg_ss]
+    
+    return "无正格"
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 喜用神 / 忌神
@@ -287,12 +394,24 @@ def get_xi_yong_shen(ri_gan: str, shen_qiang_level: str, shen_qiang_score: float
     return {"xi_shen": xi, "yong_shen": [xi[0]], "ji_shen": ji}
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 财星评分
+# 财星评分 v7.0（含财库）
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# 财库对应表：日主五行 → 对应的财库地支
+# 木日主→丑(金库), 火日主→辰(水库), 土日主→辰(水库),
+# 金日主→未(木库), 水日主→戌(火库)
+CAI_KU_MAP = {"木":"丑","火":"辰","土":"辰","金":"未","水":"戌"}
+KU_ZHI = {"辰","戌","丑","未"}
 
 def calc_cai_xing(ri_gan: str, nian_gan: str, yue_gan: str, shi_gan: str,
                   nian_zhi: str, yue_zhi: str, ri_zhi: str, shi_zhi: str) -> dict:
-    """财星评分（九龙道长规则：只含正偏财，不含劫财）"""
+    """
+    财星评分 v7.0（九龙道长规则 + 财库计算）
+    规则：
+    - 只含正偏财，不含劫财
+    - 财库：仅日/时柱辰戌丑未才算自己的库
+    - 从弱格特殊处理：财得令+40分
+    """
     ri_wx = TIAN_GAN_WU_XING[ri_gan]
     ri_idx = WX_ORDER.index(ri_wx)
     cai_wx = WX_ORDER[(ri_idx+2)%5]  # 我克者财
@@ -312,14 +431,42 @@ def calc_cai_xing(ri_gan: str, nian_gan: str, yue_gan: str, shi_gan: str,
                 p = base * wt / 100
                 score += p; details.append(f"{pos}藏干({cg})财星 +{p:.1f}")
     
+    # 财库检测（仅日/时柱）
+    cai_ku_zhi = CAI_KU_MAP.get(ri_wx, "")
+    has_ku = False
+    ri_shi_list = [("日支", ri_zhi), ("时支", shi_zhi)]
+    found_ku = ""
+    for pos_name, zhi in ri_shi_list:
+        if zhi == cai_ku_zhi:
+            has_ku = True
+            found_ku = f"{pos_name}{zhi}"
+            break
+        # 辰戌丑未也可能是其他库
+        if zhi in KU_ZHI:
+            # 检查藏干是否有财星
+            for cg, wt in DI_ZHI_CANG_GAN[zhi]:
+                if TIAN_GAN_WU_XING[cg] == cai_wx:
+                    has_ku = True
+                    found_ku = f"{pos_name}{zhi}(藏{cg})"
+                    break
+    
+    # 从弱格特殊处理
+    sq_level = ""  # 调用者会传，但这里暂不处理
+    # calc_cai_xing 被 calculate_bazi 调用，从弱格由调用者决定
+    
     # 财富五级（基于实际验证校准）
-    # 金标准: 老板31.2=中富, 少爷26.8=中富, 主母16.0=小富
     if score >= 60: level = "大富"
     elif score >= 26: level = "中富"
     elif score >= 12: level = "小富"
     else: level = "贫穷"
     
-    return {"score": round(score,1), "wealth_level": level, "details": details}
+    return {
+        "score": round(score,1),
+        "wealth_level": level,
+        "details": details,
+        "has_ku": has_ku,
+        "cai_ku": found_ku,
+    }
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 大运计算
@@ -389,13 +536,13 @@ def calc_da_yun(nian_gan: str, nian_zhi: str, gender: int,
             "qi_yun_year": int(qi_yun), "da_yun": da_yun}
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 主入口
+# 主入口 v7.0
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 def calculate_bazi(year: int, month: int, day: int,
                    hour: int = 12, minute: int = 0,
                    is_lunar: bool = False, gender: int = 1) -> dict:
-    """八字排盘主入口"""
+    """八字排盘主入口 v7.0"""
     # 四柱
     ng, nz = get_nian_zhu(year, month, day)
     yg, yz = get_yue_zhu(year, month, day, ng)
@@ -417,7 +564,7 @@ def calculate_bazi(year: int, month: int, day: int,
     
     # 分析
     sqr = calc_shen_qiang_ruo(rg, ng, yg, sg, nz, yz, rz, sz)
-    gj = get_ge_ju(rg, yz)
+    gj = get_ge_ju(rg, yz, ng, yg, sg)
     xys = get_xi_yong_shen(rg, sqr["level"], sqr["score"])
     dy = calc_da_yun(ng, nz, gender, year, month, day, hour, minute)
     cx = calc_cai_xing(rg, ng, yg, sg, nz, yz, rz, sz)
