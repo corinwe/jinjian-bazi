@@ -28,7 +28,7 @@ async def analyze_bazi(req: AnalyzeRequest):
             year=req.birth_year,
             month=req.birth_month,
             day=req.birth_day,
-            hour=req.birth_hour or 12,
+            hour=req.birth_hour if req.birth_hour is not None else 12,
             minute=req.birth_minute,
             is_lunar=req.is_lunar,
             gender=gender_int,
