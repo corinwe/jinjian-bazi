@@ -42,9 +42,15 @@ app.add_middleware(
 # 注册可观测中间件（放在CORS之后）
 app.add_middleware(ObservabilityMiddleware)
 
-# 注册路由
+# 注册路由（必须在StaticFiles挂载之前）
 app.include_router(health.router)
 app.include_router(analyze.router)
+
+# /metrics端点（必须在StaticFiles挂载之前）
+@app.get("/metrics")
+async def metrics():
+    """Prometheus指标端点（供监控系统抓取）"""
+    return get_metrics_response()
 
 # 挂载前端静态文件（如果存在）
 frontend_dir = os.path.join(os.path.dirname(__file__), "..", "frontend")
@@ -62,9 +68,3 @@ async def startup():
 @app.on_event("shutdown")
 async def shutdown():
     logger.bind(service="api", trace_id="system").info("API服务关闭")
-
-
-@app.get("/metrics")
-async def metrics():
-    """Prometheus指标端点（供监控系统抓取）"""
-    return get_metrics_response()
