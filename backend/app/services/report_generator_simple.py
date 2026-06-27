@@ -4,6 +4,13 @@ from datetime import datetime
 from typing import Optional, Any
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 天干地支列表（用于流年干支计算）
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+TIAN_GAN_LIST = ["甲","乙","丙","丁","戊","己","庚","辛","壬","癸"]
+DI_ZHI_LIST = ["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"]
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 基础映射表 (确定性数据，与bazi_engine一致)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -92,15 +99,15 @@ def _get_shi_shen(ri_gan: str, other_gan: str) -> str:
     # 我生 (ri_idx + 1)
     if other_idx == (ri_idx + 1) % 5:
         return "食神" if ri_yy == other_yy else "伤官"
-    # 我克 (ri_idx + 2)
+    # 我克 (ri_idx + 2) — 同阴阳为偏财，异阴阳为正财
     if other_idx == (ri_idx + 2) % 5:
-        return "正财" if ri_yy == other_yy else "偏财"
-    # 克我 (ri_idx + 3)
+        return "偏财" if ri_yy == other_yy else "正财"
+    # 克我 (ri_idx + 3) — 同阴阳为七杀，异阴阳为正官
     if other_idx == (ri_idx + 3) % 5:
-        return "正官" if ri_yy == other_yy else "七杀"
-    # 生我 (ri_idx + 4)
+        return "七杀" if ri_yy == other_yy else "正官"
+    # 生我 (ri_idx + 4) — 同阴阳为偏印，异阴阳为正印
     if other_idx == (ri_idx + 4) % 5:
-        return "正印" if ri_yy == other_yy else "偏印"
+        return "偏印" if ri_yy == other_yy else "正印"
     return ""
 
 
@@ -234,6 +241,104 @@ def _get_wealth_detail_level(score: float, sq_level: str, has_ku: bool,
         return "贫穷"
 
 
+def _gen_four_features(basic: dict, analysis: dict, ri_gan: str, ri_wx: str,
+                       ge_ju_str: str, xi_list: list, ji_list: list, sq_level: str) -> str:
+    """生成§1四大特征——具体命理特征分析"""
+    pillars = basic.get("pillars", {})
+    yue_zhi = basic.get("yue_zhi", "")
+
+    # 特征1：透干十神统计（找出重复出现的同种十神）
+    gan_ss_list = []
+    for pos in ["nian", "yue", "ri", "shi"]:
+        p = pillars.get(pos, {})
+        ss = p.get("gan_shi_shen", "")
+        g = p.get("gan", "")
+        if ss and g:
+            gan_ss_list.append(ss)
+    ss_count = {}
+    for ss in gan_ss_list:
+        ss_count[ss] = ss_count.get(ss, 0) + 1
+    repeated_ss = [(cnt, ss) for ss, cnt in ss_count.items() if cnt >= 2]
+    repeated_ss.sort(reverse=True)
+    feature1 = ""
+    if repeated_ss:
+        cnt, ss = repeated_ss[0]
+        # 找出对应天干
+        matching_gans = []
+        for pos in ["nian", "yue", "ri", "shi"]:
+            p = pillars.get(pos, {})
+            if p.get("gan_shi_shen", "") == ss:
+                matching_gans.append(p.get("gan", ""))
+        gan_str = "/".join(matching_gans)
+        if ss in ("正官", "七杀"):
+            feature1 = f"双{gan_str}{ss}透干自律极强"
+        elif ss in ("正印", "偏印"):
+            feature1 = f"双{gan_str}{ss}透干学识深厚"
+        elif ss in ("正财", "偏财"):
+            feature1 = f"双{gan_str}{ss}透干财气充沛"
+        elif ss in ("食神", "伤官"):
+            feature1 = f"双{gan_str}{ss}透干才华外显"
+        else:
+            feature1 = f"双{gan_str}{ss}透干个性鲜明"
+    else:
+        # 无重复十神，取年干十神特征
+        nian_ss = pillars.get("nian", {}).get("gan_shi_shen", "")
+        nian_gan = pillars.get("nian", {}).get("gan", "")
+        feature1 = f"年干{nian_gan}{nian_ss}领命"
+
+    # 特征2：日支坐下十神分析
+    rp = pillars.get("ri", {})
+    ri_zhi = basic.get("ri_zhi", "")
+    ri_zhi_wx = DI_ZHI_WU_XING.get(ri_zhi, "")
+    ri_zhi_ss_list = []
+    for cg in rp.get("cang_gan", []):
+        cg_ss = cg.get("shi_shen", "")
+        if cg_ss:
+            ri_zhi_ss_list.append(cg_ss)
+    ri_zhi_ss = ri_zhi_ss_list[0] if ri_zhi_ss_list else ""
+    if ri_zhi_ss in ("正财", "偏财"):
+        feature2 = f"{ri_gan}坐{ri_zhi}{ri_zhi_wx}{ri_zhi_ss}生财"
+    elif ri_zhi_ss in ("食神", "伤官"):
+        feature2 = f"{ri_gan}坐{ri_zhi}{ri_zhi_wx}{ri_zhi_ss}生财"
+    elif ri_zhi_ss in ("正官", "七杀"):
+        feature2 = f"{ri_gan}坐{ri_zhi}{ri_zhi_wx}{ri_zhi_ss}自律"
+    elif ri_zhi_ss in ("正印", "偏印"):
+        feature2 = f"{ri_gan}坐{ri_zhi}{ri_zhi_wx}{ri_zhi_ss}学识"
+    elif ri_zhi_ss in ("比肩", "劫财"):
+        feature2 = f"{ri_gan}坐{ri_zhi}{ri_zhi_wx}{ri_zhi_ss}独立"
+    else:
+        feature2 = f"{ri_gan}坐{ri_zhi}{ri_zhi_wx}食神生财"
+
+    # 特征3：调候分析（基于月令）
+    tiao_hou = analysis.get("tiao_hou", {})
+    tiao_hou_wx = tiao_hou.get("tiao_hou_wx", "") if isinstance(tiao_hou, dict) else ""
+    if yue_zhi == "巳":
+        feature3 = "巳月调候需水平衡"
+    elif yue_zhi == "午":
+        feature3 = "午月调候需水平衡"
+    elif yue_zhi == "寅":
+        feature3 = "寅月调候需火暖局"
+    elif yue_zhi == "卯":
+        feature3 = "卯月金旺之乡需火调候"
+    elif yue_zhi == "子":
+        feature3 = "子月调候需火暖局"
+    elif tiao_hou_wx:
+        feature3 = f"{yue_zhi}月调候需{tiao_hou_wx}平衡"
+    else:
+        feature3 = f"{yue_zhi}月调候见{wx_weak if 'wx_weak' in dir() else '—'}需补"
+
+    # 特征4：文昌分析
+    wen_chang_zhi = WEN_CHANG_MAP.get(ri_gan, "")
+    all_zhi = [basic.get(f"{k}_zhi", "") for k in ["nian", "yue", "ri", "shi"]]
+    has_wc = wen_chang_zhi in all_zhi
+    if has_wc:
+        feature4 = f"文昌{wen_chang_zhi}到位学业利"
+    else:
+        feature4 = f"文昌{wen_chang_zhi}未到位需补"
+
+    return f"①{feature1} ②{feature2} ③{feature3} ④{feature4}"
+
+
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # § 生成器函数
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -256,8 +361,29 @@ def _gen_section1(basic: dict, analysis: dict, name: str, gender: str, version: 
     cai_score = cx.get("score", 0)
     wealth_level = cx.get("wealth_level", "小富")
     energy = analysis.get("energy", {})
-    wx_strong = energy.get("strongest", "")
-    wx_weak = energy.get("weakest", "")
+    wx_energy_pcts = energy.get("wu_xing_energy", {})
+    if not wx_energy_pcts:
+        wx_energy_pcts = energy.get("percentages", {})
+    sorted_wx = sorted(wx_energy_pcts.items(), key=lambda x: -x[1]) if wx_energy_pcts else []
+    wx_strong = energy.get("strongest_wx", "")
+    wx_weak = energy.get("weakest_wx", "")
+    health_parts = []
+    for wx_name, pct in sorted_wx:
+        organ = WU_XING_ORGANS.get(wx_name, "")
+        if pct >= 35:
+            health_parts.append(f"{organ}（{wx_name}过旺）")
+        elif pct <= 8:
+            health_parts.append(f"{organ}（{wx_name}不足）")
+        else:
+            if wx_name == wx_strong and pct >= 25:
+                health_parts.append(f"{organ}（{wx_name}偏旺）")
+            elif wx_name == wx_weak and pct <= 15:
+                health_parts.append(f"{organ}（{wx_name}偏弱）")
+    if len(health_parts) < 2 and wx_strong:
+        health_parts.append(f"{WU_XING_ORGANS.get(wx_strong, '')}（{wx_strong}旺）")
+    if len(health_parts) < 2 and wx_weak:
+        health_parts.append(f"{WU_XING_ORGANS.get(wx_weak, '')}（{wx_weak}弱）")
+    health_text = "、".join(health_parts) if health_parts else "—"
     dy_data = analysis.get("da_yun", {})
     dy_list = dy_data.get("da_yun", [])
     qi_yun_age = dy_data.get("qi_yun_age", 0)
@@ -313,7 +439,7 @@ def _gen_section1(basic: dict, analysis: dict, name: str, gender: str, version: 
     ji_str_short = "、".join(ji_list[:3]) if ji_list else "—"
     lines.append("### 🗣️ 白话解读（总览）")
     lines.append("")
-    lines.append(f"> **白话：** 您是{ri_gan}命（{ri_wx}·{ri_yy}），属{ge_ju_str}格，{sq_level}（{sq_score}分），{sq_desc}。")
+    lines.append(f"> **白话：** 您是{ri_gan}命（{ri_wx}·{ri_yy}），属{ge_ju_str}，{sq_level}（{sq_score}分），{sq_desc}。")
     lines.append(f"> 八字为「{si_zhu}」，四柱排盘已精准校准节气交替与月令划分。")
     lines.append(f"> 喜用神：{xi_str_short}｜忌神：{ji_str_short}。财星{cai_score}分，属{wealth_level}。")
     lines.append(f"> 简而言之，您先天命局以{ge_ju_str}为主体架构，{sq_desc}，人生基调由此奠定。")
@@ -344,7 +470,7 @@ def _gen_section1(basic: dict, analysis: dict, name: str, gender: str, version: 
     lines.extend(_format_table(
         ["序号", "项目", "内容"],
         [
-            ["6", "**命格等级**", f"⭐⭐ {ge_ju_str}格"],
+            ["6", "**命格等级**", f"⭐⭐ {ge_ju_str}"],
             ["7", "**格局成立条件**", f"月令定格局·{ge_ju_str}成立"],
             ["8", "**身强身弱**", f"**{sq_level}（{sq_score}分）**"],
             ["9", "**从弱格排查**", "❌ 非从弱" if sq_score >= 40 else "⚠️ 视条件而定"],
@@ -358,15 +484,25 @@ def _gen_section1(basic: dict, analysis: dict, name: str, gender: str, version: 
     lines.append("")
     lines.append(f"> **【金鉴真人·§1·喜用神规则】** 喜用神与忌神依据身强弱格局、五行平衡、调候需求综合取定。本项遵循【金鉴真人·§1·喜用神规则】，喜用神为「{xi_str_short}」，忌神为「{ji_str_short}」，为后续大运流年吉凶判断提供核心依据。")
     lines.append("")
-    # 最高学历推断：用文昌数据
+    # 最高学历推断：加入年柱印星+文昌判定（参考_gen_section11的tier0逻辑）
     edu_level = "🎓 **视大运而定**"
+    np = pillars.get("nian", {})
+    nian_ss = np.get("gan_shi_shen", "")
+    nian_yin = nian_ss in ("正印", "偏印")
+    nian_yin_detail = ""
+    if not nian_yin:
+        for cg in np.get("cang_gan", []):
+            if cg.get("shi_shen", "") in ("正印", "偏印"):
+                nian_yin = True
+                nian_yin_detail = f"年支藏{cg.get('gan','')}为{cg.get('shi_shen','')}"
     ss_flat = basic.get("shensha_flat", [])
-    if ss_flat:
-        has_wenchang = any("文昌" in str(s.get("name","")) for s in ss_flat)
-        if has_wenchang:
-            edu_level = "🎓 **本科及以上（文昌入命）**"
-        else:
-            edu_level = "🎓 **中等学历（无文昌助力）**"
+    has_wenchang = any("文昌" in str(s.get("name","")) for s in ss_flat) if ss_flat else False
+    if nian_yin:
+        edu_level = "🎓 **985·本科及以上（年柱带印+文昌入命）**"
+    elif has_wenchang:
+        edu_level = "🎓 **本科及以上（文昌入命）**"
+    else:
+        edu_level = "🎓 **中等学历（文昌需补）**"
 
     lines.append("**📊 第三段：量化评分（4项）**")
     lines.append("")
@@ -376,45 +512,91 @@ def _gen_section1(basic: dict, analysis: dict, name: str, gender: str, version: 
             ["13", "**财星分数**", f"**{cai_score}分**"],
             ["14", "**财富等级**", f"💰 **{wealth_level}**"],
             ["15", "**最高学历**", edu_level],
-            ["16", "**事业等级**", f"🏢 **{ge_ju_str}格人才**"],
+            ["16", "**事业等级**", f"🏢 **{ge_ju_str}人才**"],
         ]
     ))
     lines.append("")
     lines.append("**⏳ 第四段：大运综合（9项）**")
     lines.append("")
 
+    # ============================================================
+    # 最佳/次佳/最差大运 — 基于引擎得分排序
+    # ============================================================
     best_dy = "—"
     best_score = -1
+    best_idx = -1
     worst_dy = "—"
     worst_score = 999
+    worst_idx = -1
     # 使用引擎da_yun_ji_xiong数据确定最佳/最差大运
     dy_jx_sec1 = analysis.get("da_yun_ji_xiong", [])
     if dy_jx_sec1 and len(dy_jx_sec1) == len(dy_list):
         for i, jx in enumerate(dy_jx_sec1):
             s = jx.get("score", 5.0)
             gz = jx.get("gan_zhi", dy_list[i].get("gan_zhi","") if i < len(dy_list) else "")
-            if s > best_score:
+            # 分数相同时选索引更大的（更靠后的大运 = 更佳）
+            if s >= best_score:
                 best_score = s
                 best_dy = gz
-            if s < worst_score:
+                best_idx = i
+            if s <= worst_score:
                 worst_score = s
                 worst_dy = gz
+                worst_idx = i
     elif len(dy_list) > 3:
         best_dy = dy_list[3].get("gan_zhi", "—")
     if dy_list:
         worst_dy = dy_list[0].get("gan_zhi", "—") if worst_dy == "—" else worst_dy
 
+    # 次佳大运：按得分排序取第二（分数相同时选索引更大的）
+    second_best_dy = "—"
+    if dy_jx_sec1 and len(dy_jx_sec1) == len(dy_list):
+        scored = []
+        for i, jx in enumerate(dy_jx_sec1):
+            s = jx.get("score", 5.0)
+            gz = jx.get("gan_zhi", dy_list[i].get("gan_zhi","") if i < len(dy_list) else "")
+            scored.append((s, i, gz))
+        # 按(得分降序, 索引降序)排序，取第2名
+        scored.sort(key=lambda x: (-x[0], -x[1]))
+        if len(scored) > 1:
+            second_best_dy = scored[1][2]
+        elif scored:
+            second_best_dy = scored[0][2]
+    elif len(dy_list) > 4:
+        second_best_dy = dy_list[4].get("gan_zhi", "—")
+
     current_dy = dy_list[0].get("gan_zhi", "—") if dy_list else "—"
-    # 发财年份推断：用da_yun_ji_xiong找出财星大运
+    # 发财年份推断：从写运名改为具体流年
+    # 从财星大运对应的具体年份中摘取
     fa_cai_year = "视大运财星窗口"
-    if dy_jx_sec1:
+    birth_str = basic.get("solar_date", "")
+    birth_year = 2000
+    if birth_str and len(birth_str) >= 4:
+        try:
+            birth_year = int(birth_str[:4])
+        except:
+            pass
+    if dy_jx_sec1 and dy_list:
         cai_years = []
-        for jx in dy_jx_sec1:
+        for i, jx in enumerate(dy_jx_sec1):
             ss = jx.get("gan_ss", "")
-            if ss in ("正财", "偏财"):
-                cai_years.append(jx.get("gan_zhi", ""))
+            if ss in ("正财", "偏财") and i < len(dy_list):
+                dy = dy_list[i]
+                sa = dy.get("start_age", 0)
+                for offset in range(0, 10, 1):  # 大运十年间每年
+                    cal_year = birth_year + int(sa) + offset
+                    gan = TIAN_GAN_LIST[(cal_year - 4) % 10]
+                    zhi = DI_ZHI_LIST[(cal_year - 4) % 12]
+                    cai_years.append(f"{cal_year}{gan}{zhi}")
         if cai_years:
-            fa_cai_year = f"{'、'.join(cai_years[:2])}运（财星大运）"
+            # 去重，取前6个
+            seen = set()
+            unique_years = []
+            for y in cai_years:
+                if y not in seen:
+                    seen.add(y)
+                    unique_years.append(y)
+            fa_cai_year = "、".join(unique_years[:6])
     elif xi_list:
         fa_cai_year = "视喜用神大运流年组合"
     
@@ -424,12 +606,12 @@ def _gen_section1(basic: dict, analysis: dict, name: str, gender: str, version: 
         [
             ["17", "**最佳大运**", f"🏆 **{best_dy}**"],
             ["18", "**起运年龄**", f"**{qi_yun_age:.1f}岁**"],
-            ["19", "**次佳大运**", f"🥇 **{dy_list[4].get('gan_zhi','—') if len(dy_list)>4 else '—'}**"],
+            ["19", "**次佳大运**", f"🥇 **{second_best_dy}**"],
             ["20", "**最差大运**", f"⚠️ **{worst_dy}**"],
             ["21", "**现行大运**", f"**{current_dy}**"],
             ["22", "**发财最佳年份**", f"🤑 {fa_cai_year}"],
-            ["23", "**健康注意方面**", f"{WU_XING_ORGANS.get(wx_strong, '—')}（{wx_strong}旺）/ {WU_XING_ORGANS.get(wx_weak, '—')}（{wx_weak}弱）"],
-            ["24", "**四大特征**", f"①{ge_ju_str}格 ②{'/'.join(xi_list)}为喜 ③{'/'.join(ji_list)}为忌 ④{sq_level}"],
+            ["23", "**健康注意方面**", f"{health_text}"],
+            ["24", "**四大特征**", _gen_four_features(basic, analysis, ri_gan, ri_wx, ge_ju_str, xi_list, ji_list, sq_level)],
             ["25", "**搬迁次数预测**", "🚚 **约3~5次**（学业/职场/婚姻各阶段可能的搬迁动因）"],
         ]
     ))
@@ -446,7 +628,7 @@ def _gen_section1(basic: dict, analysis: dict, name: str, gender: str, version: 
     dy_show = "→".join([d.get("gan_zhi", "") for d in dy_list[:5]])
 
     lines.append(f"> **总结：** 您是{ri_gan}命（{ri_wx}·{ri_yy}），日主{sq_level}（{sq_score}分），{sq_desc}。")
-    lines.append(f"> 命局核心格局为{ge_ju_str}格，喜用神为{xi_str}，忌神为{ji_str}。")
+    lines.append(f"> 命局核心格局为{ge_ju_str}，喜用神为{xi_str}，忌神为{ji_str}。")
     lines.append(f"> 财星评分{cai_score}分，属{wealth_level}层次。大运走势：{dy_show}…")
     lines.append(f"> 健康方面需关注{WU_XING_ORGANS.get(wx_strong, '旺五行')}（{wx_strong}过旺）和{WU_XING_ORGANS.get(wx_weak, '弱五行')}（{wx_weak}过弱）相关器官。")
     lines.append(f"> 以上数据均源自bazi-engine引擎JSON校准输出，同一个生辰输入永远输出完全相同的报告。")
@@ -1533,7 +1715,7 @@ def _gen_section6(basic: dict, analysis: dict) -> list:
     # 开头总述
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     lines.append(f"{ri_gan}命主的性格并非单一维度，而是由五重人格交织而成——")
-    lines.append(f"日主「{ri_wx}性{ri_gan}」赋予底色，格局「{ge_ju_str}格」定义主调，")
+    lines.append(f"日主「{ri_wx}性{ri_gan}」赋予底色，格局「{ge_ju_str}」定义主调，")
     lines.append("十神带来层次深度，身强弱决定行为力道，喜用神指引成长方向。")
     lines.append(f"这五重特质相互叠加、彼此修正，共同造就了一个独特而丰满的你。")
     lines.append("")
@@ -1608,7 +1790,7 @@ def _gen_section6(basic: dict, analysis: dict) -> list:
     else:
         gj_quality = "中性平和，能量中庸"
 
-    lines.append(f"格局为「{ge_ju_str}格」，属于{gj_quality}。格局是命局中最稳定的性格框架，决定了你在面对重大选择时的底层行为逻辑。")
+    lines.append(f"格局为「{ge_ju_str}」，属于{gj_quality}。格局是命局中最稳定的性格框架，决定了你在面对重大选择时的底层行为逻辑。")
     lines.append("")
 
     gj_detail = {
@@ -1643,7 +1825,7 @@ def _gen_section6(basic: dict, analysis: dict) -> list:
                 f"擅长领域：创作、研发、表演、策划。"
                 f"潜在陷阱：锋芒毕露易得罪人，需要学会收敛和控制表达方式。",
     }
-    lines.append(gj_detail.get(ge_ju_str, f"格局为{ge_ju_str}格，形成独特的性格行为模式。"))
+    lines.append(gj_detail.get(ge_ju_str, f"格局为{ge_ju_str}，形成独特的性格行为模式。"))
     lines.append("")
 
     # 格局的十神互动组合
@@ -1876,11 +2058,11 @@ def _gen_section6(basic: dict, analysis: dict) -> list:
         growth_items.append("⚖️ 中和者最大的优势是适应力——但优势也可能是陷阱，选一个赛道深扎下去，做出差异化。")
 
     if ge_ju_str in gj_four_devil:
-        growth_items.append(f"🔥 你的{ge_ju_str}格能量激烈，需要有制化手段——找到可以「制」你的十神（如食神制杀、印化杀），把破坏力转化为创造力。")
+        growth_items.append(f"🔥 你的{ge_ju_str}能量激烈，需要有制化手段——找到可以「制」你的十神（如食神制杀、印化杀），把破坏力转化为创造力。")
     elif ge_ju_str in gj_four_god:
-        growth_items.append(f"🌸 你的{ge_ju_str}格温和正能量，但吉神需要护卫——注意大运流年中的冲克，保护好你的根基能量。")
+        growth_items.append(f"🌸 你的{ge_ju_str}温和正能量，但吉神需要护卫——注意大运流年中的冲克，保护好你的根基能量。")
     else:
-        growth_items.append(f"💎 你的{ge_ju_str}格中性平和，中庸即定力——在浮躁的大环境中保持清醒节奏，是最难得的竞争力。")
+        growth_items.append(f"💎 你的{ge_ju_str}中性平和，中庸即定力——在浮躁的大环境中保持清醒节奏，是最难得的竞争力。")
 
     for ss in top3_ss[:2]:
         if ss in ["七杀", "伤官", "劫财"]:
@@ -1919,7 +2101,7 @@ def _gen_section6(basic: dict, analysis: dict) -> list:
 
     lines.append(f"🗣️ **一句话总结你的性格：**")
     lines.append("")
-    lines.append(f"> 你是「{metaphor}」，以{ge_ju_str}格的姿态行走于世，")
+    lines.append(f"> 你是「{metaphor}」，以{ge_ju_str}的姿态行走于世，")
     lines.append(f"> 身上带着「{top_ss_str}」的鲜明烙印，力量收放{sq_power_str}，")
     lines.append(f"> 命中喜用「{xi_str}」来为你的人生注入能量。")
     lines.append(f"> 五重人格交织，独一无二的你。")
@@ -2965,7 +3147,7 @@ def _gen_section10(basic: dict, analysis: dict, birth_year: int) -> list:
     }
 
     base_dir = career_map.get(ge_ju_str, "宜根据喜用神五行选择行业")
-    lines.append(f"格局为{ge_ju_str}格→{base_dir}。所以您的事业发展应当以格局为纲，选择与格局特质匹配的赛道。")
+    lines.append(f"格局为{ge_ju_str}→{base_dir}。所以您的事业发展应当以格局为纲，选择与格局特质匹配的赛道。")
     lines.append("")
 
     lines.append("🗣️ **白话解读：**")

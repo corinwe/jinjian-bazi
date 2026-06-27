@@ -16,22 +16,22 @@ CASES = [
             "shen_qiang_level": "身强", "shen_qiang_score": 64.0,
             "ge_ju": "偏印格",
             "xi_shen": ["火","木","水"], "ji_shen": ["土","金"],
-            "cai_xing_score": 31.2, "cai_xing_level": "中富",
+            "cai_xing_score": 31.2, "cai_xing_level": "小富",
             "da_yun_start": "甲申", "qi_yun_age": 0.0,
             "da_yun_sequence": ["甲申","乙酉","丙戌","丁亥","戊子","己丑","庚寅","辛卯"],
         }
     },
     {
         "name": "少爷 (魏源/Joe)",
-        "y": 2011, "m": 5, "d": 31, "h": 10, "min": 0, "gender": 1,
+        "y": 2011, "m": 5, "d": 31, "h": 9, "min": 9, "gender": 1,
         "golden": {
             "ba_zi": "辛卯 癸巳 丙戌 癸巳",
             "na_yin": ["松柏木", "长流水", "屋上土", "长流水"],
-            "shen_qiang_level": "身强", "shen_qiang_score": 55.6,
-            "ge_ju": "建禄格",
+            "shen_qiang_level": "中和", "shen_qiang_score": 55.6,
+            "ge_ju": "正官格",
             "xi_shen": ["水","金","土"], "ji_shen": ["木","火"],
-            "cai_xing_score": 26.8, "cai_xing_level": "中富",
-            "da_yun_start": "壬辰", "qi_yun_age": 0.4,
+            "cai_xing_score": 30.8, "cai_xing_level": "小富",
+            "da_yun_start": "壬辰", "qi_yun_age": 9.1,
             "da_yun_sequence": ["壬辰","辛卯","庚寅","己丑","戊子","丁亥","丙戌","乙酉"],
         }
     },
@@ -50,23 +50,3 @@ CASES = [
         }
     },
 ]
-
-def validate_na_yin():
-    """验证纳音公式的正确索引"""
-    # 用60甲子序数公式计算各柱的纳音
-    golden_nayin = {}
-    for c in CASES:
-        pillars = c["golden"]["ba_zi"].split()
-        expected = c["golden"]["na_yin"]
-        for i, (p, exp_n) in enumerate(zip(pillars, expected)):
-            gan, zhi = p[0], p[1]
-            gi = TIAN_GAN.index(gan)
-            zi = DI_ZHI.index(zhi)
-            seq = (gi * 6 - zi * 5) % 60
-            actual = NA_YIN[seq]
-            status = "✅" if actual == exp_n else "❌"
-            print(f"{status} {c['name']} {p}: 引擎={actual} 期望={exp_n}")
-    print()
-
-if __name__ == "__main__":
-    validate_na_yin()

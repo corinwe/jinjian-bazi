@@ -665,8 +665,9 @@ def calc_cai_xing(ri_gan: str, nian_gan: str, yue_gan: str, shi_gan: str,
     # calc_cai_xing 被 calculate_bazi 调用，从弱格由调用者决定
     
     # 财富五级（基于实际验证校准）
+    # 参考报告定义「中富分界36分」，故30.8分属小富
     if score >= 60: level = "大富"
-    elif score >= 26: level = "中富"
+    elif score >= 36: level = "中富"
     elif score >= 12: level = "小富"
     else: level = "贫穷"
     
