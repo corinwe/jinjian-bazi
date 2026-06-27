@@ -307,7 +307,19 @@ def calc_shen_qiang_ruo(ri_gan: str, nian_gan: str, yue_gan: str, shi_gan: str,
         if TIAN_GAN_WU_XING[cg] == bi_wx:
             ri_zi_zuo_bi_jie = True
             break
-    
+
+    # 5b. 三合局能量加成（v7.0版）
+    # 完整三合局(3个)与日主同五行 → +15分
+    # 半三合局(2个)与日主同五行 → +7分
+    zhi_list = [nian_zhi, yue_zhi, ri_zhi, shi_zhi]
+    he_name, he_complete, he_mult = check_san_he(zhi_list)
+    if he_name and he_complete and he_name == ri_wx:
+        score += 15
+        details.append(f"三合局({he_name})与日主同五行 +15")
+    elif he_name and not he_complete and he_name == ri_wx:
+        score += 7
+        details.append(f"半三合局({he_name})与日主同五行 +7")
+
     # 6. 从格 + 三段式（v7.0：自坐比劫永不从弱）
     if score <= 0 and not ri_zi_zuo_bi_jie:
         return {"score": 50.0, "level": "从弱", "details": details}
@@ -592,6 +604,492 @@ def calc_wu_xing_energy(nian_gan: str, yue_gan: str, ri_gan: str, shi_gan: str,
     return sorted_result
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 神煞计算（v1.0 完整16种）
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# 天乙贵人查法表（以年干或日干查四支地支）
+# 口诀: 甲戊庚牛羊, 乙己鼠猴乡, 丙丁猪鸡位, 壬癸蛇兔藏, 六辛逢马虎
+TIAN_YI_GUI_REN = {
+    "甲": {"丑","未"}, "戊": {"丑","未"}, "庚": {"丑","未"},
+    "乙": {"申","子","辰"}, "己": {"申","子","辰"},
+    "丙": {"亥","酉"}, "丁": {"亥","酉"},
+    "壬": {"巳","卯"}, "癸": {"巳","卯"},
+    "辛": {"寅","午"},
+}
+
+# 文昌贵人（以年干或日干查四支地支）
+WEN_CHANG = {
+    "甲":"巳","乙":"午","丙":"申","丁":"酉","戊":"申",
+    "己":"酉","庚":"亥","辛":"子","壬":"寅","癸":"卯"
+}
+
+# 天德贵人（以月支查四柱天干）
+TIAN_DE = {
+    "寅":"丁","卯":"申","辰":"壬","巳":"辛","午":"亥","未":"甲",
+    "申":"癸","酉":"寅","戌":"丙","亥":"乙","子":"巳","丑":"庚"
+}
+
+# 月德贵人（月支三合局见阳干）
+YUE_DE = {
+    frozenset(["寅","午","戌"]): "丙",
+    frozenset(["申","子","辰"]): "壬",
+    frozenset(["巳","酉","丑"]): "庚",
+    frozenset(["亥","卯","未"]): "甲"
+}
+
+# 太极贵人（以年干或日干查四支地支）
+TAI_JI = {
+    "甲":{"子","午"}, "乙":{"子","午"},
+    "丙":{"卯","酉"}, "丁":{"卯","酉"},
+    "戊":{"辰","戌","丑","未"}, "己":{"辰","戌","丑","未"},
+    "庚":{"寅","亥"}, "辛":{"寅","亥"},
+    "壬":{"巳","申"}, "癸":{"巳","申"}
+}
+
+# 福星贵人（以年干或日干查四支地支）
+FU_XING = {
+    "甲":{"寅","子"}, "丙":{"寅","子"},
+    "乙":{"卯","丑"}, "癸":{"卯","丑"},
+    "戊":{"午","申"}, "庚":{"午","申"},
+    "丁":{"巳","酉"}, "己":{"巳","酉"},
+    "辛":{"未"}, "壬":{"辰"}
+}
+
+# 禄神（日干之临官位，查四支）
+LU_SHEN = {
+    "甲":"寅","乙":"卯","丙":"巳","丁":"午",
+    "戊":"巳","己":"午","庚":"申","辛":"酉","壬":"亥","癸":"子"
+}
+
+# 华盖（三合局墓库）
+HUA_GAI = {
+    frozenset(["寅","午","戌"]): "戌",
+    frozenset(["巳","酉","丑"]): "丑",
+    frozenset(["申","子","辰"]): "辰",
+    frozenset(["亥","卯","未"]): "未"
+}
+
+# 桃花/咸池（三合局咸池位）
+TAO_HUA = {
+    frozenset(["寅","午","戌"]): "卯",
+    frozenset(["巳","酉","丑"]): "午",
+    frozenset(["申","子","辰"]): "酉",
+    frozenset(["亥","卯","未"]): "子"
+}
+
+# 驿马（三合局对冲之位）
+YI_MA = {
+    frozenset(["寅","午","戌"]): "申",
+    frozenset(["巳","酉","丑"]): "亥",
+    frozenset(["申","子","辰"]): "寅",
+    frozenset(["亥","卯","未"]): "巳"
+}
+
+# 将星（三合局之中神）
+JIANG_XING = {
+    frozenset(["寅","午","戌"]): "午",
+    frozenset(["巳","酉","丑"]): "酉",
+    frozenset(["申","子","辰"]): "子",
+    frozenset(["亥","卯","未"]): "卯"
+}
+
+# 灾煞（三合局中神对冲之字）
+ZAI_SHA = {
+    frozenset(["申","子","辰"]): "午",
+    frozenset(["寅","午","戌"]): "子",
+    frozenset(["巳","酉","丑"]): "卯",
+    frozenset(["亥","卯","未"]): "酉"
+}
+
+# 血刃（以日干查四支地支）
+XUE_REN = {
+    "甲":"卯","乙":"寅","丙":"午","丁":"巳","戊":"午",
+    "己":"巳","庚":"酉","辛":"申","壬":"子","癸":"亥"
+}
+
+# 孤辰寡宿（以年支查四支地支）
+GU_CHEN_GUA_SU = {
+    frozenset(["亥","子","丑"]): ("寅","戌"),  # 孤寅寡戌
+    frozenset(["寅","卯","辰"]): ("巳","丑"),  # 孤巳寡丑
+    frozenset(["巳","午","未"]): ("申","辰"),  # 孤申寡辰
+    frozenset(["申","酉","戌"]): ("亥","未"),  # 孤亥寡未
+}
+
+# 红鸾（以年支查四支地支）
+HONG_LUAN = {
+    "子":"卯","丑":"寅","寅":"丑","卯":"子","辰":"亥","巳":"戌",
+    "午":"酉","未":"申","申":"未","酉":"午","戌":"巳","亥":"辰"
+}
+
+# 天喜（红鸾对冲）
+TIAN_XI = {
+    "子":"酉","丑":"申","寅":"未","卯":"午","辰":"巳","巳":"辰",
+    "午":"卯","未":"寅","申":"丑","酉":"子","戌":"亥","亥":"戌"
+}
+
+
+# 六冲表（用于流年分析）
+LIU_CHONG = {
+    "子":"午","丑":"未","寅":"申","卯":"酉","辰":"戌","巳":"亥",
+    "午":"子","未":"丑","申":"寅","酉":"卯","戌":"辰","亥":"巳"
+}
+
+# 六害表
+LIU_HAI = {
+    "子":"未","丑":"午","寅":"巳","卯":"辰","辰":"卯","巳":"寅",
+    "午":"丑","未":"子","申":"亥","酉":"戌","戌":"酉","亥":"申"
+}
+
+# 三刑表
+SAN_XING_MAP = {
+    "寅":"巳","巳":"申","申":"寅",  # 无恩之刑
+    "丑":"未","未":"戌","戌":"丑",  # 恃势之刑
+    "子":"卯","卯":"子",            # 无礼之刑
+    "辰":"辰","午":"午","酉":"酉","亥":"亥"  # 自刑
+}
+
+
+def _find_san_he_set(zhi):
+    """找到包含指定地支的三合局集合"""
+    for he_set in SAN_HE:
+        if zhi in he_set:
+            return he_set
+    return None
+
+
+def calc_shensha(ri_gan, ri_zhi, nian_gan, nian_zhi, yue_gan, yue_zhi, shi_gan, shi_zhi, gender):
+    """
+    计算四柱神煞（完整16种）
+    
+    参数：
+        ri_gan..shi_zhi: 四柱天干地支
+        gender: 0=女, 1=男
+    
+    返回：
+        {"nian": {神煞名: bool, ...}, "yue": {...}, "ri": {...}, "shi": {...}}
+    """
+    pillars_zhi = {"nian": nian_zhi, "yue": yue_zhi, "ri": ri_zhi, "shi": shi_zhi}
+    pillars_gan = {"nian": nian_gan, "yue": yue_gan, "ri": ri_gan, "shi": shi_gan}
+    
+    result = {pos: {} for pos in ["nian", "yue", "ri", "shi"]}
+    
+    for pos_name in ["nian", "yue", "ri", "shi"]:
+        zhi = pillars_zhi[pos_name]
+        gan = pillars_gan[pos_name]
+        ss = {}
+        
+        # ── 1. 天乙贵人（年干或日干查四支地之中） ──
+        found = False
+        for ref_gan in (nian_gan, ri_gan):
+            if zhi in TIAN_YI_GUI_REN.get(ref_gan, set()):
+                found = True
+                break
+        ss["天乙贵人"] = found
+        
+        # ── 2. 文昌贵人（年干或日干查四支地之中） ──
+        found = False
+        for ref_gan in (nian_gan, ri_gan):
+            if WEN_CHANG.get(ref_gan) == zhi:
+                found = True
+                break
+        ss["文昌贵人"] = found
+        
+        # ── 3. 天德贵人（月支查四柱天干） ──
+        tian_de_gan = TIAN_DE.get(yue_zhi, "")
+        ss["天德贵人"] = (gan == tian_de_gan) if tian_de_gan else False
+        
+        # ── 4. 月德贵人（月支三合局见阳干） ──
+        yue_de_gan = ""
+        for he_set, g in YUE_DE.items():
+            if yue_zhi in he_set:
+                yue_de_gan = g
+                break
+        ss["月德贵人"] = (gan == yue_de_gan) if yue_de_gan else False
+        
+        # ── 5. 太极贵人（年干或日干查四支地之中） ──
+        found = False
+        for ref_gan in (nian_gan, ri_gan):
+            if zhi in TAI_JI.get(ref_gan, set()):
+                found = True
+                break
+        ss["太极贵人"] = found
+        
+        # ── 6. 福星贵人（年干或日干查四支地之中） ──
+        found = False
+        for ref_gan in (nian_gan, ri_gan):
+            if zhi in FU_XING.get(ref_gan, set()):
+                found = True
+                break
+        ss["福星贵人"] = found
+        
+        # ── 7. 禄神（日干之临官位） ──
+        ss["禄神"] = (zhi == LU_SHEN.get(ri_gan, ""))
+        
+        # ── 8. 华盖（年支或日支查四支地之中） ──
+        found = False
+        for ref_zhi in (nian_zhi, ri_zhi):
+            he_set = _find_san_he_set(ref_zhi)
+            if he_set and zhi == HUA_GAI.get(he_set, ""):
+                found = True
+                break
+        ss["华盖"] = found
+        
+        # ── 9. 桃花/咸池（年支或日支查四支地之中） ──
+        found = False
+        for ref_zhi in (nian_zhi, ri_zhi):
+            he_set = _find_san_he_set(ref_zhi)
+            if he_set and zhi == TAO_HUA.get(he_set, ""):
+                found = True
+                break
+        ss["桃花"] = found
+        
+        # ── 10. 驿马（年支或日支查四支地之中） ──
+        found = False
+        for ref_zhi in (nian_zhi, ri_zhi):
+            he_set = _find_san_he_set(ref_zhi)
+            if he_set and zhi == YI_MA.get(he_set, ""):
+                found = True
+                break
+        ss["驿马"] = found
+        
+        # ── 11. 将星（年支或日支查四支地之中） ──
+        found = False
+        for ref_zhi in (nian_zhi, ri_zhi):
+            he_set = _find_san_he_set(ref_zhi)
+            if he_set and zhi == JIANG_XING.get(he_set, ""):
+                found = True
+                break
+        ss["将星"] = found
+        
+        # ── 12. 灾煞（以年支查四支地支） ──
+        he_set = _find_san_he_set(nian_zhi)
+        ss["灾煞"] = (he_set and zhi == ZAI_SHA.get(he_set, "")) or False
+        
+        # ── 13. 血刃（以日干查四支地支） ──
+        ss["血刃"] = (zhi == XUE_REN.get(ri_gan, ""))
+        
+        # ── 14. 孤辰寡宿（以年支查四支地支） ──
+        found_gu = False
+        found_gua = False
+        for he_set, (gu, gua) in GU_CHEN_GUA_SU.items():
+            if nian_zhi in he_set:
+                found_gu = (zhi == gu)
+                found_gua = (zhi == gua)
+                break
+        ss["孤辰"] = found_gu
+        ss["寡宿"] = found_gua
+        
+        # ── 15. 红鸾（以年支查四支地支） ──
+        ss["红鸾"] = (zhi == HONG_LUAN.get(nian_zhi, ""))
+        
+        # ── 16. 天喜（以年支查四支地支） ──
+        ss["天喜"] = (zhi == TIAN_XI.get(nian_zhi, ""))
+        
+        result[pos_name] = ss
+    
+    return result
+
+
+def calc_all_shensha_with_positions(ri_gan, ri_zhi, nian_gan, nian_zhi, yue_gan, yue_zhi, shi_gan, shi_zhi, gender):
+    """
+    返回所有神煞的扁平列表，带位置信息，供报告生成器使用。
+    
+    返回格式：
+    [
+        {"name": "天乙贵人", "position": "nian", "position_label": "年柱"},
+        {"name": "桃花", "position": "ri", "position_label": "日柱"},
+        ...
+    ]
+    """
+    shensha_dict = calc_shensha(ri_gan, ri_zhi, nian_gan, nian_zhi, yue_gan, yue_zhi, shi_gan, shi_zhi, gender)
+    pos_labels = {"nian": "年柱", "yue": "月柱", "ri": "日柱", "shi": "时柱"}
+    result = []
+    for pos in ["nian", "yue", "ri", "shi"]:
+        for name, present in shensha_dict[pos].items():
+            if present:
+                result.append({
+                    "name": name,
+                    "position": pos,
+                    "position_label": pos_labels[pos]
+                })
+    return result
+
+
+def calc_shensha_summary(ri_gan, ri_zhi, nian_gan, nian_zhi, yue_gan, yue_zhi, shi_gan, shi_zhi, gender):
+    """
+    返回神煞摘要统计。
+    
+    返回格式：
+    {
+        "auspicious_count": N,        # 吉神数量
+        "neutral_count": N,           # 中性神煞数量
+        "inauspicious_count": N,      # 凶神数量
+        "marriage_count": N,          # 婚姻类神煞数量
+        "total": N,                   # 总计
+        "auspicious_list": [...],     # 吉神列表(带位置)
+        "inauspicious_list": [...],   # 凶神列表(带位置)
+    }
+    """
+    shensha_dict = calc_shensha(ri_gan, ri_zhi, nian_gan, nian_zhi, yue_gan, yue_zhi, shi_gan, shi_zhi, gender)
+    
+    # 分类定义
+    auspicious = {"天乙贵人","文昌贵人","天德贵人","月德贵人","太极贵人","福星贵人","禄神"}
+    neutral = {"华盖","桃花","驿马","将星"}
+    inauspicious = {"灾煞","血刃","孤辰","寡宿"}
+    marriage = {"红鸾","天喜"}
+    
+    pos_labels = {"nian": "年柱", "yue": "月柱", "ri": "日柱", "shi": "时柱"}
+    
+    auspicious_list = []
+    inauspicious_list = []
+    total = 0
+    
+    for pos in ["nian", "yue", "ri", "shi"]:
+        for name, present in shensha_dict[pos].items():
+            if present:
+                total += 1
+                item = {"name": name, "position": pos, "position_label": pos_labels[pos]}
+                if name in auspicious:
+                    auspicious_list.append(item)
+                elif name in inauspicious:
+                    inauspicious_list.append(item)
+    
+    return {
+        "auspicious_count": len(auspicious_list),
+        "neutral_count": sum(1 for pos in shensha_dict for n, p in shensha_dict[pos].items() if p and n in neutral),
+        "inauspicious_count": len(inauspicious_list),
+        "marriage_count": sum(1 for pos in shensha_dict for n, p in shensha_dict[pos].items() if p and n in marriage),
+        "total": total,
+        "auspicious_list": auspicious_list,
+        "inauspicious_list": inauspicious_list,
+    }
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 流年分析
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+def calc_liu_nian(year: int, ri_gan: str, da_yun_list: list) -> dict:
+    """
+    流年分析。
+    
+    参数：
+        year: 流年公历年份
+        ri_gan: 日干
+        da_yun_list: calc_da_yun 返回的 da_yun 列表，每项含 gan_zhi
+    
+    返回：
+        {
+            "year": 2026,
+            "tian_gan": "丙",
+            "di_zhi": "午",
+            "gan_zhi": "丙午",
+            "shi_shen": "正印",
+            "current_da_yun": {...},
+            "chong_da_yun": bool,    # 与当前大运相冲
+            "he_da_yun": bool,       # 与当前大运相合
+            "xing_da_yun": bool,     # 与当前大运相刑
+            "hai_da_yun": bool,      # 与当前大运相害
+            "conflict_detail": "流年天干丙与大运天干壬相冲",
+            "analysis": "...",
+        }
+    """
+    # 流年干支
+    nian_gan = TIAN_GAN[(year - 4) % 10]
+    nian_zhi = DI_ZHI[(year - 4) % 12]
+    gan_zhi = nian_gan + nian_zhi
+    
+    # 十神
+    ss = shi_shen(ri_gan, nian_gan)
+    
+    # 找出当前所行大运
+    current_da_yun = None
+    if da_yun_list:
+        # 假设当前年龄=流年减去生年，简化处理
+        # 实际调用时传已计算好的大运和当前年龄更准确
+        current_da_yun = da_yun_list[0] if da_yun_list else None
+    
+    # 与当前大运的关系检测
+    chong_da_yun = False
+    he_da_yun = False
+    xing_da_yun = False
+    hai_da_yun = False
+    conflict_detail = ""
+    
+    if current_da_yun and "gan_zhi" in current_da_yun:
+        dy_gan = current_da_yun["gan_zhi"][0]
+        dy_zhi = current_da_yun["gan_zhi"][1]
+        
+        # 天干相冲（甲庚冲、乙辛冲、丙壬冲、丁癸冲）
+        gan_chong_pairs = {"甲":"庚","庚":"甲","乙":"辛","辛":"乙",
+                           "丙":"壬","壬":"丙","丁":"癸","癸":"丁"}
+        if gan_chong_pairs.get(nian_gan) == dy_gan:
+            chong_da_yun = True
+            conflict_detail += f"流年天干{nian_gan}与大运天干{dy_gan}相冲; "
+        
+        # 地支相冲
+        if LIU_CHONG.get(nian_zhi) == dy_zhi:
+            chong_da_yun = True
+            conflict_detail += f"流年地支{nian_zhi}与大运地支{dy_zhi}相冲; "
+        
+        # 六合
+        liu_he_check = LIU_HE.get(nian_zhi, "")
+        if liu_he_check and liu_he_check == dy_zhi:
+            he_da_yun = True
+            conflict_detail += f"流年地支{nian_zhi}与大运地支{dy_zhi}六合; "
+        
+        # 三合（简化：只要两字在三合集合中就合）
+        for he_set in SAN_HE:
+            if nian_zhi in he_set and dy_zhi in he_set:
+                he_da_yun = True
+                conflict_detail += f"流年地支{nian_zhi}与大运地支{dy_zhi}三合; "
+                break
+        
+        # 相刑
+        xing_check = SAN_XING_MAP.get(nian_zhi, "")
+        if xing_check and xing_check == dy_zhi:
+            xing_da_yun = True
+            conflict_detail += f"流年地支{nian_zhi}与大运地支{dy_zhi}相刑; "
+        
+        # 相害
+        hai_check = LIU_HAI.get(nian_zhi, "")
+        if hai_check and hai_check == dy_zhi:
+            hai_da_yun = True
+            conflict_detail += f"流年地支{nian_zhi}与大运地支{dy_zhi}相害; "
+    
+    if not conflict_detail:
+        conflict_detail = "流年与大运无明显冲合刑害关系"
+    
+    # 综合评价
+    analysis_parts = []
+    if chong_da_yun:
+        analysis_parts.append("流年与大运相冲，运势波动较大，宜保守行事")
+    if he_da_yun:
+        analysis_parts.append("流年与大运相合，运势顺遂，贵人相助")
+    if xing_da_yun:
+        analysis_parts.append("流年与大运相刑，注意人际关系纠纷")
+    if hai_da_yun:
+        analysis_parts.append("流年与大运相害，谨防小人暗算")
+    if not chong_da_yun and not he_da_yun and not xing_da_yun and not hai_da_yun:
+        analysis_parts.append("流年与大运关系平和，按常规节奏行事即可")
+    
+    return {
+        "year": year,
+        "tian_gan": nian_gan,
+        "di_zhi": nian_zhi,
+        "gan_zhi": gan_zhi,
+        "shi_shen": ss,
+        "current_da_yun": current_da_yun,
+        "chong_da_yun": chong_da_yun,
+        "he_da_yun": he_da_yun,
+        "xing_da_yun": xing_da_yun,
+        "hai_da_yun": hai_da_yun,
+        "conflict_detail": conflict_detail.strip("; "),
+        "analysis": " ".join(analysis_parts),
+    }
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 主入口 v7.0
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -625,15 +1123,21 @@ def calculate_bazi(year: int, month: int, day: int,
     dy = calc_da_yun(ng, nz, gender, year, month, day, hour, minute)
     cx = calc_cai_xing(rg, ng, yg, sg, nz, yz, rz, sz)
     wx_energy = calc_wu_xing_energy(ng, yg, rg, sg, nz, yz, rz, sz)
-    
+    ss_sha = calc_shensha(rg, rz, ng, nz, yg, yz, sg, sz, gender)
+    ss_flat = calc_all_shensha_with_positions(rg, rz, ng, nz, yg, yz, sg, sz, gender)
+    ss_summary = calc_shensha_summary(rg, rz, ng, nz, yg, yz, sg, sz, gender)
+
     basic = {"ba_zi":ba_zi,"ri_zhu":rg+rz,"ri_gan":rg,"ri_zhi":rz,
              "nian_gan":ng,"nian_zhi":nz,"yue_gan":yg,"yue_zhi":yz,
              "shi_gan":sg,"shi_zhi":sz,
              "gender":"男" if gender==1 else "女",
              "solar_date":f"{year}年{month}月{day}日",
-             "pillars":pillars}
-    
+             "pillars":pillars,
+             "shensha":ss_sha,
+             "shensha_flat":ss_flat}
+
     analysis = {"shen_qiang_ruo":sqr,"ge_ju":gj,"xi_yong_shen":xys,
-                "cai_xing":cx,"da_yun":dy,"wu_xing_energy":wx_energy}
+                "cai_xing":cx,"da_yun":dy,"wu_xing_energy":wx_energy,
+                "shensha_summary":ss_summary}
     
     return {"basic":basic,"analysis":analysis}
