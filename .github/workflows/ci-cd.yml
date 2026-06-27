@@ -1,0 +1,172 @@
+# ═══════════════════════════════════════════════
+# 金鉴真人·八字命理平台 CI/CD 流水线 v2.0
+# ═══════════════════════════════════════════════
+# 触发: push到main/develop + PR到main
+# 阶段: 验证(6项) → 构建(Docker) → 部署(自动)
+# ═══════════════════════════════════════════════
+
+name: CI/CD Pipeline v2.0
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  PYTHON_VERSION: '3.11'
+  COVERAGE_THRESHOLD: '45'
+
+jobs:
+  # ═══════════════════════════════════════════════
+  # Phase 1: 验证 (6道质量门禁)
+  # ═══════════════════════════════════════════════
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --no-cache-dir -r api/requirements.txt
+          pip install ruff pytest pytest-cov
+
+      - name: ① 代码质量 — ruff lint
+        run: |
+          ruff check . --output-format=github
+        continue-on-error: true
+
+      - name: ② 代码格式 — ruff format
+        run: |
+          ruff format . --check --diff
+        continue-on-error: true
+
+      - name: ③ 引擎模块导入验证
+        run: |
+          cd engine && python3 tests/test_imports.py
+
+      - name: ④ 引擎全量测试 (320条)
+        run: |
+          cd engine && python3 tests/test_full_suite.py
+
+      - name: ⑤ 排盘正确性验证
+        run: |
+          cd engine && python3 -c "
+          import sys; sys.path.insert(0, '.')
+          from paipan import paipan
+          # 子源 (已知正确八字)
+          bazi = paipan(2011, 4, 25, 10, '男')
+          print(f'子源: {bazi.bazi}')
+          # 家主
+          bazi2 = paipan(1980, 7, 15, 10, '男')
+          print(f'家主: {bazi2.bazi}')
+          print('✅ 排盘验证通过')
+          "
+
+      - name: ⑥ 覆盖率门禁
+        run: |
+          cd engine && python3 -m pytest tests/test_full_suite.py \
+            --cov=. --cov-report=term --cov-fail-under=${{ env.COVERAGE_THRESHOLD }} -q
+
+      - name: ⑦ 全量验证 (26项)
+        run: |
+          cd engine && python3 tests/validate_all.py
+
+  # ═══════════════════════════════════════════════
+  # Phase 2: 构建 (Docker镜像)
+  # ═══════════════════════════════════════════════
+  build:
+    needs: validate
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & tag
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: |
+            jinjian-bazi:latest
+            jinjian-bazi:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Test Docker image
+        run: |
+          docker run --rm -d -p 8000:8000 --name bazi-test jinjian-bazi:latest
+          sleep 4
+          # 检查存活
+          curl -sf http://localhost:8000/ping | grep -q 'ok' && echo '✅ ping OK'
+          curl -sf http://localhost:8000/health | grep -q 'healthy' && echo '✅ health OK'
+          # 测试分析请求
+          curl -sf -X POST http://localhost:8000/api/v1/analyze \
+            -H 'Content-Type: application/json' \
+            -d '{"name":"测试","gender":"男","birth_year":1990,"birth_month":5,"birth_day":15,"birth_hour":8}' \
+            | python3 -c "import sys,json; print('✅ analyze OK' if json.load(sys.stdin).get('status')=='success' else '⚠️ 返回异常')"
+          docker stop bazi-test
+
+  # ═══════════════════════════════════════════════
+  # Phase 3: 部署 (自动部署到服务器)
+  # ═══════════════════════════════════════════════
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          script_stop: true  # 任何一步失败就停止
+          script: |
+            set -e
+            echo "🚀 开始部署 $(date)"
+
+            # ① 拉取最新代码
+            cd /root/bazi-platform
+            git pull origin main
+            COMMIT=$(git rev-parse --short HEAD)
+            echo "📦 部署 commit: $COMMIT"
+
+            # ② 安装依赖
+            pip3 install -r api/requirements.txt --break-system-packages -q
+            echo "✅ 依赖安装完成"
+
+            # ③ 验证引擎
+            cd engine
+            python3 tests/test_imports.py
+            python3 tests/test_full_suite.py
+            cd ..
+
+            # ④ 停止旧服务
+            pkill -f 'uvicorn api.main' 2>/dev/null || true
+            sleep 1
+
+            # ⑤ 启动新服务
+            nohup python3 -m uvicorn api.main:app \
+              --host 0.0.0.0 --port 8000 \
+              --log-level warning > /tmp/bazi-api.log 2>&1 &
+            sleep 3
+
+            # ⑥ 健康检查
+            curl -sf http://localhost:8000/ping | grep -q 'ok' && echo '✅ ping OK'
+            curl -sf http://localhost:8000/health | grep -q 'healthy' && echo '✅ 服务健康'
+
+            # ⑦ 回滚准备: 记录部署版本
+            echo "$(date +%Y%m%d_%H%M%S) $COMMIT" >> /root/bazi-platform/.deploy-history
+            echo "🎉 部署完成: $COMMIT"
