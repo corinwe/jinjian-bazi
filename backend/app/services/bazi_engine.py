@@ -308,49 +308,6 @@ def calc_shen_qiang_ruo(ri_gan: str, nian_gan: str, yue_gan: str, shi_gan: str,
             ri_zi_zuo_bi_jie = True
             break
     
-    # 7. 库加成（Ku Bonus）：日支/时支/年支为日主五行之库时加分
-    # 四库定义：辰=水库, 戌=火库, 丑=金库, 未=木库（土日主任何库均沾）
-    KU_MAP = {"辰":"水", "戌":"火", "丑":"金", "未":"木"}
-    for pos_label, zhi, pts in [("年支", nian_zhi, 8), ("日支", ri_zhi, 15), ("时支", shi_zhi, 8)]:
-        if zhi in KU_MAP:
-            ku_wx = KU_MAP[zhi]
-            if ku_wx == ri_wx:  # 库五行=日主五行
-                score += pts
-                details.append(f"{pos_label}为{ri_wx}库({zhi}) +{pts}")
-            elif ri_wx == "土" and zhi in ("辰","戌","丑","未"):  # 土日主沾四库
-                score += 5
-                details.append(f"{pos_label}为土日主库({zhi}) +5")
-    
-    # 8. 同气相助环境加成（月令与日/时支同五行→火势聚集加成）
-    yz_wx = DI_ZHI_WU_XING[yue_zhi]
-    sz_wx = DI_ZHI_WU_XING[shi_zhi]
-    rz_wx = DI_ZHI_WU_XING[ri_zhi]
-    if yz_wx == bi_wx:
-        if sz_wx == bi_wx:
-            score += 8
-            details.append(f"月令{bi_wx}时支{bi_wx}同气 +8")
-        if rz_wx == bi_wx:
-            score += 6
-            details.append(f"月令{bi_wx}日支{bi_wx}同气 +6")
-    
-    # 9. 印星生扶加成（年支/日支/时支五行生日主）
-    zhi_wx_list = [
-        ("年支", nian_zhi, DI_ZHI_WU_XING[nian_zhi]),
-        ("日支", ri_zhi, DI_ZHI_WU_XING[ri_zhi]),
-        ("时支", shi_zhi, DI_ZHI_WU_XING[shi_zhi]),
-    ]
-    for pos_label, zhi, zhi_wx in zhi_wx_list:
-        if zhi_wx == bi_wx:
-            continue  # 比劫已在前面计分，不重复
-        # 年支生助日主，给予印星贡献
-        zhi_idx = WX_ORDER.index(zhi_wx)
-        ri_idx_check = WX_ORDER.index(ri_wx)
-        if (zhi_idx + 1) % 5 == ri_idx_check:  # zhi_wx生ri_wx
-            pts = {"年支":5, "日支":0, "时支":3}.get(pos_label, 0)  # 日支重叠，时支少量
-            if pts > 0:
-                score += pts
-                details.append(f"{pos_label}({zhi_wx})生日主 +{pts}")
-    
     # 6. 从格 + 三段式（v7.0：自坐比劫永不从弱）
     if score <= 0 and not ri_zi_zuo_bi_jie:
         return {"score": 50.0, "level": "从弱", "details": details}
@@ -395,9 +352,8 @@ def get_ge_ju(ri_gan: str, yue_zhi: str,
         if cg_ss not in ZHENG_BA_GE:
             continue  # 比劫跳过
         # 检查是否透干
-        cg_wx = TIAN_GAN_WU_XING[cg]
         for tg in tian_gan:
-            if tg and TIAN_GAN_WU_XING.get(tg) == cg_wx:
+            if tg and tg == cg:
                 return GE_JU_NAME[cg_ss]
     
     # 无人透干：取首个非比劫
