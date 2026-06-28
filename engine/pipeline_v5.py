@@ -617,6 +617,11 @@ def run_pipeline(
     # 🆕 为所有21个§附加详细规则分析文本
     result = attach_detail_analysis(result)
 
+    # 🆕 方案B: 为所有21个§附加命理师口吻的连贯叙述段落
+    from narrative_integration import add_narratives
+
+    result = add_narratives(result)
+
     # 构造兼容旧接口的输出
     energy_profile = compute_energy_profile(bazi)
     strongest_wx = (

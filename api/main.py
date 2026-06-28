@@ -6,12 +6,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
-from api.routers import analyze, health
-from database.connection import init_db
 from api.observability import ObservabilityMiddleware, get_metrics_response, logger
+from api.routers import analyze, auth, health, history, pdf_download
+from database.connection import init_db
 
 # ── 速率限制 ──
 limiter = Limiter(key_func=get_remote_address, default_limits=["30/minute"])
@@ -54,6 +54,10 @@ app.add_middleware(ObservabilityMiddleware)
 # 注册路由（必须在StaticFiles挂载之前）
 app.include_router(health.router)
 app.include_router(analyze.router)
+app.include_router(auth.router)
+app.include_router(history.router)
+app.include_router(pdf_download.router)
+
 
 # /metrics端点（必须在StaticFiles挂载之前）
 @app.get("/metrics")
@@ -61,9 +65,16 @@ async def metrics():
     """Prometheus指标端点（供监控系统抓取）"""
     return get_metrics_response()
 
-# 挂载前端静态文件（如果存在）
+
+# 挂载前端静态文件
+frontend_dist = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
 frontend_dir = os.path.join(os.path.dirname(__file__), "..", "frontend")
-if os.path.exists(frontend_dir):
+
+if os.path.exists(frontend_dist):
+    # 生产模式：用Vite构建后的文件
+    app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")
+elif os.path.exists(frontend_dir):
+    # 开发模式：用原始文件
     app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
 
 

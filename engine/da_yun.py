@@ -135,21 +135,32 @@ def compute_da_yun_scores(bazi: BaZi, da_yun_list: list[DaYun]) -> list[tuple[in
         # 大运天干五行 + 地支五行
         gan_wx = TIAN_GAN_WU_XING[dy.gan]
         zhi_wx = DI_ZHI_WU_XING[dy.zhi]
-        dy_wx = {gan_wx, zhi_wx}
-
         score = 5.0  # 基准分
 
-        for wx in dy_wx:
-            if wx in xi_yong:
-                if wx == xi_yong[0]:
-                    score += 2.0  # 第一喜用
-                else:
-                    score += 1.5  # 其他喜用
-            if wx in ji_shen:
-                if wx == ji_shen[0]:
-                    score -= 2.0  # 第一忌神
-                else:
-                    score -= 1.5  # 其他忌神
+        # 天干独立计分（不合并到集合，避免同五行去重丢失）
+        # 例：己丑运·己土(忌)+丑土(忌) → 应减2次，不能因五行相同合并为1次
+        if gan_wx in xi_yong:
+            if gan_wx == xi_yong[0]:
+                score += 2.0
+            else:
+                score += 1.5
+        if gan_wx in ji_shen:
+            if gan_wx == ji_shen[0]:
+                score -= 2.0
+            else:
+                score -= 1.5
+
+        # 地支独立计分
+        if zhi_wx in xi_yong:
+            if zhi_wx == xi_yong[0]:
+                score += 2.0
+            else:
+                score += 1.5
+        if zhi_wx in ji_shen:
+            if zhi_wx == ji_shen[0]:
+                score -= 2.0
+            else:
+                score -= 1.5
 
         score = max(0, min(10, score))
         results.append((i, round(score, 1)))

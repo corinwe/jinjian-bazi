@@ -51,9 +51,9 @@ def _get_base_status(shen_label: str, shen_score: float, cai_total: float) -> st
     if cai_total <= 0 and shen_label == "身弱":
         return "无财身弱"
     if shen_label == "身强" or shen_score >= 55:
-        return "身强财旺" if cai_total >= 30 else "身强财弱"
+        return "身强财旺" if cai_total >= 40 else "身强财弱"
     else:
-        return "身弱财旺" if cai_total >= 20 else "身弱财弱"
+        return "身弱财旺" if cai_total >= 40 else "身弱财弱"
 
 
 def _eval_wei_ke(all_zhis: list[str], ri_zhu: str, bazi_gans: list[str]) -> float:
