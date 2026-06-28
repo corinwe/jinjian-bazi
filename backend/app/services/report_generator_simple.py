@@ -2060,7 +2060,7 @@ def _gen_section6(basic: dict, analysis: dict) -> list:
     lines.append(f"综观全局，你的性格是一幅由五重色彩交织的画卷：")
     lines.append("")
     lines.append(f"**底色**——{ri_wx}性{ri_gan}日主，{yy_gangrou}，赋予你最基本的行事风格和能量基调。")
-    lines.append(f"**主调**——{ge_ju_str}格局，决定了你在人生关键节点的选择逻辑和价值取向。")
+    lines.append(f"**主调**——{ge_ju_str}局，决定了你在人生关键节点的选择逻辑和价值取向。")
     lines.append(f"**层次**——十神「{top_ss_str}」等特质为性格注入丰富细节，在不同场景下展现出不同的侧面。")
     lines.append(f"**力道**——{sq_level}（{sq_score}分），控制着你能量的输出方式是「直给」还是「迂回」。")
     lines.append(f"**方向**——喜用神为{xi_str}，这是你成长的能量密码；忌神{ji_str}则是你需要谨慎对待的领域。")
@@ -2068,7 +2068,7 @@ def _gen_section6(basic: dict, analysis: dict) -> list:
 
     lines.append("**五重人格的互动关系：**")
     lines.append("")
-    lines.append(f"- 你的{ri_wx}性底色决定了思维方式，{ge_ju_str}格局决定了价值取向——二者共同构成了你的核心人格。")
+    lines.append(f"- 你的{ri_wx}性底色决定了思维方式，{ge_ju_str}局决定了价值取向——二者共同构成了你的核心人格。")
     wx_ss_note = f"- 十神「{top3_ss[0]}」和「{top3_ss[1] if len(top3_ss)>1 else ''}」则是在这个核心基础上添加的色彩，决定了你在社交、工作、情感中的具体表现。"
     lines.append(wx_ss_note)
     lines.append(f"- {sq_level}的力道控制着以上所有特质的「输出音量」——{'音量大、气势足，但需要学会调节音量' if sq_level=='身强' else '音量小、柔和细腻，但需要学会在关键时刻调大音量' if sq_level=='身弱' else '音量适中、收放自如，是别人最舒服的相处对象'}。")
@@ -2431,7 +2431,7 @@ def _gen_section7(basic: dict, analysis: dict) -> list:
     }
     lines.append(f"**🎭 气质类型**：{wx_qi_zhi.get(ri_wx, '独特型')}（{ri_wx}性{ri_yy}干 + {sq_level}）")
     lines.append(f"**✨ 核心特征**：{wx_qi_zhi_desc.get(ri_wx, '气质鲜明')}")
-    lines.append(f"**🌟 加分项**：{ge_ju_str}格的涵养为气质加分——"
+    lines.append(f"**🌟 加分项**：{ge_ju_str}的涵养为气质加分——"
                  f"{'官杀格的人自带威仪' if ge_ju_str in ['正官','七杀'] else '印格的人自带书卷气' if ge_ju_str in ['正印','偏印'] else '财格的人自带亲和力' if ge_ju_str in ['正财','偏财'] else '食伤格的人自带灵动感' if ge_ju_str in ['食神','伤官'] else '比劫格的人自带江湖气'}。")
     lines.append("")
 
@@ -3200,7 +3200,7 @@ def _gen_section10(basic: dict, analysis: dict, birth_year: int) -> list:
     lines.append("")
 
     lines.append("🗣️ **白话解读：**")
-    lines.append(f"> 您的{ge_ju_str}格决定了您最擅长的领域和做事风格。比如有的人天生适合闯荡，")
+    lines.append(f"> 您的{ge_ju_str}决定了您最擅长的领域和做事风格。比如有的人天生适合闯荡，")
     lines.append(f"> 有的人适合深耕——您的格局已经指明了最佳赛道，强行去走不匹配的方向结果往往是事倍功半。")
     lines.append("")
 
@@ -3259,7 +3259,7 @@ def _gen_section10(basic: dict, analysis: dict, birth_year: int) -> list:
 
     # 定级
     level_tag = "中等"
-    reasons = [f"格局：{ge_ju_str}格"]
+    reasons = [f"格局：{ge_ju_str}"]
 
     # 顶级
     if qs_zhi and sq_level == "身强" and has_xi_da_yun and qs_cnt >= 1 and evil_cnt >= 2:
@@ -3344,7 +3344,7 @@ def _gen_section10(basic: dict, analysis: dict, birth_year: int) -> list:
 
     lines.append("🗣️ **白话解读：**")
     lines.append(f"> 您的事业等级是「{level_tag}」。这不是拍脑袋的结论，而是基于三个核心维度：")
-    lines.append(f"> **①格局定方向**——{ge_ju_str}格决定了您做什么行业容易出彩；")
+    lines.append(f"> **①格局定方向**——{ge_ju_str}决定了您做什么行业容易出彩；")
     if qs_cnt > 0:
         lines.append(f"> **②恶神制化定级别**——您命中有{qs_cnt}处七杀，{'有制化所以压力变动力' if qs_zhi else '无制化所以压力较大'}；")
     lines.append(f"> **③身强弱定承载**——您{sq_level}，{'能扛得住大风大浪' if sq_level == '身强' else '需要印比大运助身' if sq_level == '身弱' else '平衡稳健'}。")
@@ -3512,7 +3512,7 @@ def _gen_section10(basic: dict, analysis: dict, birth_year: int) -> list:
     lines.append("### 6.7 事业规划时间表")
     lines.append("")
     qy = dy_data.get("qi_yun_age", 7)
-    lines.append(f"**{qy:.0f}~22岁**（求学探索期）：以学业为主，培养{ge_ju_str}格相关的基础能力。")
+    lines.append(f"**{qy:.0f}~22岁**（求学探索期）：以学业为主，培养{ge_ju_str}相关的基础能力。")
     lines.append("**22~35岁**（职场起步期）：在所选行业前沿积累经验，前5年完成基础技能建设。")
     lines.append("**35~50岁**（事业突破期）：人的事业高度在此阶段决定，宜向管理或专家岗发展。")
     lines.append("**50岁以后**（稳定传承期）：从一线执行转向指导、顾问角色。")
@@ -4110,8 +4110,8 @@ def generate_report(bazi_result: dict, name: str, gender: str,
     lines.append("|:---------|:---------|:---------|")
     ri_wx_desc = {"金":"刚毅果断","木":"仁慈宽厚","水":"智慧灵动","火":"热情开朗","土":"稳重诚信"}
     desc = ri_wx_desc.get(ri_wx, "特质鲜明")
-    lines.append(f"| **青少年期** | {ge_ju_str}格底色初显 | 展现{desc}特质 |")
-    lines.append(f"| **青年期** | 十神组合激活 | {ge_ju_str}格优势转化为竞争力 |")
+    lines.append(f"| **青少年期** | {ge_ju_str}底色初显 | 展现{desc}特质 |")
+    lines.append(f"| **青年期** | 十神组合激活 | {ge_ju_str}优势转化为竞争力 |")
     lines.append(f"| **中年期** | 格局定型·能量释放 | 喜用神大运期间核心特质最大化 |")
     lines.append(f"| **晚年期** | 回归本真·调和平衡 | 各人格特质趋于平衡 |")
     lines.append("")
@@ -4151,7 +4151,7 @@ def generate_report(bazi_result: dict, name: str, gender: str,
     lines.append("| 序号 | 命理判断 | 依据 |")
     lines.append("|:----:|:---------|:-----|")
     lines.append(f"| 1 | 日主{ri_gan}{ri_wx}性 | 四柱排盘+十神定位 |")
-    lines.append(f"| 2 | {ge_ju_str}格成立 | 月令本气+透干确认 |")
+    lines.append(f"| 2 | {ge_ju_str}成立 | 月令本气+透干确认 |")
     lines.append(f"| 3 | {sq_level}（{sq_score}分） | 精密评分法 |")
     lines.append(f"| 4 | 喜{'/'.join(xi_list)}忌{'/'.join(ji_list)} | 身强弱+五行平衡 |")
     lines.append(f"| 5 | {dy_data.get('qi_yun_age',0):.1f}岁起运 | 阳男阴女顺/阴男阳女逆 |")
@@ -6329,7 +6329,7 @@ def _gen_section18(basic: dict, analysis: dict) -> list:
     lines.append("### 决断一：事业成就")
     lines.append("")
     lines.append("```")
-    lines.append(f"**其人**：{ge_ju_str}格人才，{sq_level}，喜{'/'.join(xi_list)}")
+    lines.append(f"**其人**：{ge_ju_str}人才，{sq_level}，喜{'/'.join(xi_list)}")
     lines.append(f"**其事**：事业成就等级与领域")
     lines.append(f"**其时**：喜用神大运中年窗口（约35~55岁）")
     if sq_level == "身强":
@@ -6339,12 +6339,12 @@ def _gen_section18(basic: dict, analysis: dict) -> list:
     else:
         degree = "管理/技术双栖人才"
     lines.append(f"**其度**：{degree}")
-    lines.append(f"**理由**：{ge_ju_str}格为事业根基，{sq_level}决定了担当能力，喜用神大运为腾飞窗口")
+    lines.append(f"**理由**：{ge_ju_str}为事业根基，{sq_level}决定了担当能力，喜用神大运为腾飞窗口")
     lines.append("")
-    lines.append(f"**断语**：命主为{ge_ju_str}格，{sq_level}，中年喜用神大运期间事业可达{degree}级别。")
+    lines.append(f"**断语**：命主为{ge_ju_str}，{sq_level}，中年喜用神大运期间事业可达{degree}级别。")
     lines.append("```")
     lines.append("")
-    lines.append(f"🗣️白话解读：您的命格为{ge_ju_str}格，{sq_level}，中年喜用神大运期间事业有望达到{degree}级别，这是命运给您的最大红利期。")
+    lines.append(f"🗣️白话解读：您的命格为{ge_ju_str}，{sq_level}，中年喜用神大运期间事业有望达到{degree}级别，这是命运给您的最大红利期。")
     lines.append("")
 
     # 决断二：财富格局
@@ -6504,7 +6504,7 @@ def _gen_section19(basic: dict, analysis: dict, birth_year: int) -> list:
     lines.append("")
     lines.append(f"**关键风险**：{worst_dy or '无显著风险运'}大运期间注意谨慎行事。")
     lines.append("")
-    lines.append(f"**人生定位**：{ge_ju_str}格人才{ri_wx}性，整体命局品质中等偏上。")
+    lines.append(f"**人生定位**：{ge_ju_str}人才{ri_wx}性，整体命局品质中等偏上。")
     lines.append("")
     lines.append("---")
     lines.append("")
@@ -6658,7 +6658,7 @@ def _gen_section21(basic: dict, analysis: dict) -> list:
     ji_str = "、".join(ji_list) if ji_list else "—"
     lines.append(
         f"> **白话：** 以下六大维度建议是根据您的八字命格量身定做的。"
-        f"您的命局以{ge_ju_str}格为核心，{sq_level}（{sq_score}分），"
+        f"您的命局以{ge_ju_str}为核心，{sq_level}（{sq_score}分），"
         f"喜用神为{xi_str}，忌神为{ji_str}。"
         f"后续的每一条建议都围绕这些关键信息展开，帮您把八字命理转化成人生的具体行动方向。"
     )
@@ -6668,7 +6668,7 @@ def _gen_section21(basic: dict, analysis: dict) -> list:
     lines.append("### 21.1 事业方向与路线图")
     lines.append("")
     career_advice = (
-        f"您的命局以{ge_ju_str}格为核心，建议深耕{ge_ju_str}相关的领域。"
+        f"您的命局以{ge_ju_str}为核心，建议深耕{ge_ju_str}相关的领域。"
         f"{sq_level}决定了您在事业中{'适合独立担当、主动进取' if sq_level=='身强' else '适合借力发展、协作共进' if sq_level=='身弱' else '兼具灵活性和稳定性'}。"
         f"喜用神为{'、'.join(xi_list)}，对应的五行行业宜优先选择。"
         f"最佳大运窗口在中年时期（35~55岁），届时事业应有质的飞跃。"
@@ -6745,7 +6745,7 @@ def _gen_section21(basic: dict, analysis: dict) -> list:
     lines.append("### 21.6 人生总纲寄语")
     lines.append("")
     lines.append(
-        f"> **命理诗学**：{ri_gan}命{ge_ju_str}格，{'身强志坚闯四方' if sq_level=='身强' else '身弱借力上青云' if sq_level=='身弱' else '中和之道行天下'}。"
+        f"> **命理诗学**：{ri_gan}命{ge_ju_str}，{'身强志坚闯四方' if sq_level=='身强' else '身弱借力上青云' if sq_level=='身弱' else '中和之道行天下'}。"
         f"喜{'、'.join(xi_list)}为吉，忌{'、'.join(ji_list)}为慎。"
         f"中年大运是腾飞之期，青年积累是腾飞之基。"
         f"知命不认命，顺势而为，方为智者之道。"
@@ -6968,8 +6968,8 @@ def generate_report(bazi_result: dict, name: str, gender: str,
     lines.append("|:---------|:---------|:---------|")
     ri_wx_desc = {"金":"刚毅果断","木":"仁慈宽厚","水":"智慧灵动","火":"热情开朗","土":"稳重诚信"}
     desc = ri_wx_desc.get(ri_wx, "特质鲜明")
-    lines.append(f"| **青少年期** | {ge_ju_str}格底色初显 | 学业阶段展现{desc}的特质，在同龄人中较早形成自我认知 |")
-    lines.append(f"| **青年期** | 十神组合全面激活 | 进入职场后，{ge_ju_str}格的优势开始转化为职业竞争力 |")
+    lines.append(f"| **青少年期** | {ge_ju_str}底色初显 | 学业阶段展现{desc}的特质，在同龄人中较早形成自我认知 |")
+    lines.append(f"| **青年期** | 十神组合全面激活 | 进入职场后，{ge_ju_str}的优势开始转化为职业竞争力 |")
     lines.append(f"| **中年期** | 格局定型·能量释放 | 在喜用神大运期间，核心特质最大化发挥，事业达到高峰 |")
     lines.append(f"| **晚年期** | 回归本真·调和平衡 | 经历人生起伏后，各人格特质趋于平衡，心态更加圆融 |")
     lines.append("")
@@ -7026,7 +7026,7 @@ def generate_report(bazi_result: dict, name: str, gender: str,
     lines.append("")
     lines.append("**人际交往行动项：**")
     lines.append(f"- 与喜用神五行的人群建立深度合作关系")
-    lines.append("- 在人际交往中发挥{ge_ju_str}格的优势特质")
+    lines.append("- 在人际交往中发挥{ge_ju_str}的优势特质")
     lines.append("- 建立个人品牌和行业影响力")
     lines.append("")
     lines.append("**学习成长行动项：**")
@@ -7043,7 +7043,7 @@ def generate_report(bazi_result: dict, name: str, gender: str,
     lines.append("| 序号 | 命理判断 | 依据 | 验证方式 |")
     lines.append("|:----:|:---------|:-----|:---------|")
     lines.append(f"| 1 | 日主{ri_gan}{ri_wx}性 | 四柱排盘+十神定位 | 可重复验证 |")
-    lines.append(f"| 2 | {ge_ju_str}格成立 | 月令本气+透干确认 | 可重复验证 |")
+    lines.append(f"| 2 | {ge_ju_str}成立 | 月令本气+透干确认 | 可重复验证 |")
     lines.append(f"| 3 | {sq_level}（{sq_score}分） | 精密评分法 | 可重复验证 |")
     lines.append(f"| 4 | 喜{'/'.join(xi_list)}忌{'/'.join(ji_list)} | 身强弱+五行平衡 | 可重复验证 |")
     lines.append(f"| 5 | {dy_data.get('qi_yun_age',0):.1f}岁起运 | 阳男阴女顺/阴男阳女逆 | 可重复验证 |")
@@ -7104,7 +7104,7 @@ def generate_report(bazi_result: dict, name: str, gender: str,
     lines.append(f"经过金鉴真人体系全量分析，得出以下核心结论：")
     lines.append("")
     lines.append(f"1. **日主特质**：{ri_gan}为{ri_wx}命，{ri_yy}性。{ri_wx}象征{'刀剑之金·刚毅果断' if ri_wx=='金' else '参天大树·仁慈宽厚' if ri_wx=='木' else '雨露之水·智慧灵动' if ri_wx=='水' else '太阳之火·热情开朗' if ri_wx=='火' else '泰山之土·稳重诚信'}，命主身上具有{ri_wx}的典型特质。")
-    lines.append(f"2. **格局核心**：{ge_ju_str}格为命局主导格局，{'适合体制内发展·为人正直' if ge_ju_str=='正官' else '有魄力敢闯荡' if ge_ju_str=='七杀' else '学识渊博稳重' if ge_ju_str=='正印' else '深度钻研能力' if ge_ju_str=='偏印' else '求财踏实稳健' if ge_ju_str=='正财' else '财路灵活多变' if ge_ju_str=='偏财' else '独立自主' if ge_ju_str=='比肩' else '社交能力强' if ge_ju_str=='劫财' else '才华横溢' if ge_ju_str=='食神' else '聪明灵动' if ge_ju_str=='伤官' else '格局清纯'}。")
+    lines.append(f"2. **格局核心**：{ge_ju_str}为命局主导格局，{'适合体制内发展·为人正直' if ge_ju_str=='正官' else '有魄力敢闯荡' if ge_ju_str=='七杀' else '学识渊博稳重' if ge_ju_str=='正印' else '深度钻研能力' if ge_ju_str=='偏印' else '求财踏实稳健' if ge_ju_str=='正财' else '财路灵活多变' if ge_ju_str=='偏财' else '独立自主' if ge_ju_str=='比肩' else '社交能力强' if ge_ju_str=='劫财' else '才华横溢' if ge_ju_str=='食神' else '聪明灵动' if ge_ju_str=='伤官' else '格局清纯'}。")
     lines.append(f"3. **能量特点**：五行中{wx_strong}气最强，{wx_weak}气最弱，整体{'偏向平衡' if sq_score > 40 and sq_score < 70 else '身强需要泄耗' if sq_score >= 70 else '身弱需要生扶'}。")
     lines.append(f"4. **大运走势**：{dy_list[0].get('gan_zhi','')}大运起势，{dy_list[3].get('gan_zhi','') if len(dy_list) > 3 else '中年'}大运为关键发展期。")
     lines.append(f"5. **财富层次**：{wealth_level}，财星评分{cai_score}分，{'有' if cx.get('has_ku') else '无'}财库。")
