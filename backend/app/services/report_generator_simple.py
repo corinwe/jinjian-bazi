@@ -783,7 +783,11 @@ def _gen_section2(basic: dict, analysis: dict) -> list:
     main_ge_label = _get_ji_e_label(yue_ben_qi_ss)
     lines.append(f'**① 月令本气**：月令{yue_zhi}的本气藏干为**{yue_ben_qi_gan}**（{TIAN_GAN_WU_XING.get(yue_ben_qi_gan, "")}），')
     lines.append(f'   其对日主{ri_gan}的十神关系为 **{yue_ben_qi_ss}**。')
-    lines.append(f'**② 主格判定**：月令本气{yue_ben_qi_gan} → {yue_ben_qi_ss} → 命局核心格局为 **「{yue_ben_qi_ss}格」（{main_ge_label}）**')
+    if sq_level == '从弱':
+        lines.append(f'**② 主格判定**：命局为从弱格，格局判定以从势为主 → **「{ge_ju_str}」（从弱格局）**')
+        lines.append(f'   💡 此命局为从弱格，格局判定以从势为主，月令本气仅作参考。')
+    else:
+        lines.append(f'**② 主格判定**：月令本气{yue_ben_qi_gan} → {yue_ben_qi_ss} → 命局核心格局为 **「{yue_ben_qi_ss}格」（{main_ge_label}）**')
     lines.append('')
 
     is_pure = (yue_gan_ss == yue_ben_qi_ss)
@@ -855,7 +859,10 @@ def _gen_section2(basic: dict, analysis: dict) -> list:
         lines.append(f'- 月令{yue_zhi}仅含一个藏干{yue_cang[0][0]}，无内部交互关系。')
     lines.append('')
 
-    lines.append(f'> 【金鉴真人·§2·主格定义】格局以月令本气为宗，月令{yue_zhi}本气{yue_ben_qi_gan}定主格为{yue_ben_qi_ss}格。{pure_note}。')
+    if sq_level == '从弱':
+        lines.append(f'> 【金鉴真人·§2·主格定义】格局以从势为宗，命局为从弱格，主格以从势五行判定为{ge_ju_str}。{pure_note}。')
+    else:
+        lines.append(f'> 【金鉴真人·§2·主格定义】格局以月令本气为宗，月令{yue_zhi}本气{yue_ben_qi_gan}定主格为{yue_ben_qi_ss}格。{pure_note}。')
     lines.append('')
 
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -969,7 +976,10 @@ def _gen_section2(basic: dict, analysis: dict) -> list:
     lines.append('')
     lines.append('> 以上藏干各自蕴含相应十神能量，待大运流年引动时方显其力。')
 
-    lines.append(f'> 【金鉴真人·§2·格局细分定义】透干为用，{fu_ge_pos}{fu_ge_gan}透出{fu_ge_ss}为命局格局细分，与主格{yue_ben_qi_ss}格共同构成命局的格局框架。')
+    if sq_level == '从弱':
+        lines.append(f'> 【金鉴真人·§2·格局细分定义】透干为用，{fu_ge_pos}{fu_ge_gan}透出{fu_ge_ss}为命局格局细分，与从弱格主格{ge_ju_str}格共同构成命局的格局框架。')
+    else:
+        lines.append(f'> 【金鉴真人·§2·格局细分定义】透干为用，{fu_ge_pos}{fu_ge_gan}透出{fu_ge_ss}为命局格局细分，与主格{yue_ben_qi_ss}格共同构成命局的格局框架。')
     lines.append('')
 
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1038,7 +1048,10 @@ def _gen_section2(basic: dict, analysis: dict) -> list:
     lines.append('> 不属于上述十种的常规八字，不进行排名标注。月令本气定主格之方法仅确定命局核心十神方向，不直接对应格局排名。')
     lines.append('')
 
-    lines.append(f'> 【金鉴真人·§2·格局叠加】主格{yue_ben_qi_ss}格（{main_ge_label}）+ 格局细分{fu_ge_ss}格 → {overlay_type}，{overlay_level}。{overlay_desc}')
+    if sq_level == '从弱':
+        lines.append(f'> 【金鉴真人·§2·格局叠加】主格{ge_ju_str}格（从弱格局）+ 格局细分{fu_ge_ss}格 → {overlay_type}，{overlay_level}。{overlay_desc}')
+    else:
+        lines.append(f'> 【金鉴真人·§2·格局叠加】主格{yue_ben_qi_ss}格（{main_ge_label}）+ 格局细分{fu_ge_ss}格 → {overlay_type}，{overlay_level}。{overlay_desc}')
     lines.append('')
 
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1068,6 +1081,8 @@ def _gen_section2(basic: dict, analysis: dict) -> list:
             match_note = f'✅ 身弱逢印生扶，学识和贵人为命局最佳助力，能得长辈提携。'
         elif sq_level == '中和':
             match_note = f'➖ 中和有印生扶，锦上添花，学习能力和贵人运较好。'
+        elif sq_level == '从弱':
+            match_note = f'⚠️ 从弱格印星为忌，生扶反而加重命局矛盾，需以从势五行为主。'
         else:
             match_note = f'⚠️ 身强印星为忌，可能带来固执保守、依赖心重的倾向。'
     elif yue_ben_qi_ss in ['食神', '伤官']:
@@ -1344,7 +1359,7 @@ def _gen_section3(basic: dict, analysis: dict) -> list:
     yue_cang = DI_ZHI_CANG_GAN.get(basic.get("yue_zhi", ""), [])
     yue_ben_qi = yue_cang[0][0] if yue_cang else ""
     yue_ss = _get_shi_shen(ri_gan, yue_ben_qi)
-    if yue_ss in ["正印", "偏印"] and yue_ben_qi in ri_kw:
+    if yue_ss in ["正印", "偏印"] and basic.get("yue_zhi", "") in ri_kw:
         lines.append("⚠️ 月令印星空亡，可能表里不一，表面旺实则虚")
     elif yue_ss in ["正印", "偏印"]:
         lines.append(f"✅ 月令印星{yue_ben_qi}未空亡，根气扎实")
@@ -3548,9 +3563,9 @@ def _gen_section10(basic: dict, analysis: dict, birth_year: int) -> list:
 
     rows = []
     for wx in wx_list_order:
-        if wx in xi_wx_set: fit = "⭐⭐⭐ 优先推荐"
-        elif wx in ji_wx_set: fit = "⚠️ 谨慎选择"
-        else: fit = "⭐ 一般推荐"
+        if wx in xi_wx_set: fit = "高度推荐"
+        elif wx in ji_wx_set: fit = "建议避开"
+        else: fit = "一般可考虑"
         rows.append([wx, industry_data.get(wx, "—"), fit])
     lines.extend(_format_table(["五行", "对应行业", "适合度"], rows))
     lines.append("")
@@ -3559,11 +3574,11 @@ def _gen_section10(basic: dict, analysis: dict, birth_year: int) -> list:
     lines.append("")
     for wx in wx_list_order:
         if wx in xi_wx_set:
-            lines.append(f"- ✅ **{wx}行业（⭐⭐⭐ 优先推荐）**：{industry_data.get(wx,'—')}。此五行与喜用神一致，优先推荐为主业方向。")
+            lines.append(f"- ✅ **{wx}行业（高度推荐）**：{industry_data.get(wx,'—')}。此五行与喜用神一致，优先推荐为主业方向。")
         elif wx in ji_wx_set:
-            lines.append(f"- ⚠️ **{wx}行业（谨慎选择）**：{industry_data.get(wx,'—')}。此五行与忌神一致，注意控制风险。")
+            lines.append(f"- ⚠️ **{wx}行业（建议避开）**：{industry_data.get(wx,'—')}。此五行与忌神一致，注意控制风险。")
         else:
-            lines.append(f"- ⭐ **{wx}行业（一般推荐）**：{industry_data.get(wx,'—')}。能量中性，可作为备选。")
+            lines.append(f"- ⭐ **{wx}行业（一般可考虑）**：{industry_data.get(wx,'—')}。能量中性，可作为备选。")
     lines.append("")
 
     # ====================================================================
@@ -3669,12 +3684,15 @@ def _gen_section10(basic: dict, analysis: dict, birth_year: int) -> list:
     years = []
     for d in dy_list[:8]:
         dg = d.get("gan", "")
+        age_label = f"{d.get('start_age',0):.0f}~{d.get('end_age',0):.0f}岁"
         if TIAN_GAN_WU_XING.get(dg, "") in xi_wx_set:
-            years.append([str(len(years)+1), d.get("gan_zhi",""), f"{d.get('start_age',0):.0f}~{d.get('end_age',0):.0f}岁", "事业上升期"])
+            years.append([str(len(years)+1), d.get("gan_zhi",""), age_label, "事业上升期"])
+        else:
+            # 即使不是喜用大运也填入实际大运名称、年龄段和中性特征
+            dy_ss = _get_shi_shen(ri_gan, dg) if dg else ""
+            years.append([str(len(years)+1), d.get("gan_zhi",""), age_label, f"{dy_ss}运·平稳发展"])
     if years:
         lines.extend(_format_table(["序号", "大运", "年龄段", "特征"], years[:6]))
-    else:
-        lines.extend(_format_table(["序号", "大运", "年龄段", "特征"], [["—", "—", "—", "—"]]))
     lines.append("")
 
     # ====================================================================
@@ -3682,7 +3700,7 @@ def _gen_section10(basic: dict, analysis: dict, birth_year: int) -> list:
     # ====================================================================
     lines.append("### 6.7 事业规划时间表")
     lines.append("")
-    qy = dy_data.get("qi_yun_age", 7)
+    qy = int(dy_data.get("qi_yun_age", 0))
     lines.append(f"**{qy:.0f}~22岁**（求学探索期）：以学业为主，培养{ge_ju_str}相关的基础能力。")
     lines.append("**22~35岁**（职场起步期）：在所选行业前沿积累经验，前5年完成基础技能建设。")
     lines.append("**35~50岁**（事业突破期）：人的事业高度在此阶段决定，宜向管理或专家岗发展。")
@@ -4380,6 +4398,17 @@ def _gen_section12(basic: dict, analysis: dict) -> list:
     lines = []
     lines.append("## §8 婚姻/感情分析（白话深度解读）")
     lines.append("")
+    from datetime import datetime
+    birth_str = basic.get("solar_date", "")
+    birth_year = None
+    if "年" in birth_str:
+        try:
+            birth_year = int(birth_str[:4])
+        except:
+            pass
+    if birth_year is not None and (datetime.now().year - birth_year) < 18:
+        lines.append("**[注：您当前年龄尚小，以下婚姻/子女分析为成年后参考，青少年阶段建议以学业和个人成长为主]**")
+        lines.append("")
     ri_gan = basic.get("ri_gan", "")
     ri_wx = TIAN_GAN_WU_XING.get(ri_gan, "")
     ri_zhi = basic.get("ri_zhi", "")
@@ -4708,6 +4737,17 @@ def _gen_section13(basic: dict, analysis: dict) -> list:
     lines = []
     lines.append("## §9 子女/文昌分析（子女星·十二长生·添丁年份）")
     lines.append("")
+    from datetime import datetime
+    birth_str = basic.get("solar_date", "")
+    birth_year = None
+    if "年" in birth_str:
+        try:
+            birth_year = int(birth_str[:4])
+        except:
+            pass
+    if birth_year is not None and (datetime.now().year - birth_year) < 18:
+        lines.append("**[注：您当前年龄尚小，以下婚姻/子女分析为成年后参考，青少年阶段建议以学业和个人成长为主]**")
+        lines.append("")
     ri_gan = basic.get("ri_gan", "")
     ri_wx = TIAN_GAN_WU_XING.get(ri_gan, "")
     gender = basic.get("gender", "男")
@@ -4904,12 +4944,21 @@ def _gen_section13(basic: dict, analysis: dict) -> list:
     lines.append("")
 
     child_years = []
+    had_child_star = False  # 记录是否有子女星大运（即使被过滤）
     for d in dy_list[:8]:
         d_gan_ss = _get_shi_shen(ri_gan, d.get("gan", ""))
         d_gz = d.get("gan_zhi", "")
         d_start = d.get("start_age", 0)
         d_end = d.get("end_age", 0)
         if d_gan_ss in child_ss:
+            had_child_star = True
+            # 年龄过滤：跳过全部在成年之前或过于久远的大运
+            if birth_year is not None:
+                start_year = birth_year + int(d_start)
+                end_year = birth_year + int(d_end)
+                min_valid = max(birth_year + 18, datetime.now().year - 3)
+                if end_year < min_valid:
+                    continue
             # 细化解读
             if d_gan_ss in ["正官", "食神"]:
                 sub_comment = f"此运{child_label}星引动，添女概率较高，子女温顺乖巧"
@@ -4932,32 +4981,50 @@ def _gen_section13(basic: dict, analysis: dict) -> list:
         lines.append("")
         lines.append(f"🗣️ **白话建议：** 如果您有生育计划，重点关注上面表格中标出的几段大运——特别是{child_years[0][0]}（{child_years[0][1]}）这段时间，子女缘最旺，是最佳备孕窗口。配合有利流年（流年再遇子女星）效果更佳。")
     else:
-        lines.append("| 大运 | 年龄段 | 推演解读 |")
-        lines.append("|:---|:---|:---|")
-        # 找出最近的子女星流年年份
-        birth_year2 = 2000
-        birth_str2 = basic.get("solar_date", "")
-        if birth_str2 and len(birth_str2) >= 4:
-            try:
-                birth_year2 = int(birth_str2[:4])
-            except:
-                pass
-        if gender == "男":
-            child_ss2 = ["正官", "七杀"]
+        if had_child_star:
+            # 子女星大运存在但全部被年龄过滤掉
+            lines.append("当前无推荐的近期添丁窗口，请关注后续大运流年变化。")
+            lines.append("")
         else:
-            child_ss2 = ["食神", "伤官"]
-        # 找未来20年内子女星流年
-        child_liu_nian = []
-        for offset in range(0, 20):
-            cal_year2 = birth_year2 + offset
-            gan2 = TIAN_GAN_LIST[(cal_year2 - 4) % 10]
-            ss2 = _get_shi_shen(ri_gan, gan2)
-            if ss2 in child_ss2:
-                child_liu_nian.append(f"{cal_year2}{gan2}")
-        child_liu_str = "、".join(child_liu_nian[:6]) if child_liu_nian else "未来"
-        lines.append(f"| — | — | 子女星在原局及大运均不显，可重点关注{child_liu_str}等子女星流年，这些年份受孕概率相对更高 |")
-        lines.append("")
-        lines.append(f"🗣️ **白话建议：** 八字中子女星比较「低调」，大运中也没有明显引动。如果确实有生育计划，可重点关注以上列出的{child_liu_str}等子女星流年，这些年份受孕概率相对更高。建议同步配合医学备孕规划，命理与科学结合效果更佳。")
+            lines.append("| 大运 | 年龄段 | 推演解读 |")
+            lines.append("|:---|:---|:---|")
+            # 即使大运无子女星直接引动，也填入实际大运信息，从分析数据中获取
+            birth_year2 = 2000
+            birth_str2 = basic.get("solar_date", "")
+            if birth_str2 and len(birth_str2) >= 4:
+                try:
+                    birth_year2 = int(birth_str2[:4])
+                except:
+                    pass
+            if gender == "男":
+                child_ss2 = ["正官", "七杀"]
+            else:
+                child_ss2 = ["食神", "伤官"]
+            # 找未来20年内子女星流年（过滤已过去年份）
+            child_liu_nian = []
+            for offset in range(0, 20):
+                cal_year2 = birth_year2 + offset
+                # 只推荐成年后且近期的流年
+                if cal_year2 < max(birth_year2 + 18, datetime.now().year - 3):
+                    continue
+                gan2 = TIAN_GAN_LIST[(cal_year2 - 4) % 10]
+                ss2 = _get_shi_shen(ri_gan, gan2)
+                if ss2 in child_ss2:
+                    child_liu_nian.append(f"{cal_year2}{gan2}")
+            child_liu_str = "、".join(child_liu_nian[:6]) if child_liu_nian else "未来"
+            if child_liu_nian:
+                # 用实际大运数据填充表格（前3步大运）
+                for d in dy_list[:3]:
+                    d_gz = d.get("gan_zhi", "")
+                    d_start = d.get("start_age", 0)
+                    d_end = d.get("end_age", 0)
+                    d_gan_ss = _get_shi_shen(ri_gan, d.get("gan", ""))
+                    lines.append(f"| {d_gz} | {d_start:.0f}~{d_end:.0f}岁 | {d_gan_ss}运·{child_label}星未显·可关注{child_liu_str}等子女星流年 |")
+                lines.append("")
+                lines.append(f"🗣️ **白话建议：** 八字中子女星比较「低调」，大运中也没有明显引动。如果确实有生育计划，可重点关注以上列出的{child_liu_str}等子女星流年，这些年份受孕概率相对更高。建议同步配合医学备孕规划，命理与科学结合效果更佳。")
+            else:
+                lines.append("当前无推荐的近期添丁窗口，请关注后续大运流年变化。")
+                lines.append("")
 
     lines.append("")
     lines.append("【金鉴真人·§9·添丁推演规则】子女星在大运天干透出时为引动窗口，配合流年五行生克可精准锁定备孕最佳年份。女命遇食伤运、男命遇官杀运为添丁高发期，尤以运干与日主阴阳属性相反者为更有力之信号。")
@@ -5356,7 +5423,7 @@ def _gen_section16(basic: dict, analysis: dict, birth_year: int) -> list:
     ri_wx = TIAN_GAN_WU_XING.get(ri_gan, "")
     dy_data = analysis.get("da_yun", {})
     dy_list = dy_data.get("da_yun", [])
-    qi_yun_age = dy_data.get("qi_yun_age", 7)
+    qi_yun_age = int(dy_data.get("qi_yun_age", 0))
     xys = analysis.get("xi_yong_shen", {})
     xi_list = xys.get("xi_shen", [])
     ji_list = xys.get("ji_shen", [])
@@ -5386,7 +5453,7 @@ def _gen_section16(basic: dict, analysis: dict, birth_year: int) -> list:
         (ri_idx, (ri_idx + 4) % 5): "生我·印星",
     }
 
-    def _make_data_chain(dy_gan_wx, is_xi, is_ji, dy_gan_ss):
+    def _make_data_chain(dy_gan_wx, is_xi, is_ji, dy_gan_ss, dy_score=5.0):
         """生成数据链标注：喜忌 + 十神 + 五行生克"""
         parts = []
         if is_xi:
@@ -5394,7 +5461,13 @@ def _gen_section16(basic: dict, analysis: dict, birth_year: int) -> list:
         elif is_ji:
             parts.append("⚠️忌神")
         else:
-            parts.append("➖平运")
+            # 根据大运评分动态标注
+            if dy_score >= 7.0:
+                parts.append("✅吉运")
+            elif dy_score >= 5.0:
+                parts.append("➖中运")
+            else:
+                parts.append("⚠️凶运")
         if dy_gan_ss:
             parts.append(f"十神:{dy_gan_ss}")
         if dy_gan_wx and ri_wx:
@@ -5526,7 +5599,8 @@ def _gen_section16(basic: dict, analysis: dict, birth_year: int) -> list:
             first_dy_wx,
             first_dy_wx in xi_wx_list,
             first_dy_wx in ji_wx_list,
-            first_dy_ss
+            first_dy_ss,
+            dy_list[0].get("score", 5.0) if dy_list else 5.0
         )
         _add_event(first_dy_gz, qi_yun_year, qi_yun_age,
                    f"起运·步入第一步大运{first_dy_gz}·{first_dy_ss}运",
@@ -5570,7 +5644,7 @@ def _gen_section16(basic: dict, analysis: dict, birth_year: int) -> list:
         is_neutral = not is_xi_gan and not is_ji_gan
 
         # 数据链基础
-        base_chain = _make_data_chain(dy_gan_wx, is_xi_gan, is_ji_gan, dy_gan_ss)
+        base_chain = _make_data_chain(dy_gan_wx, is_xi_gan, is_ji_gan, dy_gan_ss, d.get("score", 5.0))
 
         # ── 分段标题行（8列） ──
         xiang_yong = "喜用神运" if is_xi_gan else "忌神运" if is_ji_gan else "平运"
@@ -5588,7 +5662,7 @@ def _gen_section16(basic: dict, analysis: dict, birth_year: int) -> list:
             prev_gan = prev.get("gan", "")
             prev_wx = TIAN_GAN_WU_XING.get(prev_gan, "")
             prev_is_xi = prev_wx in xi_wx_list
-            prev_chain = _make_data_chain(prev_wx, prev_is_xi, prev_wx in ji_wx_list, prev_ss)
+            prev_chain = _make_data_chain(prev_wx, prev_is_xi, prev_wx in ji_wx_list, prev_ss, prev.get("score", 5.0))
             desc = f"换运·由{prev_ss}运转入{dy_gan_ss}运·运势转折"
             sig = f"大运交替·{prev_gz}→{dy_gz}"
             chain = f"前运:{prev_chain} → 新运:{base_chain}"
@@ -5710,7 +5784,7 @@ def _gen_section16(basic: dict, analysis: dict, birth_year: int) -> list:
             trend = "上升" if next_is_xi else "波动" if next_wx in ji_wx_list else "平稳"
             desc6 = f"换运前夕·向{next_ss}运过渡·运势趋势{trend}"
             sig6 = f"{dy_gan_ss}→{next_ss}·大运交接·提前布局"
-            next_chain = _make_data_chain(next_wx, next_is_xi, next_wx in ji_wx_list, next_ss)
+            next_chain = _make_data_chain(next_wx, next_is_xi, next_wx in ji_wx_list, next_ss, next_d.get("score", 5.0))
             _add_event(dy_gz, late_year2, late_age2, desc6, "I", sig6,
                        f"当前:{base_chain} → 下一运:{next_chain}")
         else:
@@ -5883,8 +5957,8 @@ def _gen_section16(basic: dict, analysis: dict, birth_year: int) -> list:
     for line in lines:
         if line.startswith("| ") and " | " in line:
             cells = [c.strip() for c in line.split("|")]
-            if len(cells) >= 6:
-                type_cell = cells[5].strip()
+            if len(cells) >= 7:
+                type_cell = cells[6].strip()
                 if type_cell in type_counts:
                     type_counts[type_cell] += 1
 
@@ -5996,7 +6070,7 @@ def _gen_section17(basic: dict, analysis: dict, birth_year: int) -> list:
     ri_wx = TIAN_GAN_WU_XING.get(ri_gan, "")
     dy_data = analysis.get("da_yun", {})
     dy_list = dy_data.get("da_yun", [])
-    qi_yun_age = dy_data.get("qi_yun_age", 7)
+    qi_yun_age = int(dy_data.get("qi_yun_age", 0))
     xys = analysis.get("xi_yong_shen", {})
     xi_list = xys.get("xi_shen", [])
     ji_list = xys.get("ji_shen", [])
@@ -6794,7 +6868,7 @@ def _gen_section19(basic: dict, analysis: dict, birth_year: int) -> list:
     lines.append("")
     dy_data = analysis.get("da_yun", {})
     dy_list = dy_data.get("da_yun", [])
-    qi_yun_age = dy_data.get("qi_yun_age", 7)
+    qi_yun_age = int(dy_data.get("qi_yun_age", 0))
     ri_gan = basic.get("ri_gan", "")
     ri_wx = TIAN_GAN_WU_XING.get(ri_gan, "")
     ge_ju_str = analysis.get("ge_ju", "正印")
