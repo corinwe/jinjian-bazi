@@ -274,6 +274,29 @@ def _get_wealth_detail_level(score: float, sq_level: str, has_ku: bool,
         return "贫穷"
 
 
+def _count_wu_xing_occurrences(pillars: dict) -> dict:
+    """统计五行出现次数（天干出现1次+地支藏干出现1次），用于健康过三判定
+    
+    规则：同一五行在天干+地支中合计出现≥3次=该五行过旺为病
+    """
+    wx_count = {"木": 0, "火": 0, "土": 0, "金": 0, "水": 0}
+    for pos_key in ["nian", "yue", "ri", "shi"]:
+        p = pillars.get(pos_key, {})
+        # 天干
+        gan = p.get("gan", "")
+        if gan:
+            gan_wx = TIAN_GAN_WU_XING.get(gan, "")
+            if gan_wx in wx_count:
+                wx_count[gan_wx] += 1
+        # 地支藏干
+        for cg in p.get("cang_gan", []):
+            cg_gan = cg.get("gan", "")
+            cg_wx = TIAN_GAN_WU_XING.get(cg_gan, "")
+            if cg_wx in wx_count:
+                wx_count[cg_wx] += 1
+    return wx_count
+
+
 def _gen_four_features(basic: dict, analysis: dict, ri_gan: str, ri_wx: str,
                        ge_ju_str: str, xi_list: list, ji_list: list, sq_level: str) -> str:
     """生成§1四大特征——具体命理特征分析"""
@@ -684,7 +707,7 @@ def _gen_section1(basic: dict, analysis: dict, name: str, gender: str, version: 
 
 
 def _gen_section2(basic: dict, analysis: dict) -> list:
-    """§12 格局分析 — 三维度框架（主格+辅格+格局叠加）+ 白话推导"""
+    """§12 格局分析 — 三维度框架（主格+格局细分+格局叠加）+ 白话推导"""
     lines = []
     lines.append('## §12 格局分析（三维度框架）')
     lines.append('')
@@ -711,10 +734,10 @@ def _gen_section2(basic: dict, analysis: dict) -> list:
     yue_gan_ss = pillars.get('yue', {}).get('gan_shi_shen', '')
     shi_gan_ss = pillars.get('shi', {}).get('gan_shi_shen', '')
 
-    # 吉神/恶神分类
-    ji_shen_list = ['正官', '正印', '偏印', '正财', '食神']
-    e_shen_list = ['七杀', '劫财', '伤官', '偏财']
-    zhong_xing_list = ['比肩']
+    # 吉神/恶神分类（理论标准：四吉神=正官/正印/食神/正财；四恶神=七杀/偏印/伤官/劫财；中性=比肩/偏财）
+    ji_shen_list = ['正官', '正印', '食神', '正财']
+    e_shen_list = ['七杀', '偏印', '伤官', '劫财']
+    zhong_xing_list = ['比肩', '偏财']
 
     def _is_ji_shen(ss: str) -> bool:
         return ss in ji_shen_list
@@ -824,9 +847,9 @@ def _gen_section2(basic: dict, analysis: dict) -> list:
     lines.append('')
 
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    # 维度二：辅格（辅助格局，透干定）
+    # 维度二：格局细分（辅助格局，透干定）
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    lines.append('### 12.2 辅格分析（透干定辅助格局）')
+    lines.append('### 12.2 格局细分分析（透干定辅助格局）')
     lines.append('')
 
     tou_gan_data = []
@@ -836,7 +859,7 @@ def _gen_section2(basic: dict, analysis: dict) -> list:
         ('shi', '时干', shi_gan, shi_gan_ss),
     ]:
         if pos_ss:
-            is_main = '❗主格局' if pos_ss == yue_ben_qi_ss else '辅格局'
+            is_main = '❗主格局' if pos_ss == yue_ben_qi_ss else '格局细分局'
             tou_gan_data.append([pos_label, pos_gan, pos_ss, is_main])
 
     lines.extend(_format_table(
@@ -856,23 +879,23 @@ def _gen_section2(basic: dict, analysis: dict) -> list:
     if candidate_fuge:
         fu_ge_pos, fu_ge_gan, fu_ge_ss, _ = candidate_fuge[0]
         fu_ge_label = _get_ji_e_label(fu_ge_ss)
-        lines.append(f'**① 主要辅格**：{fu_ge_pos}**{fu_ge_gan}**透出**{fu_ge_ss}**（{fu_ge_label}），为命局的辅助格局。')
+        lines.append(f'**① 主要格局细分**：{fu_ge_pos}**{fu_ge_gan}**透出**{fu_ge_ss}**（{fu_ge_label}），为命局的辅助格局。')
         lines.append(f'   {fu_ge_ss}在命局中起到补充和辅助主格的作用，影响人生运势的次要方向。')
         if len(candidate_fuge) > 1:
             extra_fu = candidate_fuge[1:]
             extra_desc = '、'.join([f'{p}透{g}({s})' for p, g, s, _ in extra_fu])
-            lines.append(f'**② 其他辅格参考**：{extra_desc}，亦对命局有一定影响。')
+            lines.append(f'**② 其他格局细分参考**：{extra_desc}，亦对命局有一定影响。')
     else:
         fu_ge_ss = ''
         fu_ge_pos = ''
-        lines.append('**① 主要辅格**：天干无显著透出其他十神，格局以主格为核心。')
-        lines.append('   月令未透干时，辅格需待大运流年引动方能显现。')
+        lines.append('**① 主要格局细分**：天干无显著透出其他十神，格局以主格为核心。')
+        lines.append('   月令未透干时，格局细分需待大运流年引动方能显现。')
     lines.append('')
 
     lines.append('**透干辅助分析：**')
     lines.append('')
     if yue_gan_ss:
-        yue_role = '主格透干' if yue_gan_ss == yue_ben_qi_ss else '辅格局透干'
+        yue_role = '主格透干' if yue_gan_ss == yue_ben_qi_ss else '格局细分局透干'
         lines.append(f'- 月干{yue_gan}为{yue_gan_ss}，{yue_role}，对格局影响最为直接。')
     if shi_gan_ss:
         shi_role = '辅助主格' if shi_gan_ss == yue_ben_qi_ss else '补充调和命局'
@@ -933,13 +956,13 @@ def _gen_section2(basic: dict, analysis: dict) -> list:
                 lines.append(f'- {pos_label}藏干{cg_gan}（{cg_ss}·{cg_wt}%）：{cg_effect}，权重{cg_wt}%的该十神力量潜藏于地支中，待大运引动时爆发。')
     lines.append('')
 
-    lines.append(f'> 【金鉴真人·§2·辅格定义】透干为用，{fu_ge_pos}{fu_ge_gan}透出{fu_ge_ss}为命局辅格，与主格{yue_ben_qi_ss}格共同构成命局的格局框架。')
+    lines.append(f'> 【金鉴真人·§2·格局细分定义】透干为用，{fu_ge_pos}{fu_ge_gan}透出{fu_ge_ss}为命局格局细分，与主格{yue_ben_qi_ss}格共同构成命局的格局框架。')
     lines.append('')
 
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     # 维度三：格局叠加效应
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    lines.append('### 12.3 格局叠加效应（主格×辅格）')
+    lines.append('### 12.3 格局叠加效应（主格×格局细分）')
     lines.append('')
 
     main_ji_e = _get_ji_e_label(yue_ben_qi_ss)
@@ -950,7 +973,7 @@ def _gen_section2(basic: dict, analysis: dict) -> list:
         if _is_ji_shen(yue_ben_qi_ss) and _is_ji_shen(fu_ge_ss):
             overlay_type = '吉神格+吉神格'
             overlay_level = '上佳'
-            overlay_desc = '吉神与吉神叠加，命局顺遂平稳。主格与辅格均为吉神，两者相得益彰，人生运势较为顺畅，贵人助力明显。'
+            overlay_desc = '吉神与吉神叠加，命局顺遂平稳。主格与格局细分均为吉神，两者相得益彰，人生运势较为顺畅，贵人助力明显。'
             overlay_score = 90
         elif _is_e_shen(yue_ben_qi_ss) and _is_e_shen(fu_ge_ss):
             overlay_type = '恶神格+恶神格'
@@ -960,22 +983,22 @@ def _gen_section2(basic: dict, analysis: dict) -> list:
         elif _is_ji_shen(yue_ben_qi_ss) and _is_e_shen(fu_ge_ss):
             overlay_type = '吉神格主+恶神格辅'
             overlay_level = '制化'
-            overlay_desc = f'主格为吉神{yue_ben_qi_ss}，辅格为恶神{fu_ge_ss}。恶神受吉神制约，若能制化得当，凶中藏吉，压力转化为动力。若制化不力，则吉神被恶神干扰。'
+            overlay_desc = f'主格为吉神{yue_ben_qi_ss}，格局细分为恶神{fu_ge_ss}。恶神受吉神制约，若能制化得当，凶中藏吉，压力转化为动力。若制化不力，则吉神被恶神干扰。'
             overlay_score = 70
         elif _is_e_shen(yue_ben_qi_ss) and _is_ji_shen(fu_ge_ss):
             overlay_type = '恶神格主+吉神格辅'
             overlay_level = '调和'
-            overlay_desc = f'主格为恶神{yue_ben_qi_ss}，辅格为吉神{fu_ge_ss}。恶神需吉神制化调和，吉神辅格能化解恶神的凶性，使其转化为魄力和行动力。'
+            overlay_desc = f'主格为恶神{yue_ben_qi_ss}，格局细分为吉神{fu_ge_ss}。恶神需吉神制化调和，吉神格局细分能化解恶神的凶性，使其转化为魄力和行动力。'
             overlay_score = 70
         else:
             overlay_type = '混合格局'
             overlay_level = '中平'
-            overlay_desc = '主格与辅格的组合较为中性，两者五行属性不同，共同决定格局走向。'
+            overlay_desc = '主格与格局细分的组合较为中性，两者五行属性不同，共同决定格局走向。'
             overlay_score = 60
     else:
         overlay_type = '单一格局'
         overlay_level = '纯粹' if is_pure else '待引'
-        overlay_desc = '命局以主格为核心，无显著辅格干扰。若格局纯正则能量专注，若格局欠纯则需大运引动。'
+        overlay_desc = '命局以主格为核心，无显著格局细分干扰。若格局纯正则能量专注，若格局欠纯则需大运引动。'
         overlay_score = 80 if is_pure else 55
 
     lines.append(f'**叠加类型**：{overlay_type}')
@@ -983,30 +1006,26 @@ def _gen_section2(basic: dict, analysis: dict) -> list:
     lines.append(f'**叠加解读**：{overlay_desc}')
     lines.append('')
 
-    lines.append('**金鉴真人格局排名参考：**')
+    lines.append('**金鉴真人·十大格局排名参考（九龙道长）：**')
     lines.append('')
-    paiming = {
-        '正官': '第一等格局 — 贵气显达，自律守正',
-        '七杀': '第二等格局（制化后） — 威权在握，魄力非凡',
-        '正印': '第三等格局 — 学识渊博，贵人相扶',
-        '偏印': '第四等格局 — 思维独特，技艺超凡',
-        '正财': '第五等格局 — 财源稳定，务实守成',
-        '偏财': '第六等格局 — 财路广阔，慷慨大方',
-        '食神': '第七等格局 — 才华横溢，福禄自至',
-        '伤官': '第八等格局 — 才思敏捷，傲气天成',
-        '比肩': '第九等格局 — 独立自主，自强不息',
-        '劫财': '第十等格局 — 社交广泛，义字当头',
-    }
-    main_pm = paiming.get(yue_ben_qi_ss, '')
-    if main_pm:
-        lines.append(f'- 主格**{yue_ben_qi_ss}格**：{main_pm}')
-    if candidate_fuge and fu_ge_ss:
-        fu_pm = paiming.get(fu_ge_ss, '')
-        if fu_pm:
-            lines.append(f'- 辅格**{fu_ge_ss}格**：{fu_pm}')
+    lines.append('| 排名 | 格局 | 特征 |')
+    lines.append('|:----:|:-----|:-----|')
+    lines.append('| 🥇1 | 食神制杀格/杀印相生 | 七杀有制，化杀为权，顶级格局 |')
+    lines.append('| 🥇2 | 伤官配印格 | 德才兼备，文贵极品 |')
+    lines.append('| 🥇3 | 财官双美格 | 财生官、官护财，福禄双全 |')
+    lines.append('| 🥇4 | 从官杀格 | 顺从大势，化势为权 |')
+    lines.append('| 🥇5 | 从财格 | 极善谋财，大富之命 |')
+    lines.append('| 🥈6 | 官印相生格 | 官生印、印生身，清贵 |')
+    lines.append('| 🥈7 | 食伤生财格 | 技术/才华致富 |')
+    lines.append('| 🥈8 | 五行流通格 | 无冲克、福寿双全 |')
+    lines.append('| 🥈9 | 专旺格 | 格局清纯，行业顶尖 |')
+    lines.append('| 🥈10 | 木火通明格 | 木火两旺，名利双收 |')
+    lines.append('')
+    lines.append('> 以上十大格局为八字命理最佳格局排名（九龙道长体系），需综合全局判定。')
+    lines.append('> 不属于上述十种的常规八字，不进行排名标注。月令本气定主格之方法仅确定命局核心十神方向，不直接对应格局排名。')
     lines.append('')
 
-    lines.append(f'> 【金鉴真人·§2·格局叠加】主格{yue_ben_qi_ss}格（{main_ge_label}）+ 辅格{fu_ge_ss}格 → {overlay_type}，{overlay_level}。{overlay_desc}')
+    lines.append(f'> 【金鉴真人·§2·格局叠加】主格{yue_ben_qi_ss}格（{main_ge_label}）+ 格局细分{fu_ge_ss}格 → {overlay_type}，{overlay_level}。{overlay_desc}')
     lines.append('')
 
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1087,7 +1106,7 @@ def _gen_section2(basic: dict, analysis: dict) -> list:
     if candidate_fuge and fu_ge_ss:
         fu_baidu = main_baidu_map.get(fu_ge_ss, '')
         lines.append('')
-        lines.append(f'除了主格之外，您的命局还有**「{fu_ge_ss}」**作为辅格。{fu_baidu}是辅助特质，')
+        lines.append(f'除了主格之外，您的命局还有**「{fu_ge_ss}」**作为格局细分。{fu_baidu}是辅助特质，')
         if _is_ji_shen(yue_ben_qi_ss) and _is_ji_shen(fu_ge_ss):
             lines.append('两者都是吉神，相辅相成，人生运势比较平顺，容易得到贵人和机遇的眷顾。')
         elif _is_e_shen(yue_ben_qi_ss) and _is_e_shen(fu_ge_ss):
@@ -1123,9 +1142,9 @@ def _gen_section2(basic: dict, analysis: dict) -> list:
     lines.append(f'| **① 主格** | {yue_ben_qi_ss}格 | 月令{yue_zhi}本气{yue_ben_qi_gan}定，{main_label_display}，{"纯正有力" if is_pure else "需大运引动"} |')
     if candidate_fuge and fu_ge_ss:
         fu_label_display = _get_ji_e_label(fu_ge_ss)
-        lines.append(f'| **② 辅格** | {fu_ge_ss} | {fu_ge_pos}透{fu_ge_gan}，{fu_label_display}，辅助主格 |')
+        lines.append(f'| **② 格局细分** | {fu_ge_ss} | {fu_ge_pos}透{fu_ge_gan}，{fu_label_display}，辅助主格 |')
     else:
-        lines.append(f'| **② 辅格** | 无显著辅格 | 格局以主格为核心 |')
+        lines.append(f'| **② 格局细分** | 无显著格局细分 | 格局以主格为核心 |')
     lines.append(f'| **③ 叠加** | {overlay_type} | {overlay_level} — {overlay_desc[:40]}... |')
     lines.append(f'| **④ 身匹配** | {sq_level}（{sq_score}分） | 与{yue_ben_qi_ss}格匹配{match_note[:20]}... |')
     lines.append('')
@@ -1140,15 +1159,15 @@ def _gen_section2(basic: dict, analysis: dict) -> list:
     lines.append('本分析基于以下确定性规则：')
     lines.append('')
     lines.append('1️⃣ **月令本气定主格**：月令地支藏干中权重100%的本气决定核心格局。')
-    lines.append('2️⃣ **透干定辅格**：天干透出的不同十神为辅助格局，影响命局的次要方向。')
+    lines.append('2️⃣ **透干定格局细分**：天干透出的不同十神为辅助格局，影响命局的次要方向。')
     lines.append('3️⃣ **吉凶叠加效应**：吉神格之间相济为顺遂，恶神格之间相济为成器，吉凶相逢需制化。')
     lines.append('4️⃣ **身强弱与格局匹配**：格局需身强方能承当，身弱需印比相助。')
     lines.append('')
     lines.append('【金鉴真人·§2·规则引用】')
     lines.append('- 格局以月令为宗，月令本气定主格，透干则纯正，不透则待引。')
-    lines.append('- 辅格以天干透出为据，与主格共同构成命局的格局框架。')
+    lines.append('- 格局细分以天干透出为据，与主格共同构成命局的格局框架。')
     lines.append('- 吉神格+吉神格=顺遂，吉神格+恶神格=制化，恶神格+恶神格=成器。')
-    lines.append('- 参考金鉴真人十大格局排名：正官第一，七杀第二，正印第三，偏印第四，正财第五，偏财第六，食神第七，伤官第八，比肩第九，劫财第十。')
+    lines.append('- 参考九龙道长十大格局排名：1️⃣食神制杀/杀印相生 2️⃣伤官配印 3️⃣财官双美 4️⃣从官杀 5️⃣从财 6️⃣官印相生 7️⃣食伤生财 8️⃣五行流通 9️⃣专旺格 🔟木火通明。不属此十种者不排名。')
     lines.append('')
     lines.append('---')
     lines.append('')
@@ -1579,18 +1598,21 @@ def _gen_section5(basic: dict, analysis: dict) -> list:
     lines.append("> 元辰主意外灾祸，灾煞主突发事故，天罗地网主困顿阻滞。神煞需配合五行生克综合判断，详见五行能量分析章节。")
     lines.append("")
 
-    # 5.2 五行过三排查
+    # 5.2 五行过三排查（基于出现次数法：天干+藏干≥3次为病）
     lines.append("### 11.2 五行过三排查（疾病断）")
     lines.append("")
+    wx_count = _count_wu_xing_occurrences(pillars)
     lines.extend(_format_table(
-        ["五行", "百分比", "过三判定", "对应器官"],
+        ["五行", "出现次数", "过三判定", "对应器官"],
         [
-            [wx, f"{pct:.1f}%",
-             "✅ 过三" if pct > 30 else "❌",
+            [wx, f"{cnt}次",
+             "✅ 过三为病" if cnt >= 3 else "❌ 未过三",
              WU_XING_ORGANS.get(wx, "—")]
-            for wx, pct in sorted(wxs.items(), key=lambda x: x[1], reverse=True)
+            for wx, cnt in sorted(wx_count.items(), key=lambda x: x[1], reverse=True)
         ]
     ))
+    lines.append("")
+    lines.append("> 【金鉴真人·§5·五行过三规则】「一个为真，两个为假，三个就为病」——同一五行在天干+地支藏干中出现≥3次即为过旺为病。天干出现1次算1次，地支藏干出现1次算1次，合计≥3次对应器官需重点防护。")
     lines.append("")
 
     # 5.3 七杀攻身
@@ -1641,7 +1663,7 @@ def _gen_section5(basic: dict, analysis: dict) -> list:
         risk_items.append("天罗地网显示有困顿之象")
     if qi_sha_positions:
         risk_items.append("七杀攻身需留意")
-    over_three_count = sum(1 for pct in wxs.values() if pct > 30)
+    over_three_count = sum(1 for cnt in wx_count.values() if cnt >= 3)
     if over_three_count >= 2:
         risk_items.append("多个五行能量过三")
     if not risk_items:
@@ -4090,7 +4112,7 @@ def generate_report(bazi_result: dict, name: str, gender: str,
     # §17 大运精析
     # §18 三决断
     # §19 运程总评
-    # §20 五行补充建议
+    # §20 姓名分析
     # §21 人生建议
     # ═══════════════════════════════════════════════
     lines.extend(_gen_section16(basic, analysis, birth_year))
@@ -4608,25 +4630,26 @@ def _gen_section14(basic: dict, analysis: dict) -> list:
     dy_data = analysis.get("da_yun", {})
     dy_list = dy_data.get("da_yun", [])
 
-    lines.append("**【金鉴真人·§14·健康总论】** 五行过三则病——同一五行超过30%能量即为过旺，对应器官需重点防护。")
+    lines.append("**【金鉴真人·§14·健康总论】** 五行过三则病——「一个为真，两个为假，三个就为病」。同一五行在天干+地支藏干中出现≥3次即为过旺，对应器官需重点防护。天干出现1次算1次，地支藏干出现1次算1次。")
     lines.append("")
-    lines.append("🗣️ **白话总述：** 八字看健康的核心逻辑很简单——哪行能量过旺，哪行对应的身体部位就容易出问题。就像水太多了会淹，火太大了会烧，找到短板提前预防是关键。")
+    lines.append("🗣️ **白话总述：** 八字看健康的核心逻辑很简单——哪行出现次数多（≥3次），哪行对应的身体部位就容易出问题。就像水太多了会淹，火太大了会烧，找到短板提前预防是关键。")
     lines.append("")
 
     # 14.1 五行过三排查表
     lines.append("### 14.1 五行过三排查表")
     lines.append("")
+    wx_count = _count_wu_xing_occurrences(pillars)
     over_rows = []
     for wx_name in ["木", "火", "土", "金", "水"]:
-        pct = wxs.get(wx_name, 0)
-        over = pct > 30
-        risk = "⚠️ 过旺" if over else ("✅ 平衡" if pct > 20 else "⬇️ 偏弱")
-        over_rows.append([wx_name, f"{pct:.1f}%", risk, WU_XING_ORGANS.get(wx_name, "—"), WU_XING_TASTES.get(wx_name, "—"), WU_XING_SEASONS.get(wx_name, "—")])
-    lines.extend(_format_table(["五行", "能量%", "状态", "对应器官", "五味", "应季"], over_rows))
+        cnt = wx_count.get(wx_name, 0)
+        over = cnt >= 3
+        risk = "⚠️ 过旺为病" if over else (f"出现{cnt}次" if cnt > 0 else "未出现")
+        over_rows.append([wx_name, f"{cnt}次", risk, WU_XING_ORGANS.get(wx_name, "—"), WU_XING_TASTES.get(wx_name, "—"), WU_XING_SEASONS.get(wx_name, "—")])
+    lines.extend(_format_table(["五行", "出现次数", "状态", "对应器官", "五味", "应季"], over_rows))
     lines.append("")
-    lines.append("【金鉴真人·§14·五行过三规则】单行能量>30%为过旺，对应的器官系统易有隐患。过旺需泄，过弱需补。")
+    lines.append("【金鉴真人·§14·五行过三规则】「一个为真，两个为假，三个就为病」——同一五行在天干+地支藏干中出现≥3次为过旺，对应的器官系统易有隐患。过旺需泄，过弱需补。天干出现1次算1次，地支藏干出现1次算1次。")
     lines.append("")
-    lines.append("🗣️ 白话解读：看上表，哪一行标了⚠️就多关注对应的身体部位。比如木过旺→肝/胆要注意；火过旺→心/小肠要留意。这就是「过三则病」的道理。")
+    lines.append("🗣️ 白话解读：看上表，哪一行标了⚠️就多关注对应的身体部位。比如木出现≥3次（肝/胆要注意）；火出现≥3次（心/小肠要留意）。这就是「过三则病」的道理。")
     lines.append("")
 
     # 14.2 七杀为病
@@ -4698,12 +4721,12 @@ def _gen_section14(basic: dict, analysis: dict) -> list:
     lines.append("### 14.6 饮食调理建议")
     lines.append("")
     for wx_name in ["木", "火", "土", "金", "水"]:
-        pct = wxs.get(wx_name, 0)
-        if pct > 30:
+        cnt = wx_count.get(wx_name, 0)
+        if cnt >= 3:
             supplement = WU_XING_TASTES.get(wx_name, "")
             suppress = WU_XING_TASTES.get({"木":"金","火":"水","土":"木","金":"火","水":"土"}.get(wx_name, ""), "")
-            lines.append(f"- {wx_name}过旺（{pct:.1f}%）：少食{ supplement }味，多食{ suppress }味以制之。")
-    if all(wxs.get(wx, 0) <= 30 for wx in ["木", "火", "土", "金", "水"]):
+            lines.append(f"- {wx_name}过旺（出现{cnt}次）：少食{ supplement }味，多食{ suppress }味以制之。")
+    if all(wx_count.get(wx, 0) < 3 for wx in ["木", "火", "土", "金", "水"]):
         lines.append("五行能量均衡，饮食按正常搭配即可，无需特殊调理。")
     lines.append("")
 
@@ -4757,9 +4780,9 @@ def _gen_section15(basic: dict, analysis: dict) -> list:
     he_mr = _he(yue_zhi, ri_zhi)          # 月日合
     he_ms = _he(yue_zhi, shi_zhi)         # 月时合
 
-    # 十神吉凶分类
-    ji_shen_list = ["正官","正印","偏印","正财","食神"]
-    e_shen_list  = ["七杀","劫财","伤官","偏财"]
+    # 十神吉凶分类（理论标准：四吉神=正官/正印/食神/正财；四恶神=七杀/偏印/伤官/劫财；中性=比肩/偏财）
+    ji_shen_list = ["正官","正印","食神","正财"]
+    e_shen_list  = ["七杀","偏印","伤官","劫财"]
     def _is_ji(ss): return ss in ji_shen_list
     def _xi_biao(ss):
         if ss in xi_list: return "✅喜用"
@@ -6510,122 +6533,97 @@ def _gen_section19(basic: dict, analysis: dict, birth_year: int) -> list:
     lines.append("")
     return lines
 
-
 def _gen_section20(basic: dict, analysis: dict) -> list:
-    """§20 五行补充建议（颜色/数字/方位/饰品/饮食/节气）— 50行"""
+    """§20 姓名分析（用神补益·五行宜用字辈/偏旁）— 60行"""
     lines = []
-    lines.append("## §20 五行补充建议")
+    lines.append("## §20 姓名分析（五行补益·用神导向）")
     lines.append("")
-    ri_wx = TIAN_GAN_WU_XING.get(basic.get("ri_gan", ""), "")
+
+    ri_gan = basic.get("ri_gan", "")
+    ri_wx = TIAN_GAN_WU_XING.get(ri_gan, "")
     xys = analysis.get("xi_yong_shen", {})
     xi_list = xys.get("xi_shen", [])
     ji_list = xys.get("ji_shen", [])
+
     wx_list = ["木", "火", "土", "金", "水"]
     ri_idx = wx_list.index(ri_wx) if ri_wx in wx_list else 0
     xi_wx_list = [_get_xi_yong_wx(xi, ri_wx) for xi in xi_list]
     ji_wx_list = [_get_xi_yong_wx(ji, ri_wx) for ji in ji_list]
 
-    # 🗣️白话解读：五行调和建议总览
+    lines.append("🗣️ **白话总述：** 姓名是伴随一生的符号，好的名字能补益八字用神，起到「名正言顺」的效果。起名的核心原则是——用神补益，即姓名中的五行应当补益八字喜用神所对应的五行，而非冲克忌神。")
+    lines.append("")
+
+    # 20.1 用神五行与取名方向
+    lines.append("### 20.1 喜用神五行与取名宜用")
+    lines.append("")
+
     xi_names = [s for s in xi_list if s] or ['—']
+    xi_wx_names = [s for s in xi_wx_list if s] or ['—']
+    lines.append(f"您的八字喜用神为：**{'/'.join(xi_names)}**，对应五行：**{'/'.join(xi_wx_names)}**。")
+    lines.append("取名的核心是根据喜用神的五行方向来选字。")
+    lines.append("")
+
+    # 每个喜用五行推荐字根/偏旁
+    wx_radical_map = {
+        "金": {"radicals": ["钅", "刂", "刀", "辛", "酉", "金", "庚", "申"],
+               "meanings": "刚毅、果断、贵气", "examples": "钊、铭、锐、钧、锦、锋、鑫"},
+        "木": {"radicals": ["木", "艹", "禾", "竹", "囗", "林", "森", "束"],
+               "meanings": "生长、仁德、才华", "examples": "桐、森、琳、松、柏、枫、榕"},
+        "水": {"radicals": ["氵", "水", "冫", "雨", "鱼", "川", "泉", "云"],
+               "meanings": "智慧、灵动、流通", "examples": "浩、涵、澜、泽、润、清、泓"},
+        "火": {"radicals": ["火", "灬", "日", "心", "赤", "光", "明", "旦"],
+               "meanings": "热情、光明、文采", "examples": "煜、炜、烨、灿、旭、昊、朗"},
+        "土": {"radicals": ["土", "山", "石", "玉", "田", "城", "陵", "峰"],
+               "meanings": "稳重、诚信、包容", "examples": "坤、圣、培、峰、屹、岚、峥"},
+    }
+
+    rec_rows = []
+    for wx_name in xi_wx_list[:3]:
+        info = wx_radical_map.get(wx_name, {})
+        radicals = "、".join(info.get("radicals", ["—"])[:6])
+        meanings = info.get("meanings", "—")
+        examples = info.get("examples", "—")
+        rec_rows.append([wx_name, radicals, meanings, examples])
+    if rec_rows:
+        lines.extend(_format_table(["五行", "宜用偏旁/字根", "寓意方向", "举例"], rec_rows))
+    else:
+        lines.append("暂无明确喜用五行偏向，建议根据出生年份五行纳音综合考量。")
+    lines.append("")
+
+    # 20.2 忌用提示
+    lines.append("### 20.2 忌用五行提示")
+    lines.append("")
     ji_names = [s for s in ji_list if s] or ['—']
-    lines.append("🗣️白话解读：")
-    lines.append("")
-    lines.append(f"上面这些建议都围绕你的喜用神（{'/'.join(xi_names)}）和忌神（{'/'.join(ji_names)}）展开。"
-                 f"简单来说，喜用神对应的颜色、数字、方位就是你的「幸运符」，"
-                 f"日常多接触能帮你补足能量、提升运势；"
-                 f"忌神对应的那些就要尽量避开，减少不必要的消耗。"
-                 f"把这些小技巧融入生活细节，久而久之运势自然会往好的方向走。")
+    ji_wx_names = [s for s in ji_wx_list if s] or ['—']
+    lines.append(f"您的八字忌神为：**{'/'.join(ji_names)}**，对应五行：**{'/'.join(ji_wx_names)}**。取名时**尽量避免**使用这些五行对应的偏旁/字根。")
     lines.append("")
 
-    lines.append("### 20.1 颜色调运")
-    lines.append("")
-    col_rows = []
-    rec_types = ['穿着', '装饰', '办公']
-    for idx, wx_name in enumerate(xi_wx_list[:3]):
-        suggestion = f"推荐{rec_types[min(idx, 2)]}使用"
-        col_rows.append([wx_name, WU_XING_COLORS.get(wx_name, "—"), suggestion])
-    for wx_name in ji_wx_list[:2]:
-        col_rows.append([wx_name + "（忌）", WU_XING_COLORS.get(wx_name, "—"), "避免大面积使用"])
-    lines.extend(_format_table(["五行", "颜色", "建议用途"], col_rows))
+    avoid_rows = []
+    for wx_name in ji_wx_list[:3]:
+        info = wx_radical_map.get(wx_name, {})
+        radicals = "、".join(info.get("radicals", ["—"])[:6])
+        avoid_rows.append([wx_name, radicals])
+    if avoid_rows:
+        lines.extend(_format_table(["忌用五行", "避免使用的偏旁/字根"], avoid_rows))
     lines.append("")
 
-    # 【金鉴真人·§20·五行颜色规则】
-    lines.append("> **【金鉴真人·§20·五行颜色规则】** 颜色调运以喜用神五行为主，穿着、装饰、办公场景分别推荐对应颜色。忌神五行对应的颜色需避免大面积使用，以防能量对冲。颜色是最直观的五行调运方式，日常可优先选择。")
+    # 20.3 三才五格概览
+    lines.append("### 20.3 三才五格参考")
+    lines.append("")
+    lines.append("姓名学的三才五格（天格、人格、地格、外格、总格）需结合笔画数进行五行演算。")
+    lines.append("建议：")
+    lines.append("- 总格五行宜与用神五行相生（如用神喜木，总格笔画数3/8为佳）")
+    lines.append("- 人格与地格五行不宜相克（主事业与家庭和谐）")
+    lines.append("- 避开凶数笔画（如34、44等传统凶数）")
     lines.append("")
 
-    lines.append("### 20.2 数字吉利")
-    lines.append("")
-    lucky_nums = [WU_XING_NUMBERS.get(wx, "") for wx in xi_wx_list]
-    unlucky_nums = [WU_XING_NUMBERS.get(wx, "") for wx in ji_wx_list]
-    lines.append(f"吉利数字：{'、'.join(filter(None, lucky_nums))}")
-    lines.append(f"忌讳数字：{'、'.join(filter(None, unlucky_nums))}")
+    # 【金鉴真人·§20·姓名规则】
+    lines.append("> **【金鉴真人·§20·姓名命名规则】** 起名命名以用神补益为核心：姓名中的五行应补益八字用神，忌用神冲克。取名宜按喜用神对应五行选择偏旁/字根，字形端正、音律和谐、寓意吉祥为佳。好名字的标准是——一看五行补益、二看笔画吉凶、三看音律配合、四看寓意内涵。")
     lines.append("")
 
-    lines.append("### 20.3 方位建议")
-    lines.append("")
-    lucky_dir = [WU_XING_DIRECTIONS.get(wx, "") for wx in xi_wx_list]
-    unlucky_dir = [WU_XING_DIRECTIONS.get(wx, "") for wx in ji_wx_list]
-    lines.append(f"吉利方位：{'、'.join(filter(None, lucky_dir))}")
-    lines.append(f"忌讳方位：{'、'.join(filter(None, unlucky_dir))}")
-    lines.append("")
-
-    # 【金鉴真人·§20·五行方位规则】
-    lines.append("> **【金鉴真人·§20·五行方位规则】** 方位选择以喜用神五行的吉利方位为优先，可在居家布置、办公选址、出行方向中加以利用。忌神方位则应避免长期驻留或作为主要活动方向。方位调运是隐性力量，日积月累效果显著。")
-    lines.append("")
-
-    lines.append("### 20.4 饰品搭配")
-    lines.append("")
-    xi_jewelry = {
-        "金": "金/银/白色宝石", "木": "翡翠/木制品/绿色宝石",
-        "水": "水晶/黑曜石/蓝色宝石", "火": "红宝石/玛瑙/红色饰品",
-        "土": "玉石/黄水晶/陶瓷"
-    }
-    ji_jewelry = {
-        "金": "蓝色/黑色饰品", "木": "金属饰品",
-        "水": "红色/紫色饰品", "火": "黑色/蓝色饰品",
-        "土": "绿色/木制饰品"
-    }
-    rec_j = [xi_jewelry.get(wx, "") for wx in xi_wx_list]
-    avoid_j = [ji_jewelry.get(wx, "") for wx in ji_wx_list]
-    lines.append(f"推荐：{'、'.join(filter(None, rec_j))}")
-    lines.append(f"忌讳：{'、'.join(filter(None, avoid_j))}")
-    lines.append("")
-
-    lines.append("### 20.5 饮食调理")
-    lines.append("")
-    xi_tastes = [WU_XING_TASTES.get(wx, "") for wx in xi_wx_list]
-    ji_tastes = [WU_XING_TASTES.get(wx, "") for wx in ji_wx_list]
-    lines.append(f"推荐口味：{'、'.join(filter(None, xi_tastes))}味食材")
-    lines.append(f"忌讳口味：{'、'.join(filter(None, ji_tastes))}味食材")
-    lines.append("")
-
-    # 🗣️白话解读：日常实践建议
-    lines.append("🗣️白话解读：")
-    lines.append("")
-    xi_names_practical = [s for s in xi_list if s] or ['—']
-    lines.append(f"上面这些颜色、数字、方位、饰品、口味建议，都是你在日常生活中可以轻松做到的。"
-                 f"不用强求样样都做到——先从最方便的一两样开始尝试。"
-                 f"比如出门穿对颜色、选手机号时避开忌讳数字、"
-                 f"卧室朝吉利方位布置，这些小改变不需要额外花钱花时间，"
-                 f"却能让你在不知不觉中处在更有利的能量场中。"
-                 f"坚持下来，你会发现运气确实在慢慢变好。")
-    lines.append("")
-
-    lines.append("### 20.6 节气调运")
-    lines.append("")
-    xi_seasons = [WU_XING_SEASONS.get(wx, "") for wx in xi_wx_list]
-    lines.append(f"利于运势的节气：{'、'.join(filter(None, xi_seasons))}")
-    if ji_wx_list:
-        ji_seasons = [WU_XING_SEASONS.get(wx, "") for wx in ji_wx_list]
-        lines.append(f"需注意的节气：{'、'.join(filter(None, ji_seasons))}")
-    lines.append("")
-    # 【金鉴真人·§20·五行节气规则】
-    lines.append("> **【金鉴真人·§20·五行节气规则】** 节气调运依据五行与季节的对应关系——春木、夏火、秋金、冬水、四季末土。喜用神对应的节气是能量最强的时段，宜主动把握；忌神对应的节气则需谨慎行事。顺天时而动，借节气之力调补命局，是传统命理学的高阶应用。")
-    lines.append("")
     lines.append("---")
     lines.append("")
     return lines
-
 
 def _gen_section21(basic: dict, analysis: dict) -> list:
     """§21 人生建议（事业/财富/健康/婚姻/人际≥400字）— 80行"""
@@ -6945,7 +6943,7 @@ def generate_report(bazi_result: dict, name: str, gender: str,
     lines.extend(_gen_section19(basic, analysis, birth_year))
 
     # ═══════════════════════════════════════════════
-    # §20 五行补充建议（50行）
+    # §20 姓名分析（50行）
     # ═══════════════════════════════════════════════
     lines.extend(_gen_section20(basic, analysis))
 
