@@ -1570,32 +1570,46 @@ def _gen_section5(basic: dict, analysis: dict) -> list:
     tian_luo = "辰" in all_zhi and "巳" in all_zhi
     di_wang = "戌" in all_zhi and "亥" in all_zhi
 
+    # 血刃（以日干查四支地支）— 从神煞数据源获取
+    xue_ren_found = None
+    shensha_data = analysis.get("shensha", {})
+    if shensha_data:
+        for pos_name in ["nian", "yue", "ri", "shi"]:
+            pos_shensha = shensha_data.get(pos_name, {})
+            if pos_shensha.get("血刃", False):
+                pos_labels_d = {"nian":"年柱","yue":"月柱","ri":"日柱","shi":"时柱"}
+                xue_ren_found = pos_labels_d.get(pos_name, "")
+                break
+    # fallback: 直接从calc_shensha的简化计算
+    if not xue_ren_found:
+        xue_ren_map = {"甲":"卯","乙":"辰","丙":"午","丁":"未","戊":"午","己":"未","庚":"酉","辛":"戌","壬":"子","癸":"丑"}
+        xr_zhi = xue_ren_map.get(ri_gan, "")
+        if xr_zhi and xr_zhi in [basic.get(f"{k}_zhi", "") for k in ["nian", "yue", "ri", "shi"]]:
+            xue_ren_found = xr_zhi
+
     lines.extend(_format_table(
         ["神煞", "排查结果", "影响"],
         [
             ["元辰（年柱查）", f"{'✅' if yc_hit else '❌'} 位置：{yc}", "主意外灾祸" if yc_hit else "无直接影响"],
             ["灾煞（年柱查）", f"{'✅' if zs_hit else '❌'} 位置：{zs}", "注意突发事故" if zs_hit else "无灾煞影响"],
+            ["血刃（日干查）", f"{'✅ ' + xue_ren_found if xue_ren_found else '❌ 未发现'}", "主血光/手术风险" if xue_ren_found else "无血刃影响"],
             ["天罗地网", f"{'✅天罗' if tian_luo else ''}{'✅地网' if di_wang else ''}{'❌' if not tian_luo and not di_wang else ''}",
              "辰巳为天罗，戌亥为地网，主困顿"],
-            ["印星被冲", "❌ 未发现（简化检查）", "印星稳定"],
         ]
     ))
     lines.append("")
-
     # 🗣️白话解读：神煞排查
     lines.append("🗣️白话解读：")
     lines.append("")
-    yc_label = f"年柱「{yc}」为元辰所在的方位" if yc_hit else "元辰未入四柱"
-    zs_label = f"年柱「{zs}」为灾煞所在的方位" if zs_hit else "灾煞未入四柱"
-    tl_label = "天罗地网俱全" if tian_luo and di_wang else ("天罗入命" if tian_luo else "地网入命" if di_wang else "天罗地网不显")
-    lines.append(f"上面的神煞排查显示：{yc_label}、{zs_label}、{tl_label}。")
+    xr_label = f"日主「{ri_gan}」的血刃在{xue_ren_found}，注意身体外伤风险" if xue_ren_found else "血刃未入四柱，无血光之忧"
+    lines.append(f"上面的神煞排查显示：{yc_label}、{zs_label}、{xr_label}、{tl_label}。")
     lines.append("简单来说，神煞是古人长期观察总结出来的经验符号，有吉有凶。凶神入命不代表一定会出大事，")
     lines.append("关键要看有没有制化——就像一把刀既能伤人也能切菜，重在如何使用和应对。")
     lines.append("")
 
     # 【金鉴真人·§5·神煞排查规则】
     lines.append("> **【金鉴真人·§5·神煞排查规则】** 神煞为古人长期观察总结的经验符号，反映特定时空下的吉凶倾向。")
-    lines.append("> 元辰主意外灾祸，灾煞主突发事故，天罗地网主困顿阻滞。神煞需配合五行生克综合判断，详见五行能量分析章节。")
+    lines.append("> 元辰主意外灾祸，灾煞主突发事故，血刃主血光外伤，天罗地网主困顿阻滞。神煞需配合五行生克综合判断，详见五行能量分析章节。")
     lines.append("")
 
     # 5.2 五行过三排查（基于出现次数法：天干+藏干≥3次为病）
@@ -1636,8 +1650,8 @@ def _gen_section5(basic: dict, analysis: dict) -> list:
     lines.append("> 地支藏干是地支中暗藏的天干能量，决定了地支的深层含义。七杀无制则攻身，有制化则转化为权威管理之才。")
     lines.append("")
 
-    # 5.4 搬迁次数
-    lines.append("### 11.4 搬迁次数预测")
+    # 5.4 搬迁次数（含驿马神煞增强）
+    lines.append("### 11.4 搬迁次数预测（含驿马神煞）")
     lines.append("")
     sq = analysis.get("shen_qiang_ruo", {})
     sq_score = sq.get("score", 0)
@@ -1647,7 +1661,22 @@ def _gen_section5(basic: dict, analysis: dict) -> list:
         move_count += 1
     if nian_zhi in ["子", "午", "卯", "酉"]:
         move_count += 1
-    lines.append(f"🚚 **约{move_count}次**：")
+    # 驿马星增强：驿马在四柱中每出现一次，搬迁次数+1
+    yi_ma_count = 0
+    shensha_data = analysis.get("shensha", {})
+    if shensha_data:
+        for pos_name in ["nian", "yue", "ri", "shi"]:
+            if shensha_data.get(pos_name, {}).get("驿马", False):
+                yi_ma_count += 1
+    # fallback 简化驿马检测
+    if yi_ma_count == 0:
+        yi_ma_map = {"申":"寅","子":"寅","辰":"寅","亥":"巳","卯":"巳","未":"巳","寅":"申","午":"申","戌":"申","巳":"亥","酉":"亥","丑":"亥"}
+        yi_ma_zhi = yi_ma_map.get(nian_zhi, "")
+        if yi_ma_zhi and yi_ma_zhi in [basic.get(f"{k}_zhi", "") for k in ["nian", "yue", "ri", "shi"]]:
+            yi_ma_count = 1
+    if yi_ma_count > 0:
+        move_count += yi_ma_count
+    lines.append(f"🚚 **约{move_count}次**（驿马星{yi_ma_count}处·主奔波搬迁）：")
     lines.append(f"- 求学/工作阶段（约1~2次）")
     lines.append(f"- 婚姻/置业阶段（约1~2次）")
     lines.append(f"- 晚年阶段（约{max(1, move_count-4)}次）")
@@ -2044,6 +2073,37 @@ def _gen_section6(basic: dict, analysis: dict) -> list:
 
     lines.append("【金鉴真人·§6·十神定层次】十神是性格的染色层，天干十神决定外显的「面子」，藏干十神影响内在的「里子」。吉神多者温厚包容、好相处但可能缺乏棱角；凶神多者锋芒锐利、有冲劲但需学会收敛；平神居中调和，起到平衡全局的作用。")
     lines.append("")
+
+    # ━━ 神煞关联：桃花/华盖 → 艺术气质 ━━
+    ss_sum = analysis.get("shensha_summary", {})
+    # 尝试从各个可能的神煞数据源获取
+    shensha_all = analysis.get("shensha_all", []) or analysis.get("shensha_list", [])
+    if not shensha_all:
+        shensha_dict = analysis.get("shensha", {})
+        if shensha_dict:
+            shensha_all = []
+            for pos_name in ["nian", "yue", "ri", "shi"]:
+                for sname, present in shensha_dict.get(pos_name, {}).items():
+                    if present:
+                        shensha_all.append({"name": sname, "position": pos_name,
+                                            "position_label": {"nian":"年柱","yue":"月柱","ri":"日柱","shi":"时柱"}[pos_name]})
+    has_tao_hua = any(s.get("name") == "桃花" for s in shensha_all)
+    has_hua_gai = any(s.get("name") == "华盖" for s in shensha_all)
+    tao_hua_pos = [s.get("position_label","") for s in shensha_all if s.get("name") == "桃花"]
+    hua_gai_pos = [s.get("position_label","") for s in shensha_all if s.get("name") == "华盖"]
+
+    if has_tao_hua or has_hua_gai:
+        lines.append("### 神煞关联：艺术气质与独特个性")
+        lines.append("")
+        if has_tao_hua:
+            lines.append(f"🌸 **桃花星**出现在{'、'.join(tao_hua_pos)}，赋予命主出众的人际魅力和艺术感知力。桃花入命者通常人缘好、审美佳，对艺术和美感有天生的敏感度。")
+        if has_hua_gai:
+            lines.append(f"🛡️ **华盖星**出现在{'、'.join(hua_gai_pos)}，赋予命主超然的艺术灵性和内心孤高的气质。华盖入命者多才多艺，对玄学、艺术、哲学有天然兴趣，但也易有孤独感。")
+        if has_tao_hua and has_hua_gai:
+            lines.append("桃花+华盖的组合，意味着命主既有艺术天赋，又有人缘魅力和表现力——适合在演艺、艺术、设计等需要才华与关注度的领域发展。")
+        lines.append("")
+        lines.append("【金鉴真人·§6·神煞规则】桃花主艺术魅力与人缘，华盖主艺术灵性与孤独气质。桃花华盖并存者，既有才华又有舞台，是艺术型人格的典型配置。")
+        lines.append("")
 
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     # 特质四：身强弱修正
@@ -4209,7 +4269,7 @@ def generate_report(bazi_result: dict, name: str, gender: str,
     }
 
 def _gen_section12(basic: dict, analysis: dict) -> list:
-    """§8 婚姻/感情分析（白话深度解读）"""
+    """§8 婚姻/感情分析（白话深度解读 · 引擎数据驱动）"""
     lines = []
     lines.append("## §8 婚姻/感情分析（白话深度解读）")
     lines.append("")
@@ -4225,6 +4285,15 @@ def _gen_section12(basic: dict, analysis: dict) -> list:
     sq_level = sq.get("level", "中和")
     dy_data = analysis.get("da_yun", {})
     dy_list = dy_data.get("da_yun", [])
+    # 引擎婚姻分析数据（由 calc_hunyin() 提供）
+    hun_yin = analysis.get("hun_yin", {})
+    hy_score = hun_yin.get("score", 50)
+    hy_level = hun_yin.get("level", "中平")
+    hy_fuqi_gong = hun_yin.get("fuqi_gong", {})
+    hy_guan_sha_hun_za = hun_yin.get("guan_sha_hun_za", False)
+    hy_shang_guan_jian_guan = hun_yin.get("shang_guan_jian_guan", False)
+    hy_ru_mu = hun_yin.get("ru_mu", False)
+    hy_details = hun_yin.get("details", [])
     industry_map = {
         "木": "教育/文化/出版/林业/医药/纺织",
         "火": "能源/餐饮/文化传媒/互联网/电力",
@@ -4232,12 +4301,12 @@ def _gen_section12(basic: dict, analysis: dict) -> list:
         "金": "金融/机械/汽车/金属/法律/审计",
         "水": "物流/贸易/旅游/水产/IT/咨询",
     }
-    lines.append("**【金鉴真人·§12·婚姻总论】** 婚姻由夫妻宫（日支）+夫妻星（男财女官）决定。")
+    lines.append("**【金鉴真人·§8·婚姻总论】** 婚姻由夫妻宫（日支）+夫妻星（男财女官）决定。")
     lines.append("")
     lines.append("🗣️ **白话总述：** 婚姻看三点——日支喜忌+夫妻星旺衰+大运引动时机。")
     lines.append("")
 
-    # 12.1 夫妻宫（日支）
+    # 8.1 夫妻宫（日支）
     lines.append("### 8.1 夫妻宫（日支）喜忌")
     lines.append("")
     ri_cang = DI_ZHI_CANG_GAN.get(ri_zhi, [])
@@ -4264,12 +4333,29 @@ def _gen_section12(basic: dict, analysis: dict) -> list:
         lines.append(f"夫妻宫为忌神，婚姻中需要更多包容和理解。")
     else:
         lines.append(f"夫妻宫中性，婚姻质量需双方共同经营。")
-    lines.append("【金鉴真人·§12·夫妻宫规则】日支为夫妻宫，藏干十神对日主的喜忌决定了配偶的助益程度。喜用则吉，忌神需经营。")
+    lines.append("【金鉴真人·§8·夫妻宫规则】日支为夫妻宫，藏干十神对日主的喜忌决定了配偶的助益程度。喜用则吉，忌神需经营。")
     lines.append("")
     lines.append("🗣️ 白话解读：夫妻宫就像你的「婚姻地基」——喜用神的地基稳，忌神的地基需要多打几根桩。你的地基是" + {"喜":"稳的","忌":"需要加固的","中性":"平的"}.get(ri_xi_ji,"平的") + "。")
     lines.append("")
 
-    # 12.2 夫妻星
+    # ── 引擎夫妻宫评分（含三刑/六冲/六害/六破检测） ──
+    fg_score = hy_fuqi_gong.get("score", 50)
+    fg_status = hy_fuqi_gong.get("status", "中")
+    lines.append("**夫妻宫引擎评分：** " + "★" * (fg_score // 20) + "☆" * (5 - fg_score // 20) + f" **{fg_score}/100**（{hy_level}）")
+    if "刑" in fg_status:
+        lines.append("⚠️ 夫妻宫带**三刑**（-50分）——婚姻多矛盾，需加强沟通包容。")
+    if "冲" in fg_status:
+        lines.append("⚠️ 夫妻宫带**六冲**（-70分）——婚姻不稳定，易有分离风险。")
+    if "害" in fg_status:
+        lines.append("⚠️ 夫妻宫带**六害**（-30分）——需防第三者或小人干扰感情。")
+    if "破" in fg_status:
+        lines.append("⚠️ 夫妻宫带**六破**（-20分）——婚姻轻微不顺，日常摩擦较多。")
+    if ru_mu := hy_ru_mu:
+        lines.append("⚠️ 夫妻星**入墓**——缘分较浅，需大运流年强力引动方成姻缘。")
+    lines.append(f"> 【金鉴真人·§8·夫妻宫扣分规则】夫妻宫三刑-50、六冲-70、六害-30、六破-20、自刑-20，累计扣分后为最终评分。你的夫妻宫评分{fg_score}，「{hy_level}」等级。")
+    lines.append("")
+
+    # 8.2 夫妻星
     lines.append("### 8.2 夫妻星")
     lines.append("")
     if gender == "男":
@@ -4292,8 +4378,20 @@ def _gen_section12(basic: dict, analysis: dict) -> list:
         lines.append(f"夫妻星在原局状态：{'、'.join(pei_ou_found)}")
     else:
         lines.append("夫妻星在原局不显，缘分较晚或需大运流年引动。")
-    lines.append("【金鉴真人·§12·夫妻星规则】男命以正财/偏财为妻星，女命以正官/七杀为夫星。夫妻星透干则缘分明显，藏支则缘分深沉。")
+    lines.append("【金鉴真人·§8·夫妻星规则】男命以正财/偏财为妻星，女命以正官/七杀为夫星。夫妻星透干则缘分明显，藏支则缘分深沉。")
     lines.append("")
+
+    # ── 引擎断语：官杀混杂（女命） ──
+    if gender == "女" and hy_guan_sha_hun_za:
+        lines.append("⚠️ **官杀混杂：** 天干或地支中同时出现正官与七杀——感情机会多但难定，易有多段感情经历或选择困难。宜明确择偶标准，避免摇摆不定。")
+        lines.append(f'> 【金鉴真人·§8·官杀混杂规则】女命官杀混杂，正官为夫、七杀为偏缘，两者同现则感情复杂，建议「宁缺毋滥」，在正官大运/流年定姻缘。')
+        lines.append("")
+
+    # ── 引擎断语：伤官见官（女命） ──
+    if gender == "女" and hy_shang_guan_jian_guan:
+        lines.append("⚠️ **伤官见官：** 天干同时出现伤官与正官——婚姻不顺，容易争吵对抗。建议晚婚（30岁后），修炼心性避免出口伤人。")
+        lines.append(f"> 【金鉴真人·§8·伤官见官规则】女命伤官见官为婚姻最大考验。伤官克正官，代表对伴侣挑剔、言语伤害。克制伤官、强化正官（印星化之）是化解关键。")
+        lines.append("")
 
     # 配偶特征
     pei_wx = _get_xi_yong_wx(pei_ou_ss, ri_wx)
@@ -4306,7 +4404,7 @@ def _gen_section12(basic: dict, analysis: dict) -> list:
     lines.append(f"配偶五行倾向：{pei_wx}，对应行业：{pei_ind_wx}，吉色：{pei_color}。")
     lines.append("")
 
-    # 12.3 结婚信号
+    # 8.3 结婚信号
     lines.append("### 8.3 四大结婚信号")
     lines.append("")
     he_map = {"子丑": True, "寅亥": True, "卯戌": True, "辰酉": True, "巳申": True, "午未": True}
@@ -4317,9 +4415,28 @@ def _gen_section12(basic: dict, analysis: dict) -> list:
     has_he = any(ri_zhi + oz in he_map for oz in all_zhi if oz != ri_zhi)
     signal_rows.append(["夫妻宫被合", "✅ 有" if has_he else "❌ 无", f"日支{ri_zhi}与其他地支{'有' if has_he else '无'}六合关系，{'姻缘易成' if has_he else '需大运引动'}"])
 
-    tao_hua_map = {"寅":"卯","午":"卯","戌":"卯","巳":"午","酉":"午","丑":"午","申":"酉","子":"酉","辰":"酉","亥":"子","卯":"子","未":"子"}
-    has_tao = any(tao_hua_map.get(z, "") in all_zhi for z in all_zhi)
-    signal_rows.append(["桃花星在日/时", "✅ 有" if has_tao else "❌ 无", f"桃花星{'临日时柱，人缘好、婚恋机会多' if has_tao else '不临日时柱，婚恋偏务实'}"])
+    # ── 神煞数据（桃花/红鸾/天喜） ──
+    shensha_all = analysis.get("shensha_all", []) or analysis.get("shensha_list", [])
+    if not shensha_all:
+        shensha_dict = analysis.get("shensha", {}) or basic.get("shensha", {})
+        if shensha_dict:
+            shensha_all = []
+            for pos_name in ["nian", "yue", "ri", "shi"]:
+                pos_data = shensha_dict.get(pos_name, {})
+                for sname, present in pos_data.items():
+                    if present:
+                        shensha_all.append({"name": sname, "position": pos_name,
+                                            "position_label": {"nian":"年柱","yue":"月柱","ri":"日柱","shi":"时柱"}[pos_name]})
+
+    # 桃花在各柱断法（年柱人见人爱/月柱青年桃花/日柱婚后/时柱晚年）
+    tao_hua_pos_list = [s for s in shensha_all if s.get("name") == "桃花"]
+    tao_hua_meaning = {"nian": "年柱人见人爱·社交魅力强", "yue": "月柱青年桃花·早恋倾向",
+                        "ri": "日柱婚后魅力·配偶欣赏", "shi": "时柱晚年桃花·夕阳红"}
+    tao_hua_str = "、".join([tao_hua_meaning.get(s.get("position",""), s.get("position_label",""))
+                             for s in tao_hua_pos_list]) if tao_hua_pos_list else ""
+    has_tao = len(tao_hua_pos_list) > 0
+    signal_rows.append(["桃花在各柱", f"✅ {tao_hua_str}" if has_tao else "❌ 无",
+                         f"桃花临{'、'.join([s.get('position_label','') for s in tao_hua_pos_list])}，人缘好、婚恋机会多" if has_tao else "桃花不临四柱，婚恋偏务实，需大运流年引动"])
 
     pei_transparent = any(g in [pei_ou_ss, pei_ou_ss2] for g in all_gan)
     signal_rows.append(["夫妻星透干", "✅ 透干" if pei_transparent else "❌ 不透", f"夫妻星{'在天干透出，缘分明显' if pei_transparent else '藏于地支，缘分深沉需大运引动'}"])
@@ -4331,14 +4448,23 @@ def _gen_section12(basic: dict, analysis: dict) -> list:
         for d in dy_list[:6]
     )
     signal_rows.append(["大运引动", "✅ 有" if dy_triggered else "❌ 无", f"前六大运中{'有' if dy_triggered else '无'}夫妻星引动，{'成婚窗口明显' if dy_triggered else '需主动把握'}"])
+    # 红鸾/天喜星检测
+    has_hong_luan = any(s.get("name") == "红鸾" for s in shensha_all)
+    has_tian_xi = any(s.get("name") == "天喜" for s in shensha_all)
+    hong_luan_pos = [s.get("position_label","") for s in shensha_all if s.get("name") == "红鸾"]
+    tian_xi_pos = [s.get("position_label","") for s in shensha_all if s.get("name") == "天喜"]
+    hl_label = f"✅ {'、'.join(hong_luan_pos)}" if has_hong_luan else "❌ 无"
+    tx_label = f"✅ {'、'.join(tian_xi_pos)}" if has_tian_xi else "❌ 无"
+    signal_rows.append(["红鸾星（年支查）", hl_label, "姻缘信号强·感情机会明显" if has_hong_luan else "红鸾不显·需大运引动感情"])
+    signal_rows.append(["天喜星（年支查）", tx_label, "喜事临门·婚恋顺遂" if has_tian_xi else "天喜未到·感情偏平淡"])
 
     lines.extend(_format_table(["结婚信号", "结果", "解读"], signal_rows))
     lines.append("")
-    lines.append("🗣️ 白话解读：以上信号就像「绿灯」——亮得越多，婚姻缘分越顺。")
-    lines.append("【金鉴真人·§12·结婚信号规则】夫妻宫被合、桃花在日时、夫妻星透干、大运引动，四者有其二则姻缘易成。")
+    lines.append("🗣️ 白话解读：以上信号就像「绿灯」——亮得越多，婚姻缘分越顺。红鸾星动主婚缘信号，天喜星至主喜事临门。")
+    lines.append("【金鉴真人·§8·结婚信号规则】夫妻宫被合、桃花在日时、夫妻星透干、大运引动，四者有其二则姻缘易成。红鸾天喜为加速器——信号叠加越多，缘分越早到来。")
     lines.append("")
 
-    # 12.4 结婚窗口
+    # 8.4 结婚窗口
     lines.append("### 8.4 结婚窗口")
     lines.append("")
     window_years = []
@@ -4367,11 +4493,11 @@ def _gen_section12(basic: dict, analysis: dict) -> list:
         lines.append(f"⚠️ 夫妻宫被冲大运：{'、'.join(conflict_years)}——此期间感情易有波动，需加强沟通。")
     else:
         lines.append("✅ 前六大运无夫妻宫被冲，婚姻稳定性较好。")
-    lines.append("【金鉴真人·§12·婚姻波折规则】夫妻宫被冲的年份，婚姻易有波动；被合的年份，姻缘易成。")
+    lines.append("【金鉴真人·§8·婚姻波折规则】夫妻宫被冲的年份，婚姻易有波动；被合的年份，姻缘易成。")
     lines.append("")
 
-    # 12.6 相处建议
-    lines.append("### 12.6 婚后相处建议")
+    # 8.6 相处建议
+    lines.append("### 8.6 婚后相处建议")
     lines.append("")
     if ri_xi_ji == "喜":
         lines.append(f"夫妻宫为喜用神，婚后总体顺遂。配偶是你的贵人，遇事多商量。")
@@ -4419,7 +4545,7 @@ def _gen_section13(basic: dict, analysis: dict) -> list:
         child_ss = ["食神", "伤官"]  # 女命食伤为子女：食神为女，伤官为子
         child_label = "食伤"
         child_detail = '女命以食神、伤官为子女星——**食神为女**（乖巧听话的「小甜心」），**伤官为子**（聪明叛逆的「小调皮」）'
-    lines.append(f"> 【金鉴真人·§13·子女星定义规则】{child_detail}。")
+    lines.append(f"> 【金鉴真人·§9·子女星定义规则】{child_detail}。")
     lines.append("")
     lines.append(f"**判定结果：**{'男命' if gender=='男' else '女命'}以「{child_label}」为子女星。")
     lines.append("")
@@ -4467,7 +4593,7 @@ def _gen_section13(basic: dict, analysis: dict) -> list:
     shi_zhi = basic.get("shi_zhi", "")
     shi_cang = shi_p.get("cang_gan", [])
 
-    lines.append(f"> 【金鉴真人·§13·子女宫规则】时柱为子女宫，时干十神决定子女的内在特质和人生走向，时支十二长生反映子女的生命活力。")
+    lines.append(f"> 【金鉴真人·§9·子女宫规则】时柱为子女宫，时干十神决定子女的内在特质和人生走向，时支十二长生反映子女的生命活力。")
     lines.append("")
     lines.append(f"**时柱全貌：**「{shi_gan}{shi_zhi}」")
     lines.append(f"**时干十神：**「{shi_ss}」")
@@ -4535,7 +4661,7 @@ def _gen_section13(basic: dict, analysis: dict) -> list:
         cs_comment = "一般"
         cs_detail = "子女运程平稳，按部就班成长，无大起大落"
 
-    lines.append(f"> 【金鉴真人·§13·十二长生规则】日主在时支{shi_zhi}为「{cs}」→{cs_comment}，{cs_detail}。")
+    lines.append(f"> 【金鉴真人·§9·十二长生规则】日主在时支{shi_zhi}为「{cs}」→{cs_comment}，{cs_detail}。")
     lines.append("")
     lines.append(f"**日主在时支十二长生：**「{cs}」（{cs_comment}）——{cs_detail}。")
     lines.append("")
@@ -4607,7 +4733,7 @@ def _gen_section13(basic: dict, analysis: dict) -> list:
         lines.append(f"🗣️ **白话建议：** 八字中子女星比较「低调」，大运中也没有明显引动。如果确实有生育计划，可重点关注以上列出的{child_liu_str}等子女星流年，这些年份受孕概率相对更高。建议同步配合医学备孕规划，命理与科学结合效果更佳。")
 
     lines.append("")
-    lines.append("【金鉴真人·§13·添丁推演规则】子女星在大运天干透出时为引动窗口，配合流年五行生克可精准锁定备孕最佳年份。女命遇食伤运、男命遇官杀运为添丁高发期，尤以运干与日主阴阳属性相反者为更有力之信号。")
+    lines.append("【金鉴真人·§9·添丁推演规则】子女星在大运天干透出时为引动窗口，配合流年五行生克可精准锁定备孕最佳年份。女命遇食伤运、男命遇官杀运为添丁高发期，尤以运干与日主阴阳属性相反者为更有力之信号。")
     lines.append("")
     lines.append("---")
     lines.append("")
@@ -5178,6 +5304,25 @@ def _gen_section16(basic: dict, analysis: dict, birth_year: int) -> list:
         _add_event(first_dy_gz, qi_yun_year, qi_yun_age,
                    f"起运·步入第一步大运{first_dy_gz}·{first_dy_ss}运",
                    "D", f"起运{first_dy_gz}开启·命运分水岭", first_chain)
+
+    # ━━ 驿马神煞 → 出行/迁移全局事件（§16专用） ━━
+    yi_ma_positions = []
+    shensha_data = analysis.get("shensha", {})
+    if shensha_data:
+        pos_labels = {"nian":"年柱","yue":"月柱","ri":"日柱","shi":"时柱"}
+        for pos_name in ["nian", "yue", "ri", "shi"]:
+            if shensha_data.get(pos_name, {}).get("驿马", False):
+                yi_ma_positions.append(pos_labels.get(pos_name, ""))
+    if not yi_ma_positions:
+        yi_ma_map = {"申":"寅","子":"寅","辰":"寅","亥":"巳","卯":"巳","未":"巳","寅":"申","午":"申","戌":"申","巳":"亥","酉":"亥","丑":"亥"}
+        nian_zhi_16 = basic.get("nian_zhi", "")
+        yi_ma_zhi = yi_ma_map.get(nian_zhi_16, "")
+        if yi_ma_zhi and yi_ma_zhi in [basic.get(f"{k}_zhi", "") for k in ["nian", "yue", "ri", "shi"]]:
+            yi_ma_positions.append("年柱对宫")
+    if yi_ma_positions:
+        yi_ma_pos_str = "、".join(yi_ma_positions)
+        event_id += 1
+        lines.append(f"| {event_id} | — | {birth_year} | 0 | 🏃 **驿马星**出现在{yi_ma_pos_str}·一生奔波搬迁·出行机会多 | T | 驿马入命·主动出行搬迁 | 神煞:驿马在{yi_ma_pos_str} |")
 
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     # 按大运分段生成事件（每运8~12条）
