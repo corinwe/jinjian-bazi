@@ -71,16 +71,103 @@ BIAN_XING_RULES = {
     "未": {"trigger": {"亥", "卯"}, "to_wx": "木", "title": "木库"},
 }
 
-def get_bian_xing_wu_xing(zhi: str, zhi_list: list) -> str | None:
+def get_bian_xing_wu_xing(zhi: str, zhi_list: list = None, yue_zhi: str = "") -> str | None:
     """辰戌丑未五行变性检测
     返回变性后的五行，若无变性则返回None
+
+    规则（双维度）：
+    维度A — 三合触发（传统规则）：辰遇申+子→水，戌遇寅+午→火，丑遇巳+酉→金，未遇亥+卯→木
+    维度B — 单字月令变性（P0补充）：辰戌丑未作为单字在不同月令下的五行变性
     """
     if zhi not in BIAN_XING_RULES:
         return None
-    rule = BIAN_XING_RULES[zhi]
-    zhi_set = set(zhi_list)
-    if rule["trigger"].issubset(zhi_set):
-        return rule["to_wx"]
+
+    # 维度A：三合触发（至少两个trigger元素在zhi_list中才触发）
+    if zhi_list:
+        rule = BIAN_XING_RULES[zhi]
+        zhi_set = set(zhi_list)
+        if rule["trigger"].issubset(zhi_set):
+            return rule["to_wx"]
+
+    # 维度B：单字月令变性（月令为四季旺月时，辰戌丑未五行可变）
+    if yue_zhi:
+        bx = _get_single_bian_xing_by_month(zhi, yue_zhi)
+        if bx:
+            return bx
+
+    return None
+
+
+# 辰戌丑未单字月令变性映射
+# 格式：{辰戌丑未字: {月令: 变性后五行}}
+_SINGLE_BIAN_XING_BY_MONTH = {
+    "辰": {
+        "寅": "木", "卯": "木",  # 春木旺，辰从木势
+        "巳": None, "午": None,  # 夏火生土，辰仍以土论
+        "未": None,
+        "申": "水", "酉": "水",  # 秋金生水，辰为水库从水势
+        "亥": "水", "子": "水",  # 冬水旺，辰从水势
+        "丑": None,
+        "辰": None, "戌": None,  # 土旺季月，辰本气为土
+    },
+    "戌": {
+        "寅": "火", "卯": "火",  # 春木生火，戌为火库
+        "巳": "火", "午": "火",  # 夏火旺，戌为火库从火势
+        "未": "火",
+        "申": None, "酉": None,  # 秋金旺，火退气，戌仍以土论
+        "亥": None, "子": None,  # 冬水克火，戌以土论
+        "丑": None,
+        "辰": None, "戌": None,  # 土旺季月，戌本气为土
+    },
+    "丑": {
+        "寅": None, "卯": None,  # 春木旺克土，丑仍以土论
+        "巳": None, "午": None,  # 夏火生土，丑以土论
+        "未": None,
+        "申": "金", "酉": "金",  # 秋金旺，丑为金库从金势
+        "亥": "水", "子": "水",  # 冬水旺，丑为湿土蓄水
+        "丑": None,
+        "辰": None, "戌": None,  # 土旺季月，丑本气为土
+    },
+    "未": {
+        "寅": "木", "卯": "木",  # 春木旺，未为木库从木势
+        "巳": "火", "午": "火",  # 夏火旺，未为燥土带火性
+        "未": None,
+        "申": None, "酉": None,  # 秋金旺，土生金，未以土论
+        "亥": "木", "子": "木",  # 冬水生木，未为木库得水
+        "丑": None,
+        "辰": None, "戌": None,  # 土旺季月，未本气为土
+    },
+}
+
+# 季节组：春季、夏季、秋季、冬季
+_SEASON_GROUPS = {
+    "春": {"寅", "卯", "辰"},
+    "夏": {"巳", "午", "未"},
+    "秋": {"申", "酉", "戌"},
+    "冬": {"亥", "子", "丑"},
+}
+
+# 辰戌丑未按季节的变性（后备规则，当月令精确匹配未命中时）
+_SINGLE_BIAN_XING_BY_SEASON = {
+    "辰": {"春": "木", "夏": None, "秋": "水", "冬": "水"},
+    "戌": {"春": "火", "夏": "火", "秋": None, "冬": None},
+    "丑": {"春": None, "夏": None, "秋": "金", "冬": "水"},
+    "未": {"春": "木", "夏": "火", "秋": None, "冬": "木"},
+}
+
+
+def _get_single_bian_xing_by_month(zhi: str, yue_zhi: str) -> str | None:
+    """按精确月令查出辰戌丑未单字变性结果"""
+    monthly_map = _SINGLE_BIAN_XING_BY_MONTH.get(zhi, {})
+    # 精确月令命中（含显式None表示不变性）
+    if yue_zhi in monthly_map:
+        return monthly_map[yue_zhi]
+
+    # 按季节查后备（仅当精确月令未在映射表中时）
+    season_map = _SINGLE_BIAN_XING_BY_SEASON.get(zhi, {})
+    for season_name, season_zhi_set in _SEASON_GROUPS.items():
+        if yue_zhi in season_zhi_set:
+            return season_map.get(season_name)
     return None
 
 
@@ -2345,6 +2432,175 @@ def calc_cai_fu_deng_ji(cai_xing_total: float, sqr_score: float, sqr_level: str,
     }
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# P0: 重大灾祸5指标检测（用于calc_liu_nian）
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+XUE_REN_FOR_ZAI_HUO = {
+    "甲":"卯","乙":"辰","丙":"午","丁":"未","戊":"午",
+    "己":"未","庚":"酉","辛":"戌","壬":"子","癸":"丑"
+}
+
+def _calc_zai_huo_indicators(ri_gan: str, liu_nian_gan: str, liu_nian_zhi: str,
+                              da_yun_gan_zhi: str = "",
+                              yuan_gan_list: list = None,
+                              yuan_zhi_list: list = None) -> dict:
+    """
+    流年重大灾祸5指标检测
+    
+    指标：
+    1. 岁运并临 — 流年干支与大运干支完全相同
+    2. 三刑+七杀 — 流年地支与原局/大运构成三刑，且流年天干为七杀
+    3. 七杀无制 — 流年天干为七杀，原局无印星化杀且无食神制杀
+    4. 血刃 — 流年地支为日干的血刃位
+    5. 枭神夺食 — 流年天干为枭神，原局天干有食神/伤官
+    
+    返回：
+    {
+        "sui_yun_bing_lin": bool,
+        "san_xing_qi_sha": bool,
+        "qi_sha_wu_zhi": bool,
+        "xue_ren": bool,
+        "xiao_shen_duo_shi": bool,
+        "count": int,            # 命中指标总数
+        "details": [str],        # 详细说明
+        "has_zai_huo": bool,     # count >= 1 即为有灾祸信号
+    }
+    """
+    indicators = {
+        "sui_yun_bing_lin": False,
+        "san_xing_qi_sha": False,
+        "qi_sha_wu_zhi": False,
+        "xue_ren": False,
+        "xiao_shen_duo_shi": False,
+    }
+    details = []
+    
+    # 辅助函数：获取十神
+    def _get_ss(ri_g, g):
+        ri = TIAN_GAN.index(ri_g)
+        g_idx = TIAN_GAN.index(g)
+        rw = WX_ORDER.index(TIAN_GAN_WU_XING[ri_g])
+        gw = WX_ORDER.index(TIAN_GAN_WU_XING[g])
+        ry = ri % 2
+        gy = g_idx % 2
+        if rw == gw:
+            return "比肩" if ry == gy else "劫财"
+        if gw == (rw + 1) % 5:
+            return "食神" if ry == gy else "伤官"
+        if gw == (rw + 2) % 5:
+            return "正财" if ry != gy else "偏财"
+        if gw == (rw + 3) % 5:
+            return "正官" if ry != gy else "七杀"
+        if gw == (rw + 4) % 5:
+            if ry != gy:
+                return "正印"
+            return "偏印"
+        return ""
+    
+    def _get_raw_ss(ri_g, g):
+        """原始十神（不含枭神标记）"""
+        ri = TIAN_GAN.index(ri_g)
+        g_idx = TIAN_GAN.index(g)
+        rw = WX_ORDER.index(TIAN_GAN_WU_XING[ri_g])
+        gw = WX_ORDER.index(TIAN_GAN_WU_XING[g])
+        ry = ri % 2
+        gy = g_idx % 2
+        if rw == gw:
+            return "比肩" if ry == gy else "劫财"
+        if gw == (rw + 1) % 5:
+            return "食神" if ry == gy else "伤官"
+        if gw == (rw + 2) % 5:
+            return "正财" if ry != gy else "偏财"
+        if gw == (rw + 3) % 5:
+            return "正官" if ry != gy else "七杀"
+        if gw == (rw + 4) % 5:
+            return "正印" if ry != gy else "偏印"
+        return ""
+    
+    liu_nian_ss = _get_ss(ri_gan, liu_nian_gan)
+    
+    # ── 1. 岁运并临 ──
+    if da_yun_gan_zhi and len(da_yun_gan_zhi) >= 2:
+        dy_gan = da_yun_gan_zhi[0]
+        dy_zhi = da_yun_gan_zhi[1]
+        if liu_nian_gan == dy_gan and liu_nian_zhi == dy_zhi:
+            indicators["sui_yun_bing_lin"] = True
+            details.append(f"岁运并临：流年{liu_nian_gan}{liu_nian_zhi}与大运{dy_gan}{dy_zhi}完全相同，主重大变动")
+    
+    # ── 2. 三刑+七杀 ──
+    if liu_nian_ss == "七杀":
+        # 检查流年地支与大运/原局构成三刑
+        all_check_zhi = []
+        if da_yun_gan_zhi and len(da_yun_gan_zhi) >= 2:
+            all_check_zhi.append(da_yun_gan_zhi[1])
+        if yuan_zhi_list:
+            all_check_zhi.extend(yuan_zhi_list)
+        
+        for other_zhi in all_check_zhi:
+            if not other_zhi or other_zhi == liu_nian_zhi:
+                continue
+            # 检查是否构成三刑
+            xing_target = SAN_XING_MAP.get(liu_nian_zhi)
+            if xing_target and xing_target == other_zhi and liu_nian_zhi not in ZI_XING:
+                indicators["san_xing_qi_sha"] = True
+                details.append(f"三刑+七杀：流年天干{liu_nian_gan}为七杀，地支{liu_nian_zhi}与{other_zhi}相刑，凶险叠加")
+                break
+    
+    # ── 3. 七杀无制 ──
+    if liu_nian_ss == "七杀":
+        you_yin = False  # 有印星化杀
+        you_shi_shen = False  # 有食神制杀
+        if yuan_gan_list:
+            for tg in yuan_gan_list:
+                if not tg:
+                    continue
+                tg_raw_ss = _get_raw_ss(ri_gan, tg)
+                if tg_raw_ss in ("正印", "偏印"):
+                    you_yin = True
+                if tg_raw_ss in ("食神", "伤官"):
+                    you_shi_shen = True
+        if not you_yin and not you_shi_shen:
+            indicators["qi_sha_wu_zhi"] = True
+            detail_parts = [f"七杀无制：流年天干{liu_nian_gan}为七杀"]
+            if not you_yin:
+                detail_parts.append("原局无印星化杀")
+            if not you_shi_shen:
+                detail_parts.append("无食神制杀")
+            details.append("，".join(detail_parts))
+    
+    # ── 4. 血刃 ──
+    xue_ren_zhi = XUE_REN_FOR_ZAI_HUO.get(ri_gan, "")
+    if xue_ren_zhi and liu_nian_zhi == xue_ren_zhi:
+        indicators["xue_ren"] = True
+        details.append(f"血刃：流年地支{liu_nian_zhi}为日干{ri_gan}的血刃位，主血光意外")
+    
+    # ── 5. 枭神夺食 ──
+    # 流年天干为偏印(枭神)，且原局天干有食神/伤官
+    liu_nian_raw_ss = _get_raw_ss(ri_gan, liu_nian_gan)
+    if liu_nian_raw_ss == "偏印":
+        has_shi_shen = False
+        if yuan_gan_list:
+            for tg in yuan_gan_list:
+                if not tg:
+                    continue
+                tg_raw_ss = _get_raw_ss(ri_gan, tg)
+                if tg_raw_ss in ("食神", "伤官"):
+                    has_shi_shen = True
+                    break
+        if has_shi_shen:
+            indicators["xiao_shen_duo_shi"] = True
+            details.append(f"枭神夺食：流年天干{liu_nian_gan}为枭神，原局天干有食神/伤官，该年运势不畅")
+    
+    count = sum(1 for v in indicators.values() if v)
+    return {
+        **indicators,
+        "count": count,
+        "details": details,
+        "has_zai_huo": count >= 1,
+    }
+
+
 def calc_liu_nian(year: int, ri_gan: str, da_yun_list: list,
                   nian_gan: str = "", nian_zhi: str = "",
                   yue_gan: str = "", yue_zhi: str = "",
@@ -2388,19 +2644,35 @@ def calc_liu_nian(year: int, ri_gan: str, da_yun_list: list,
         }
     """
     # 流年干支
+    # 保存原局年柱（后续会被流年覆盖）
+    yuan_nian_gan = nian_gan
+    yuan_nian_zhi = nian_zhi
     nian_gan = TIAN_GAN[(year - 4) % 10]
     nian_zhi = DI_ZHI[(year - 4) % 12]
     gan_zhi = nian_gan + nian_zhi
-    
+
     # 十神
     ss = shi_shen(ri_gan, nian_gan)
-    
+
     # 找出当前所行大运
     current_da_yun = None
     if da_yun_list:
         # 假设当前年龄=流年减去生年，简化处理
         # 实际调用时传已计算好的大运和当前年龄更准确
         current_da_yun = da_yun_list[0] if da_yun_list else None
+
+    # ── 重大灾祸5指标检测 ──
+    dy_gan_zhi = current_da_yun.get("gan_zhi", "") if current_da_yun else ""
+    yuan_gan_list_for_zaihuo = [tg for tg in (yuan_nian_gan, yue_gan, ri_gan, shi_gan) if tg]
+    yuan_zhi_list_for_zaihuo = [tz for tz in (yuan_nian_zhi, yue_zhi, ri_zhi, shi_zhi) if tz]
+    zai_huo = _calc_zai_huo_indicators(
+        ri_gan=ri_gan,
+        liu_nian_gan=nian_gan,
+        liu_nian_zhi=nian_zhi,
+        da_yun_gan_zhi=dy_gan_zhi,
+        yuan_gan_list=yuan_gan_list_for_zaihuo,
+        yuan_zhi_list=yuan_zhi_list_for_zaihuo,
+    )
     
     # 与当前大运的关系检测
     chong_da_yun = False
@@ -2616,6 +2888,7 @@ def calc_liu_nian(year: int, ri_gan: str, da_yun_list: list,
         "hai_da_yun": hai_da_yun,
         "conflict_detail": conflict_detail.strip("; "),
         "analysis": " ".join(analysis_parts),
+        "zai_huo_indicators": zai_huo,
     }
     
     # 只有传入了原局数据时才添加原局互动字段
