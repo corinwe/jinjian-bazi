@@ -709,7 +709,7 @@ def _gen_section1(basic: dict, analysis: dict, name: str, gender: str, version: 
 def _gen_section2(basic: dict, analysis: dict) -> list:
     """§12 格局分析 — 三维度框架（主格+格局细分+格局叠加）+ 白话推导"""
     lines = []
-    lines.append('## §12 格局分析（三维度框架）')
+    lines.append('## §2 格局分析（三维度框架）')
     lines.append('')
     ri_gan = basic.get('ri_gan', '')
     ri_wx = TIAN_GAN_WU_XING.get(ri_gan, '')
@@ -1348,9 +1348,9 @@ def _gen_section3(basic: dict, analysis: dict) -> list:
 
 
 def _gen_section4(basic: dict, analysis: dict) -> list:
-    """§2 喜用神详解（用神层级+大运补窗口+忌神问题）— 80行"""
+    """§4 喜用神详解（用神层级+大运补窗口+忌神问题）— 80行"""
     lines = []
-    lines.append("## §2 喜用神详解")
+    lines.append("## §4 喜用神详解")
     lines.append("")
     xys = analysis.get("xi_yong_shen", {})
     xi_list = xys.get("xi_shen", [])
@@ -2563,6 +2563,16 @@ def _gen_section8(basic: dict, analysis: dict) -> list:
     ji_list = xys.get("ji_shen", [])
     dy_data = analysis.get("da_yun", {})
     dy_list = dy_data.get("da_yun", [])
+    # 出生年份提取（用于计算当前年龄，过滤已过期的大运）
+    _birth_year = 1980
+    _solar = basic.get("solar_date", "")
+    if "年" in _solar:
+        try:
+            _birth_year = int(_solar.split("年")[0])
+        except (ValueError, IndexError):
+            pass
+    import datetime as _dt
+    _current_age = _dt.datetime.now().year - _birth_year
     wx_ord = ["木", "火", "土", "金", "水"]
     ri_idx = wx_ord.index(ri_wx) if ri_wx in wx_ord else 2
     cai_wx = wx_ord[(ri_idx + 2) % 5]
@@ -2711,7 +2721,7 @@ def _gen_section8(basic: dict, analysis: dict) -> list:
     # ─── 8.6 第六层：大运窗口精确化（v8.3：使用引擎da_yun_ji_xiong数据）───
     lines.append("### 7.6 第六层：大运财星窗口精确化")
     lines.append("")
-    lines.append("【金鉴真人·§8·大运窗口规则】大运财星到位为窗口期，食伤生财为次窗口。以下按引擎推算的各步大运吉凶评分排序。")
+    lines.append("【金鉴真人·§8·大运窗口规则】大运财星到位为窗口期，食伤生财为次窗口。以下仅展示**剩余（未过期）**的大运信息。")
     lines.append("")
     # 使用引擎的da_yun_ji_xiong数据
     dy_jx = analysis.get("da_yun_ji_xiong", [])
@@ -2723,6 +2733,14 @@ def _gen_section8(basic: dict, analysis: dict) -> list:
             ss = d.get("gan_ss", "")
             jx = d.get("ji_xiong", "平")
             base_score = d.get("score", 5.0)
+            # 先判断是否已过期：通过匹配da_yun中的start_age/end_age
+            _s_age = 999
+            for r in dy_list:
+                if r.get("gan_zhi","") == gz:
+                    _s_age = r.get("end_age", 999)
+                    break
+            if _s_age < _current_age:
+                continue  # 已过期的大运不展示
             # 十神财星助力：正财偏财直接支持，食伤生财间接支持
             if ss in ("正财", "偏财"):
                 cai_score_dy = min(base_score * 1.2, 10)
@@ -3928,6 +3946,27 @@ def _gen_section11(basic: dict, analysis: dict, birth_year: int) -> list:
     lines.append(f"**综合判定：{grade}**")
     lines.append(f"评分：第0层{tier0}({ts:+d}) + 六步{pos}正{neg}负 + {'' if sg_pen==0 else '伤官('+str(sg_pen)+')'} = 总分{total:.1f}")
     lines.append("")
+
+    # ── 引擎学历计算链路透明化 ──
+    engine_xy = analysis.get("xue_ye", {})
+    if engine_xy:
+        eng_score = engine_xy.get("score", 0)
+        eng_level = engine_xy.get("level", "")
+        eng_raw = engine_xy.get("_raw", 0)
+        eng_details = engine_xy.get("details", [])
+        lines.append("**引擎学历计算链路（透明化）：**")
+        lines.append("")
+        # 按计算顺序展示各步骤
+        calc_steps = []
+        for d in eng_details:
+            calc_steps.append(f"- {d}")
+        if calc_steps:
+            lines.extend(calc_steps)
+            lines.append("")
+        lines.append(f"**→ 原始分: {eng_raw}分**")
+        lines.append(f"**→ ×10映射: {eng_raw} × 10 = {eng_score}分**")
+        lines.append(f"**→ 引擎判定等级: {eng_level}**")
+        lines.append("")
     lines.append(gd)
     lines.append("")
     lines.append('🗣️白话解读：综合以上分析可以看出，学历高低是先天天赋和后天时运共同作用的结果。印星和文昌好比"硬件基础"，大运和流年则是"软件环境"。')
@@ -4101,9 +4140,9 @@ def generate_report(bazi_result: dict, name: str, gender: str,
     lines.extend(_gen_section1(basic, analysis, name, gender, version))
 
     # ═══════════════════════════════════════════════
-    # §2 喜用神详解（← 原§4 _gen_section4）
+    # §2 格局详解（← 原§12 _gen_section2）
     # ═══════════════════════════════════════════════
-    lines.extend(_gen_section4(basic, analysis))
+    lines.extend(_gen_section2(basic, analysis))
 
     # ═══════════════════════════════════════════════
     # §3 身强弱详解
@@ -4111,9 +4150,9 @@ def generate_report(bazi_result: dict, name: str, gender: str,
     lines.extend(_gen_section3(basic, analysis))
 
     # ═══════════════════════════════════════════════
-    # §4 性格分析（← 原§6 _gen_section6）
+    # §4 喜用神详解（← 原§4 _gen_section4）
     # ═══════════════════════════════════════════════
-    lines.extend(_gen_section6(basic, analysis))
+    lines.extend(_gen_section4(basic, analysis))
 
     # ═══════════════════════════════════════════════
     # §5 学业学历分析（← 原§11 _gen_section11）
@@ -4151,32 +4190,27 @@ def generate_report(bazi_result: dict, name: str, gender: str,
     lines.extend(_gen_section5(basic, analysis))
 
     # ═══════════════════════════════════════════════
-    # §12 格局分析（← 原§2 _gen_section2）
-    # ═══════════════════════════════════════════════
-    lines.extend(_gen_section2(basic, analysis))
-
-    # ═══════════════════════════════════════════════
-    # §13 身材外貌分析（← 原§7 _gen_section7）
+    # §12 身材外貌分析（← 原§7 _gen_section7）
     # ═══════════════════════════════════════════════
     lines.extend(_gen_section7(basic, analysis))
 
     # ═══════════════════════════════════════════════
-    # §14 健康分析
+    # §13 健康分析
     # ═══════════════════════════════════════════════
     lines.extend(_gen_section14(basic, analysis))
 
     # ═══════════════════════════════════════════════
-    # §15 六亲分析
+    # §14 六亲分析
     # ═══════════════════════════════════════════════
     lines.extend(_gen_section15(basic, analysis))
 
     # ═══════════════════════════════════════════════
-    # §16 事件总表
-    # §17 大运精析
-    # §18 三决断
-    # §19 运程总评
-    # §20 姓名分析
-    # §21 人生建议
+    # §15 事件总表
+    # §16 大运精析
+    # §17 三决断
+    # §18 运程总评
+    # §19 姓名分析
+    # §20 人生建议
     # ═══════════════════════════════════════════════
     lines.extend(_gen_section16(basic, analysis, birth_year))
     lines.extend(_gen_section17(basic, analysis, birth_year))
@@ -4279,6 +4313,7 @@ def _gen_section12(basic: dict, analysis: dict) -> list:
     ri_gan = basic.get("ri_gan", "")
     ri_wx = TIAN_GAN_WU_XING.get(ri_gan, "")
     ri_zhi = basic.get("ri_zhi", "")
+    ri_zhi_wx = DI_ZHI_WU_XING.get(ri_zhi, "")
     gender = basic.get("gender", "男")
     pillars = basic.get("pillars", {})
     xys = analysis.get("xi_yong_shen", {})
@@ -4330,13 +4365,47 @@ def _gen_section12(basic: dict, analysis: dict) -> list:
     ri_cang_main_ss = _get_shi_shen(ri_gan, ri_cang_main) if ri_cang_main else ""
     ri_cang_main_wx = TIAN_GAN_WU_XING.get(ri_cang_main, "")
     lines.append(f"日支{ri_zhi}的主气为{ri_cang_main}（{ri_cang_main_wx}），对应十神为{ri_cang_main_ss}。")
-    if ri_xi_ji == "喜":
-        lines.append(f"夫妻宫为喜用神，配偶对你有助益，婚姻是人生的重要支撑。")
-    elif ri_xi_ji == "忌":
-        lines.append(f"夫妻宫为忌神，婚姻中需要更多包容和理解。")
+    # 综合解读（十神性质+五行喜忌双维度）
+    # 十神维度：日支主气十神对婚姻的影响
+    ss_effect = ""
+    if ri_cang_main_ss in ("伤官", "劫财"):
+        ss_effect = f"此十神有消耗性质，意味着您在亲密关系中容易{('高标准、爱挑剔' if ri_cang_main_ss=='伤官' else '有竞争意识、独立性较强')}，感情上需要主动修炼包容心。"
+    elif ri_cang_main_ss in ("正官", "七杀"):
+        ss_effect = "此十神代表责任感，意味着您在婚姻中自律性强，但也可能给伴侣带来压力。"
+    elif ri_cang_main_ss in ("正印", "偏印"):
+        ss_effect = "此十神代表包容，意味着您在婚姻中温和体贴，懂得为对方着想。"
+    elif ri_cang_main_ss in ("正财", "偏财"):
+        ss_effect = "此十神代表务实，意味着您在婚姻中注重物质基础，善于经营家庭财务。"
+    elif ri_cang_main_ss in ("比肩",):
+        ss_effect = "此十神代表平等，意味着您在婚姻中追求对等关系，需要避免过于独立。"
+    elif ri_cang_main_ss in ("食神",):
+        ss_effect = "此十神代表享受，意味着您在婚姻中善于营造浪漫氛围，但需注意不过度理想化。"
     else:
-        lines.append(f"夫妻宫中性，婚姻质量需双方共同经营。")
-    lines.append("【金鉴真人·§8·夫妻宫规则】日支为夫妻宫，藏干十神对日主的喜忌决定了配偶的助益程度。喜用则吉，忌神需经营。")
+        ss_effect = f"夫妻宫{ri_cang_main_ss}十神，婚姻有其独特的相处模式。"
+    # 五行维度：日支五行对八字的喜忌
+    if ri_xi_ji == "喜":
+        wx_effect = f"日支{ri_zhi}({ri_zhi_wx})为八字喜用神，配偶整体对您有助益，是婚姻的积极因素。"
+    elif ri_xi_ji == "忌":
+        wx_effect = f"日支{ri_zhi}({ri_zhi_wx})为八字忌神，婚姻中需要更多包容和理解。"
+    else:
+        wx_effect = f"日支{ri_zhi}({ri_zhi_wx})为中性，婚姻质量需双方共同经营。"
+    # 综合
+    if ri_xi_ji == "喜":
+        if ri_cang_main_ss in ("伤官", "劫财"):
+            comprehensive = f"综合：夫妻宫为**喜用神**（配偶整体有益），但坐{ri_cang_main_ss}十神（{ss_effect}）。配偶既能给您带来助益，但您对感情的要求也较高，需平衡期望与现实。"
+        else:
+            comprehensive = f"综合：夫妻宫为**喜用神**，配偶对您有助益，婚姻是人生的重要支撑。（{ss_effect}）"
+    elif ri_xi_ji == "忌":
+        if ri_cang_main_ss in ("伤官", "劫财"):
+            comprehensive = f"综合：夫妻宫为**忌神**且坐{ri_cang_main_ss}十神，婚姻挑战较大。需主动经营、多包容。"
+        else:
+            comprehensive = f"综合：夫妻宫为**忌神**，婚姻中需要更多包容和理解。（{ss_effect}）"
+    else:
+        comprehensive = f"综合：夫妻宫**中性**，婚姻质量需双方共同经营。（{ss_effect}）"
+    lines.append(f"**十神维度：** 日支{ri_zhi}主气十神为{ri_cang_main_ss}。{ss_effect}")
+    lines.append(f"**五行维度：** {wx_effect}")
+    lines.append(f"**{comprehensive}**")
+    lines.append("【金鉴真人·§8·夫妻宫规则】日支为夫妻宫，吉凶由**十神性质+五行喜忌**双维度综合判定。十神定性（伤官消耗/正官责任/财星务实等），五行定势（喜用则吉/忌神需经营），两者并重不可偏废。")
     lines.append("")
     lines.append("🗣️ 白话解读：夫妻宫就像你的「婚姻地基」——喜用神的地基稳，忌神的地基需要多打几根桩。你的地基是" + {"喜":"稳的","忌":"需要加固的","中性":"平的"}.get(ri_xi_ji,"平的") + "。")
     lines.append("")
@@ -4621,21 +4690,48 @@ def _gen_section13(basic: dict, analysis: dict) -> list:
         child_trait = "子女性格中庸，适应力强"
         child_style = "随和圆融"
 
-    # 宫位喜忌（基于时支藏干权重比例）
+    # 宫位喜忌（双维度：时干十神性质 + 时支五行喜忌）
     shi_zhi_xi_ji = _calc_gong_xi_ji(ri_gan, shi_zhi, xi_list, ji_list)
-    if shi_zhi_xi_ji == "喜":
-        gong_comment = "✅ 子女宫为喜用——子女是您的福星，子女性格好、有出息，晚年可得子女之力。"
-        gong_baihua = "子女宫是个好位置，说明孩子将来能给您带来福气，性格好、有本事，老了也能靠得住。"
-    elif shi_zhi_xi_ji == "忌":
-        gong_comment = "⚠️ 子女宫为忌神——子女教育需多费心，子女性格可能比较倔强或叛逆，建议从小注重引导。"
-        gong_baihua = "子女宫不是太理想，说明养孩子可能会多操些心，孩子个性比较强，需要从小好好引导，多些耐心。"
+    shi_zhi_wx = DI_ZHI_WU_XING.get(shi_zhi, "")
+    # 十神维度
+    shi_effect = ""
+    if shi_ss in ("伤官", "劫财"):
+        shi_effect = f"时干{shi_ss}有消耗性质，子女可能个性鲜明、独立性强，教育上需要更多耐心引导。"
+    elif shi_ss in ("正官", "七杀"):
+        shi_effect = "时干为官杀，子女自律性强、有责任感，但也可能较为倔强。"
+    elif shi_ss in ("正印", "偏印"):
+        shi_effect = "时干为印星，子女聪慧好学、喜文静，有学术天赋。"
+    elif shi_ss in ("正财", "偏财"):
+        shi_effect = "时干为财星，子女务实能干、有经济头脑，较早独立。"
+    elif shi_ss in ("比肩",):
+        shi_effect = "时干为比肩，子女独立好强、有主见，社交能力不错。"
+    elif shi_ss in ("食神",):
+        shi_effect = "时干为食神，子女聪敏灵动、有才艺特长，性格开朗。"
     else:
-        gong_comment = "🔵 子女宫中性——子女缘分平平，与子女关系和睦但既非大福也非大忌。"
-        gong_baihua = "子女宫算是中性的，跟孩子的缘分不好不坏，相处还算融洽，但也谈不上带来多大的福气或麻烦。"
+        shi_effect = f"时干{shi_ss}十神，子女有其独特的成长轨迹。"
+    # 五行维度
+    if shi_zhi_xi_ji == "喜":
+        wx_effect = f"时支{shi_zhi}({shi_zhi_wx})为喜用神，子女缘分优质，晚年可得子女之力。"
+    elif shi_zhi_xi_ji == "忌":
+        wx_effect = f"时支{shi_zhi}({shi_zhi_wx})为忌神，子女教育需多费心，建议从小注重引导。"
+    else:
+        wx_effect = f"时支{shi_zhi}({shi_zhi_wx})中性，子女缘分平平，关系和睦。"
+    # 综合
+    if shi_zhi_xi_ji == "喜" and shi_ss in ("伤官", "劫财"):
+        comprehensive = f"综合：子女宫五行为喜用（子女是福星），但十神{shi_ss}有消耗性质（子女性格鲜明、需更多教育耐心）。子女本质好但有独特个性，需因材施教。"
+    elif shi_zhi_xi_ji == "喜":
+        comprehensive = f"综合：子女宫为喜用神，子女是您的福星，晚年可得子女之力。{shi_effect}"
+    elif shi_zhi_xi_ji == "忌":
+        comprehensive = f"综合：子女宫为忌神，子女教育需多费心。{shi_effect}"
+    else:
+        comprehensive = f"综合：子女宫中性能量。{shi_effect}"
 
     lines.append(f"**宫位十神解读：**{shi_ss}坐时柱→{child_trait}。")
     lines.append(f"**子女性格推断：**孩子大概率性格{child_style}，从小到大让家长比较省心。")
-    lines.append(f"**宫位喜忌判定：**{gong_comment}")
+    lines.append(f"**十神维度：** {shi_effect}")
+    lines.append(f"**五行维度：** {wx_effect}")
+    lines.append(f"**{comprehensive}**")
+    lines.append("【金鉴真人·§9·子女宫规则】子女宫吉凶由**时干十神性质+时支五行喜忌**双维度综合判定。十神定性（官杀自律/印星文静/财星务实/伤官独立等），五行定势（喜用则吉/忌神需经营），两者并重。）")
 
     # 藏干补充
     cang_details = []
@@ -4648,6 +4744,15 @@ def _gen_section13(basic: dict, analysis: dict) -> list:
     if cang_details:
         lines.append(f"**时支藏干：**{' + '.join(cang_details)}，藏干暗藏了子女的隐性特质。")
     lines.append("")
+
+    # 子女宫白话
+    shi_zhi_name = f"时支{shi_zhi}"
+    if shi_zhi_xi_ji == "喜":
+        gong_baihua = f"{shi_zhi_name}为子女宫，整体对您有利——"
+    elif shi_zhi_xi_ji == "忌":
+        gong_baihua = f"{shi_zhi_name}为子女宫，与八字喜用相悖——"
+    else:
+        gong_baihua = f"{shi_zhi_name}为子女宫——"
 
     # 十二长生 — 日主在时支
     cs = _get_chang_sheng(ri_gan, shi_zhi)
@@ -7001,9 +7106,9 @@ def generate_report(bazi_result: dict, name: str, gender: str,
     lines.extend(_gen_section1(basic, analysis, name, gender, version))
 
     # ═══════════════════════════════════════════════
-    # §2 喜用神详解（← 原§4 _gen_section4）
+    # §2 格局详解（← 原§12 _gen_section2）
     # ═══════════════════════════════════════════════
-    lines.extend(_gen_section4(basic, analysis))
+    lines.extend(_gen_section2(basic, analysis))
 
     # ═══════════════════════════════════════════════
     # §3 身强弱详解
@@ -7011,9 +7116,9 @@ def generate_report(bazi_result: dict, name: str, gender: str,
     lines.extend(_gen_section3(basic, analysis))
 
     # ═══════════════════════════════════════════════
-    # §4 性格分析（← 原§6 _gen_section6）
+    # §4 喜用神详解（← 原§4 _gen_section4）
     # ═══════════════════════════════════════════════
-    lines.extend(_gen_section6(basic, analysis))
+    lines.extend(_gen_section4(basic, analysis))
 
     # ═══════════════════════════════════════════════
     # §5 学业学历分析（← 原§11 _gen_section11）
@@ -7051,52 +7156,47 @@ def generate_report(bazi_result: dict, name: str, gender: str,
     lines.extend(_gen_section5(basic, analysis))
 
     # ═══════════════════════════════════════════════
-    # §12 格局分析（← 原§2 _gen_section2）
-    # ═══════════════════════════════════════════════
-    lines.extend(_gen_section2(basic, analysis))
-
-    # ═══════════════════════════════════════════════
-    # §13 身材外貌分析（← 原§7 _gen_section7）
+    # §12 身材外貌分析（← 原§7 _gen_section7）
     # ═══════════════════════════════════════════════
     lines.extend(_gen_section7(basic, analysis))
 
     # ═══════════════════════════════════════════════
-    # §14 健康分析
+    # §13 健康分析
     # ═══════════════════════════════════════════════
     lines.extend(_gen_section14(basic, analysis))
 
     # ═══════════════════════════════════════════════
-    # §15 六亲分析
+    # §14 六亲分析
     # ═══════════════════════════════════════════════
     lines.extend(_gen_section15(basic, analysis))
 
     # ═══════════════════════════════════════════════
-    # §16 事件总表（80行）
+    # §15 事件总表（80行）
     # ═══════════════════════════════════════════════
     lines.extend(_gen_section16(basic, analysis, birth_year))
 
     # ═══════════════════════════════════════════════
-    # §17 大运精析（150行）
+    # §16 大运精析（150行）
     # ═══════════════════════════════════════════════
     lines.extend(_gen_section17(basic, analysis, birth_year))
 
     # ═══════════════════════════════════════════════
-    # §18 三决断（60行）
+    # §17 三决断（60行）
     # ═══════════════════════════════════════════════
     lines.extend(_gen_section18(basic, analysis))
 
     # ═══════════════════════════════════════════════
-    # §19 运程总评（60行）
+    # §18 运程总评（60行）
     # ═══════════════════════════════════════════════
     lines.extend(_gen_section19(basic, analysis, birth_year))
 
     # ═══════════════════════════════════════════════
-    # §20 姓名分析（50行）
+    # §19 姓名分析（50行）
     # ═══════════════════════════════════════════════
     lines.extend(_gen_section20(basic, analysis))
 
     # ═══════════════════════════════════════════════
-    # §21 人生建议（80行）
+    # §20 人生建议（80行）
     # ═══════════════════════════════════════════════
     lines.extend(_gen_section21(basic, analysis))
 

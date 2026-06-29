@@ -2046,9 +2046,11 @@ def calc_cai_fu_deng_ji(cai_xing_total: float, sqr_score: float, sqr_level: str,
         }
     
     # 3. 常规状态判断
-    # 判断身强身弱（基于知识库三段式）
-    if 40 <= sqr_score <= 60:
-        shen_state = "身强"  # 40-60中和也算身强（能担财）
+    # 判断身强身弱（基于知识库三段式：<40身弱，40-60中和，>60身强）
+    if sqr_score >= 60:
+        shen_state = "身强"
+    elif sqr_score >= 40:
+        shen_state = "中和"  # 中和不属于身强也不属于身弱
     else:
         shen_state = "身弱"
     
