@@ -3,6 +3,8 @@
 from datetime import datetime
 from typing import Optional, Any
 
+from app.services.bazi_data import *
+
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 天干地支列表（用于流年干支计算）
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -5630,10 +5632,15 @@ def _gen_section16(basic: dict, analysis: dict, birth_year: int) -> list:
                     parts.append(f"五行:{WX_REL_MAP[rel_key]}")
         return " · ".join(parts)
 
-    def _make_flow_data_chain(flow_gan, flow_wx):
-        """流年数据链"""
+    def _make_flow_data_chain(flow_gan, flow_wx, flow_zhi=None, flow_gz=None):
+        """流年数据链（含完整干支）"""
         parts = []
-        parts.append(f"流干:{flow_gan}({flow_wx})")
+        if flow_gz:
+            parts.append(f"流年:{flow_gz}")
+        else:
+            parts.append(f"流干:{flow_gan}({flow_wx})")
+        if flow_zhi:
+            parts.append(f"地支:{flow_zhi}")
         flow_ss = _get_shi_shen(ri_gan, flow_gan)
         if flow_ss:
             parts.append(f"十神:{flow_ss}")
@@ -5946,44 +5953,49 @@ def _gen_section16(basic: dict, analysis: dict, birth_year: int) -> list:
         # ── 事件⑦：流年互动事件①（大运第3年） ──
         flow_year_3 = start_year + 3
         flow_age_3 = start_age + 3
-        flow_gan_candidates = ["甲", "丙", "戊", "庚", "壬"] if step_idx % 2 == 0 else ["乙", "丁", "己", "辛", "癸"]
-        flow_gan = flow_gan_candidates[step_idx % 5]
+        # 使用标准公式计算实际流年干支（与bazi_engine.calc_liu_nian一致）
+        flow_gan = TIAN_GAN_LIST[(flow_year_3 - 4) % 10]
+        flow_zhi = DI_ZHI_LIST[(flow_year_3 - 4) % 12]
+        flow_gz = flow_gan + flow_zhi
         flow_wx = TIAN_GAN_WU_XING.get(flow_gan, "")
         flow_ss = _get_shi_shen(ri_gan, flow_gan)
         flow_is_xi = flow_wx in xi_wx_list
-        flow_chain = _make_flow_data_chain(flow_gan, flow_wx)
+        flow_chain = _make_flow_data_chain(flow_gan, flow_wx, flow_zhi, flow_gz)
         if flow_is_xi:
-            flow_desc = f"流年遇{flow_gan}({flow_ss})·利好{dy_gan_ss}运发展"
-            flow_sig = f"流年{flow_gan}助力·{flow_ss}为喜用神"
+            flow_desc = f"流年{flow_gz}({flow_ss})·利好{dy_gan_ss}运发展"
+            flow_sig = f"流年{flow_gz}助力·{flow_ss}为喜用神"
             _add_event(dy_gz, flow_year_3, flow_age_3, flow_desc, "I", flow_sig, flow_chain)
         elif flow_wx in ji_wx_list:
-            flow_desc = f"流年遇{flow_gan}({flow_ss})·谨慎应对·避免冒进"
-            flow_sig = f"流年{flow_gan}阻滞·{flow_ss}为忌神"
+            flow_desc = f"流年{flow_gz}({flow_ss})·谨慎应对·避免冒进"
+            flow_sig = f"流年{flow_gz}阻滞·{flow_ss}为忌神"
             _add_event(dy_gz, flow_year_3, flow_age_3, flow_desc, "H", flow_sig, flow_chain)
         else:
-            flow_desc = f"流年{flow_gan}({flow_ss})·平顺过渡"
-            flow_sig = f"流年{flow_gan}中性·平稳过渡"
+            flow_desc = f"流年{flow_gz}({flow_ss})·平顺过渡"
+            flow_sig = f"流年{flow_gz}中性·平稳过渡"
             _add_event(dy_gz, flow_year_3, flow_age_3, flow_desc, "I", flow_sig, flow_chain)
 
         # ── 事件⑧：流年互动事件②（大运第7年） ──
         flow_year_7 = start_year + 7
         flow_age_7 = start_age + 7
-        flow_gan2 = flow_gan_candidates[(step_idx + 2) % 5]
+        # 使用标准公式计算实际流年干支（与bazi_engine.calc_liu_nian一致）
+        flow_gan2 = TIAN_GAN_LIST[(flow_year_7 - 4) % 10]
+        flow_zhi2 = DI_ZHI_LIST[(flow_year_7 - 4) % 12]
+        flow_gz2 = flow_gan2 + flow_zhi2
         flow_wx2 = TIAN_GAN_WU_XING.get(flow_gan2, "")
         flow_ss2 = _get_shi_shen(ri_gan, flow_gan2)
         flow_is_xi2 = flow_wx2 in xi_wx_list
-        flow_chain2 = _make_flow_data_chain(flow_gan2, flow_wx2)
+        flow_chain2 = _make_flow_data_chain(flow_gan2, flow_wx2, flow_zhi2, flow_gz2)
         if flow_is_xi2:
-            flow_desc2 = f"流年{flow_gan2}({flow_ss2})·喜神到位·把握机遇"
-            flow_sig2 = f"流年{flow_gan2}引动喜用神·{flow_ss2}得力"
+            flow_desc2 = f"流年{flow_gz2}({flow_ss2})·喜神到位·把握机遇"
+            flow_sig2 = f"流年{flow_gz2}引动喜用神·{flow_ss2}得力"
             _add_event(dy_gz, flow_year_7, flow_age_7, flow_desc2, "I", flow_sig2, flow_chain2)
         elif flow_wx2 in ji_wx_list:
-            flow_desc2 = f"流年{flow_gan2}({flow_ss2})·忌神发力·谨言慎行"
-            flow_sig2 = f"流年{flow_gan2}触发忌神·{flow_ss2}为凶"
+            flow_desc2 = f"流年{flow_gz2}({flow_ss2})·忌神发力·谨言慎行"
+            flow_sig2 = f"流年{flow_gz2}触发忌神·{flow_ss2}为凶"
             _add_event(dy_gz, flow_year_7, flow_age_7, flow_desc2, "H", flow_sig2, flow_chain2)
         else:
-            flow_desc2 = f"流年{flow_gan2}({flow_ss2})·平稳发展"
-            flow_sig2 = f"流年{flow_gan2}中性·运势平稳"
+            flow_desc2 = f"流年{flow_gz2}({flow_ss2})·平稳发展"
+            flow_sig2 = f"流年{flow_gz2}中性·运势平稳"
             _add_event(dy_gz, flow_year_7, flow_age_7, flow_desc2, "I", flow_sig2, flow_chain2)
 
         # ── 事件⑨：社交/出行事件（大运第1年） ──

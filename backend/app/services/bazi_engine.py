@@ -13,6 +13,8 @@ from datetime import datetime, date, timedelta
 import math
 import lunardate
 
+from app.services.bazi_data import *
+
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 基础数据
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -2289,8 +2291,10 @@ def calc_xue_ye(ri_gan: str, nian_gan: str, yue_gan: str, shi_gan: str,
         first_dy_zhi = da_yun_list[0]["gan_zhi"][1]
         wen_chang_zhi = {"甲":"巳","乙":"午","丙":"申","丁":"酉","戊":"申",
                          "己":"酉","庚":"亥","辛":"子","壬":"寅","癸":"卯"}
-        wc_zhi = wen_chang_zhi.get(nian_gan, "")  # 命理文昌用年干查（SKILL.md §3.1.1）
-        if first_dy_zhi == wc_zhi:
+        # 双轨制：年干/日干任一查得文昌即有效
+        wc_zhi_nian = wen_chang_zhi.get(nian_gan, "")  # 年干文昌
+        wc_zhi_ri = wen_chang_zhi.get(ri_gan, "")      # 日干文昌
+        if first_dy_zhi in (wc_zhi_nian, wc_zhi_ri):
             layer0_wen_chang_12 = True
     
     if layer0_has_yin:
@@ -2495,22 +2499,24 @@ def calc_xue_ye(ri_gan: str, nian_gan: str, yue_gan: str, shi_gan: str,
                 elif dg_ss in ("正官", "七杀"):
                     dy_bonus += 0.3
                     dy_details.append(f"大运{dg}:{dg_ss}(从弱喜克) +0.3")
-                # 从弱格文昌：文昌独立神煞，不受运喜忌约束
+                # 从弱格文昌：文昌独立神煞，不受运喜忌约束（双轨制：年干/日干）
                 wen_chang_zhi = {"甲":"巳","乙":"午","丙":"申","丁":"酉","戊":"申",
                                  "己":"酉","庚":"亥","辛":"子","壬":"寅","癸":"卯"}
-                wc_zhi = wen_chang_zhi.get(nian_gan, "")  # 命理文昌用年干
-                if dz == wc_zhi:
+                wc_zhi_nian = wen_chang_zhi.get(nian_gan, "")  # 年干文昌
+                wc_zhi_ri = wen_chang_zhi.get(ri_gan, "")      # 日干文昌
+                if dz in (wc_zhi_nian, wc_zhi_ri):
                     dy_bonus += 0.8
                     dy_details.append(f"大运文昌({dz}) +0.8")
             else:
                 if dg_ss in ("正印", "偏印"):
                     dy_bonus += 0.5
                     dy_details.append(f"大运{dg}:{dg_ss} +0.5")
-                # 非从弱格文昌
+                # 非从弱格文昌（双轨制：年干/日干）
                 wen_chang_zhi = {"甲":"巳","乙":"午","丙":"申","丁":"酉","戊":"申",
                                  "己":"酉","庚":"亥","辛":"子","壬":"寅","癸":"卯"}
-                wc_zhi = wen_chang_zhi.get(nian_gan, "")  # 命理文昌用年干
-                if dz == wc_zhi and not found_wc:
+                wc_zhi_nian = wen_chang_zhi.get(nian_gan, "")  # 年干文昌
+                wc_zhi_ri = wen_chang_zhi.get(ri_gan, "")      # 日干文昌
+                if dz in (wc_zhi_nian, wc_zhi_ri) and not found_wc:
                     dy_bonus += 1.0
                     dy_details.append(f"大运文昌({dz}) +1.0")
                     found_wc = True
