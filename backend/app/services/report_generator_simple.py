@@ -531,7 +531,7 @@ def _gen_section1(basic: dict, analysis: dict, name: str, gender: str, version: 
             ["6", "**命格等级**", f"⭐⭐ {ge_ju_str}"],
             ["7", "**格局成立条件**", f"月令定格局·{ge_ju_str}成立"],
             ["8", "**身强身弱**", f"**{sq_level}（{sq_score}分）**"],
-            ["9", "**从弱格排查**", "❌ 非从弱" if sq_score >= 40 else "⚠️ 视条件而定"],
+            ["9", "**从弱格排查**", "✅ 从弱格" if sq_level == "从弱" else "❌ 非从弱"],
             ["10", "**喜用神（排序）**", " > ".join(xi_list) if xi_list else "—"],
             ["11", "**忌神（排序）**", " > ".join(ji_list) if ji_list else "—"],
             ["12", "**空亡**", "、".join(ri_kw) if ri_kw else "—"],
@@ -640,15 +640,25 @@ def _gen_section1(basic: dict, analysis: dict, name: str, gender: str, version: 
             birth_year = int(birth_str[:4])
         except:
             pass
+    # 计算喜用神/忌神五行列表，用于财运年份过滤
+    ji_wx_list = [_get_xi_yong_wx(ji, ri_wx) for ji in ji_list]
     if dy_jx_sec1 and dy_list:
         cai_years = []
         for i, jx in enumerate(dy_jx_sec1):
             ss = jx.get("gan_ss", "")
             if ss in ("正财", "偏财") and i < len(dy_list):
                 dy = dy_list[i]
+                dy_gan = dy.get("gan", "")
+                dy_gan_wx = TIAN_GAN_WU_XING.get(dy_gan, "")
+                # 过滤：大运天干为忌神时不应标记为发财年
+                if dy_gan_wx in ji_wx_list:
+                    continue
                 sa = dy.get("start_age", 0)
                 for offset in range(0, 10, 1):  # 大运十年间每年
                     cal_year = birth_year + int(sa) + offset
+                    # 过滤：至少10岁后才有实际意义
+                    if cal_year < birth_year + 10:
+                        continue
                     gan = TIAN_GAN_LIST[(cal_year - 4) % 10]
                     zhi = DI_ZHI_LIST[(cal_year - 4) % 12]
                     cai_years.append(f"{cal_year}{gan}{zhi}")
@@ -1313,12 +1323,12 @@ def _gen_section3(basic: dict, analysis: dict) -> list:
     # 3.3 从弱格排查
     lines.append("### 3.3 从弱格排查（强制检查）")
     lines.append("")
-    # 从弱条件：分数极低(<20)且全盘消耗
-    is_cong_ruo = sq_score < 20
+    # 从弱条件：直接检查引擎返回的sq_level
+    is_cong_ruo = (sq_level == "从弱")
     if is_cong_ruo:
         lines.append("✅ 从弱——命局中印比根气全无或极弱，日主只能从旺势")
-        lines.append(f"- 身强弱分{sq_score}分，低于20分阈值")
-        lines.append("- 从弱格特殊规则：0分→50分恒定，财为喜用，不适用标准五级")
+        lines.append(f"- 身强弱分{sq_score}分，引擎已识别为从弱格")
+        lines.append("- 从弱格特殊规则：评分强制重置为50分恒定，财为喜用，不适用标准五级")
     else:
         lines.append(f"❌ 非从弱——身强弱分{sq_score}分，高于20分阈值")
         lines.append(f"- {ri_gan}日主有根气，不从旺势")
@@ -6803,14 +6813,11 @@ def _gen_section19(basic: dict, analysis: dict, birth_year: int) -> list:
     lines.append("年龄   大运        运程曲线")
     for step_idx, d in enumerate(dy_list[:10]):
         start_age = int(d.get("start_age", step_idx * 10 + qi_yun_age))
-        dy_gan = d.get("gan", "")
-        dy_gan_wx = TIAN_GAN_WU_XING.get(dy_gan, "")
-        score = 7  # 基础分
-        if dy_gan_wx in xi_wx_list:
-            score = 9
-        elif dy_gan_wx in ji_wx_list:
-            score = 4
-        bar = "★" * score + "☆" * (10 - score)
+        score = d.get("score", 5.0)  # 使用引擎大运评分
+        # 确保评分在1~10范围内
+        score = max(1.0, min(10.0, score))
+        bar_int = round(score)
+        bar = "★" * bar_int + "☆" * (10 - bar_int)
         lines.append(f"{start_age:>3}岁  {d.get('gan_zhi',''):>6}  {bar}")
     lines.append("        ↑ 幼年      ↑ 中年巅峰   ↑ 晚年平稳")
     lines.append("```")
@@ -6834,17 +6841,18 @@ def _gen_section19(basic: dict, analysis: dict, birth_year: int) -> list:
     for step_idx, d in enumerate(dy_list[:10]):
         start_age = int(d.get("start_age", step_idx * 10 + qi_yun_age))
         end_age = int(d.get("end_age", (step_idx + 1) * 10 + qi_yun_age))
-        dy_gan = d.get("gan", "")
-        dy_gan_wx = TIAN_GAN_WU_XING.get(dy_gan, "")
-        score = 7
-        if dy_gan_wx in xi_wx_list:
-            score = 9
-            comment = "喜用神运·大吉"
-        elif dy_gan_wx in ji_wx_list:
-            score = 4
-            comment = "忌神运·需谨慎"
-        else:
+        score = d.get("score", 5.0)  # 使用引擎大运评分
+        # 确保评分在1~10范围内
+        score = max(1.0, min(10.0, score))
+        # 依据引擎评分生成评语（与§17一致）
+        if score >= 8.0:
+            comment = "吉运·大吉"
+        elif score >= 6.0:
+            comment = "中吉·顺遂"
+        elif score >= 4.0:
             comment = "平运·稳中有进"
+        else:
+            comment = "凶运·需谨慎"
         score_rows.append([
             d.get("gan_zhi", ""),
             f"{start_age}~{end_age}岁",
@@ -7007,8 +7015,13 @@ def _gen_section21(basic: dict, analysis: dict) -> list:
     xi_list = xys.get("xi_shen", [])
     ji_list = xys.get("ji_shen", [])
     energy = analysis.get("energy", {})
-    wx_strong = energy.get("strongest", "")
-    wx_weak = energy.get("weakest", "")
+    wx_strong = energy.get("strongest_wx", energy.get("strongest", ""))
+    wx_weak = energy.get("weakest_wx", energy.get("weakest", ""))
+    # 特殊格局下五行极值可能为空，设定兜底
+    if not wx_strong:
+        wx_strong = ri_wx
+    if not wx_weak:
+        wx_weak = [w for w in ["木","火","土","金","水"] if w != ri_wx][0] if ri_wx else "土"
     pillars = basic.get("pillars", {})
 
     # 🗣️ 白话解读（总述）
@@ -7381,7 +7394,7 @@ def generate_report(bazi_result: dict, name: str, gender: str,
     lines.append("")
     lines.append("**人际交往行动项：**")
     lines.append(f"- 与喜用神五行的人群建立深度合作关系")
-    lines.append("- 在人际交往中发挥{ge_ju_str}的优势特质")
+    lines.append(f"- 在人际交往中发挥{ge_ju_str}的优势特质")
     lines.append("- 建立个人品牌和行业影响力")
     lines.append("")
     lines.append("**学习成长行动项：**")
@@ -7523,7 +7536,8 @@ def generate_report(bazi_result: dict, name: str, gender: str,
         lines.append(f"| **{wx}** | {color} | {num} | {dir} | {crystal} | {food} |")
     lines.append("")
     lines.append(f"建议根据喜用神（{'/'.join(xi_list)}）优先选择对应的开运方式。")
-    lines.append("忌神（{'/'.join(ji_list)}）对应的开运方式则需适当避免。")
+    ji_str_for_report = '/'.join(ji_list) if ji_list else '—'
+    lines.append(f"忌神（{ji_str_for_report}）对应的开运方式则需适当避免。")
     lines.append("")
 
     # ═══════════════════════════════════════════════
