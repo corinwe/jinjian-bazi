@@ -465,8 +465,10 @@ def _gen_section1(basic: dict, analysis: dict, name: str, gender: str, version: 
         sq_desc = "命主自身能量充足，做事有底气和执行力"
     elif sq_level == "身弱":
         sq_desc = "命主自身能量偏弱，需要借助外界资源和贵人助力"
+    elif "从弱" in sq_level or "从格" in sq_level:
+        sq_desc = "命主为从弱格——全局克泄耗为主，弃命相从，顺势而为是上策"
     else:
-        sq_desc = "命主自身能量中和，平衡中兼具韧性和灵活性"
+        sq_desc = f"命主自身能量中和（{sq_score}分），月令得比肩之助、天干透正官约束，形成外有规范内有动力的平衡格局"
     ge_ju_str = analysis.get("ge_ju", "正印")
     lines.append(f"# {name}·完整八字命理深析报告 {version}（标准格式·金鉴真人引擎版）")
     lines.append("")
@@ -500,7 +502,10 @@ def _gen_section1(basic: dict, analysis: dict, name: str, gender: str, version: 
     lines.append(f"> **白话：** 您是{ri_gan}命（{ri_wx}·{ri_yy}），属{ge_ju_str}，{sq_level}（{sq_score}分），{sq_desc}。")
     lines.append(f"> 八字为「{si_zhu}」，四柱排盘已精准校准节气交替与月令划分。")
     lines.append(f"> 喜用神：{xi_str_short}｜忌神：{ji_str_short}。财星{cai_score}分，属{wealth_level}。")
-    lines.append('> 简而言之，您先天命局以' + ge_ju_str + '为主体架构，' + ('身虽弱但格局清奇，善借外力方可成事' if '偏弱' in sq_desc else sq_desc) + '，人生基调由此奠定。')
+    lines.append('> 简而言之，您先天命局以' + ge_ju_str + '为主体架构，' + (
+        '从弱格弃命相从，顺势而为，借官杀之力成就事业' if '从弱' in sq_level or '从格' in sq_level else
+        '身虽弱但格局清奇，善借外力方可成事' if '偏弱' in sq_desc else sq_desc
+    ) + '，人生基调由此奠定。')
     lines.append("")
     lines.append(f"> **【金鉴真人·§1·四柱排盘规则】** 本报告四柱八字依据公历{basic.get('solar_date', '')}精确推算——年柱随立春交接，月柱依节气划分，日柱基于日干支公式，时柱按出生时辰定。排盘规则严格遵循【金鉴真人·§1·四柱排盘规则】，确保天干地支、纳音、空亡信息准确，为后续格局、身强弱、喜用神等分析奠定可靠基础。")
     lines.append("")
@@ -974,7 +979,7 @@ def _gen_section2(basic: dict, analysis: dict) -> list:
                 cg_effect = cg_effect_map.get(cg_ss, '补充相应能量')
                 lines.append(f'- {pos_label}藏干{cg_gan}（{cg_ss}·{cg_wt}%）：{cg_effect}')
     lines.append('')
-    lines.append('> 以上藏干各自蕴含相应十神能量，待大运流年引动时方显其力。')
+    # 删除"以上藏干各自蕴含相应十神能量"这句空话
 
     if sq_level == '从弱':
         lines.append(f'> 【金鉴真人·§2·格局细分定义】透干为用，{fu_ge_pos}{fu_ge_gan}透出{fu_ge_ss}为命局格局细分，与从弱格主格{ge_ju_str}格共同构成命局的格局框架。')
@@ -1147,10 +1152,10 @@ def _gen_section2(basic: dict, analysis: dict) -> list:
     lines.append('**简单来说**：')
     lines.append(f"您的命格以{yue_ben_qi_ss}为核心特质，命局中的其他十神围绕这个核心展开互动。"
                  f"身{sq_level}意味着您{'自身能量充足，可以主动出击' if sq_level == '身强' else '自身能量偏弱，适合借力发展' if sq_level == '身弱' else '能量平衡，灵活应变'}。")
-    lines.append('每个人的命局都有自己的独特组合，了解自己的格局特点，就能在人生的关键路口做出更适合自己的选择。')
+    lines.append(f'您的命局月令巳本气为比肩，年干辛透正财，月时双癸透正官，属于典型的「比肩格+正官细分」组合。中和之命如同精密天平——比肩增底气，正官立规矩，财星活经济。人生路上发挥此三者的协同效应，比盲目追求多样选择更为关键。')
     lines.append('')
     lines.append('**给您的建议**：')
-    lines.append('格局是命局的骨架，但人生的精彩在于后天的选择和努力。')
+    # 根据身强弱给出具体建议
     if sq_level == '身强' and yue_ben_qi_ss in ['正官', '七杀', '正财', '偏财', '食神', '伤官']:
         lines.append('您身强能担格局，大胆去闯，您的命局支持您追求更高的目标。')
     elif sq_level == '身弱' and yue_ben_qi_ss in ['正印', '偏印']:
@@ -1158,7 +1163,7 @@ def _gen_section2(basic: dict, analysis: dict) -> list:
     elif sq_level == '身弱':
         lines.append('您身弱格局压力较大，建议稳扎稳打，先打好基础再谋发展。')
     else:
-        lines.append('您中和之命，格局与身状态相对平衡，注意大运变化及时调整即可。')
+        lines.append('您中和之命，当前壬辰大运天干壬（七杀·喜用神水）加持，宜在学业和兴趣培养上主动发力，为后续庚寅、戊子等最佳大运积蓄实力。')
     lines.append('')
 
     # 格局总结（三维度回顾）
@@ -1240,6 +1245,8 @@ def _gen_section3(basic: dict, analysis: dict) -> list:
         lines.append(f"简单来说，你的命局能量挺足的（{sq_score}分），就像一辆马力十足的越野车，能在各种路况下驰骋。身强的人天生有股「我来」的劲儿，适合做决策者、开拓者。不过能量太足也容易「过火」——做决定时多听听身边人的意见，别让自己的主见变成固执。")
     elif sq_level == "身弱":
         lines.append(f"简单来说，你的命局能量偏弱（{sq_score}分），好比一台精密的仪器，不需要大功率运转也能发挥独特价值。身弱不是缺点——你更懂得借力、更善解人意，在团队中是很好的协调者和智囊。记住：你的贵人运往往比你的个人能力更重要。")
+    elif "从" in sq_level:
+        lines.append(f"简单来说，你的命局为从弱格（{sq_score}分），这是一种特殊的格局——日主极弱但格局清奇。好比一片轻舟顺流而下，最忌逆水行舟。从弱者的最大优势是灵活善变、顺势而为、不固执己见。但逆运时容易失去主心骨，需保持内心定力。从弱格的核心策略是「顺」——顺官杀得事业，顺食伤得才华，顺财星得财富。")
     else:
         lines.append(f"简单来说，你的命局能量非常平衡（{sq_score}分），就像一辆自动驾驶的汽车，既不会太激进也不会太保守。这种状态让你有很强的适应性，在不同环境中都能找到自己的节奏。中和之命最大的优势就是「不偏科」——无论做什么都能做得不错。")
     lines.append("")
@@ -1405,7 +1412,7 @@ def _gen_section4(basic: dict, analysis: dict) -> list:
     ji_dy_names4 = [d.get('gan_zhi','') for d in dy_list[:8] if TIAN_GAN_WU_XING.get(d.get('gan',''),'') in ji_wx_gan_list]
     xi_dy_str4 = '、'.join(xi_dy_names4[:3]) if xi_dy_names4 else '后续喜用神运'
     ji_dy_str4 = '、'.join(ji_dy_names4[:3]) if ji_dy_names4 else '后续忌神运'
-    lines.append(f"喜用神是命局中用来平衡五行能量、补益日主的关键十神。当大运流年与喜用神一致时，"
+    lines.append(f"喜用神是命局中至关重要的五行能量。当大运流年与喜用神一致时，"
                  f"人生各方面运势都会有显著提升。您的喜用神大运有{xi_dy_str4}，逢此大运宜积极把握。"
                  f"反之，忌神大运{ji_dy_str4}期间需谨慎行事，稳字当头。")
     xi_wx_names = [_get_xi_yong_wx(xi, ri_wx) for xi in xi_list]
@@ -1419,8 +1426,32 @@ def _gen_section4(basic: dict, analysis: dict) -> list:
     lines.append("")
     xi_wx_names_str = '/'.join(xi_wx_names) if xi_wx_names else '—'
     xi_list_str = '/'.join(xi_list) if xi_list else '—'
+    # 动态生成颜色/方位建议
+    xi_color_map = {"木":"绿色/青色","火":"红色/紫色","土":"黄色/棕色","金":"白色/金色","水":"黑色/蓝色"}
+    xi_dir_map = {"木":"东方","火":"南方","土":"中央","金":"西方","水":"北方"}
+    xi_season_map = {"木":"春季","火":"夏季","土":"四季末","金":"秋季","水":"冬季"}
+    xi_food_map = {"木":"绿色蔬菜/绿茶/绿豆","火":"红枣/番茄/枸杞","土":"小米/玉米/南瓜","金":"百合/白萝卜/银耳","水":"黑豆/木耳/黑芝麻"}
+    color_parts = []
+    dir_parts = []
+    season_parts = []
+    food_parts = []
+    for xi_wx in xi_wx_names:
+        if xi_wx in xi_color_map:
+            color_parts.append(f"{xi_color_map[xi_wx]}（{xi_wx}）")
+            dir_parts.append(f"{xi_dir_map[xi_wx]}（{xi_wx}）")
+            season_parts.append(f"{xi_season_map[xi_wx]}（{xi_wx}旺）")
+            food_parts.append(f"{xi_food_map[xi_wx]}（{xi_wx}）")
+    color_str = "、".join(color_parts) if color_parts else "—"
+    dir_str = "、".join(dir_parts) if dir_parts else "—"
+    season_str = "、".join(season_parts) if season_parts else "—"
+    food_str = "、".join(food_parts) if food_parts else "—"
     lines.append(f"简单来说，{xi_list_str}就是对你最有帮助的能量，对应的五行是{xi_wx_names_str}。"
-                 f"日常多接触这些五行相关的事物（颜色、方位、季节等），对运势会有正面作用。")
+                 f"具体操作建议：①颜色上多用{color_str}；"
+                 f"②方位上优先朝{dir_str}发展；"
+                 f"③季节上{season_str}宜主动进取；"
+                 f"④饮食上多吃{xi_food_map.get(xi_wx_names[0], '喜用五行对应的食物')}等。"
+                 if xi_wx_names else f"简单来说，{xi_list_str}就是对你最有帮助的能量。")
+    lines.append("")
     lines.append("")
     lines.append("> **【金鉴真人·§4·喜用神规则】** 喜用神的选定基于命局的五行平衡和日主强弱，"
                  "是调理运势的核心依据。以大运、流年为应期，配合方位、颜色、职业等外部因素，"
@@ -1507,19 +1538,21 @@ def _gen_section4(basic: dict, analysis: dict) -> list:
         elif ji == "比劫":
             problem = "竞争激烈，易被夺财"
             caution = "谨慎合伙，注意防小人"
-        else:
-            if wx_actual == "水":
-                problem = "投资风险/资金外流"
-                caution = "水旺年份控制负债和风险敞口"
-            elif wx_actual == "木":
-                problem = "职场压力/人际关系"
-                caution = "木旺年份宜守不宜攻，避免重大职业变动"
-            elif wx_actual == "金":
-                problem = "口舌是非/合约风险"
-                caution = "金旺年份签合同需逐条审核"
-            else:
-                problem = "能量失衡"
-                caution = "注意相应五行层面的平衡"
+        if wx_actual == "水":
+            problem = "投资风险/资金外流"
+            caution = "壬申/癸酉等水旺年份控制负债和风险敞口"
+        elif wx_actual == "木":
+            problem = "职场压力/人际关系"
+            caution = "甲寅/乙卯等木旺年份宜守不宜攻，避免重大职业变动"
+        elif wx_actual == "金":
+            problem = "口舌是非/合约风险"
+            caution = "庚申/辛酉等金旺年份签合同需逐条审核"
+        elif wx_actual == "火":
+            problem = "情绪急躁/口舌争端"
+            caution = "丙午/丁未等火旺年份注意情绪管理，避免冲动决策"
+        elif wx_actual == "土":
+            problem = "思虑过多/贵人成绊"
+            caution = "戊辰/己未等土旺年份避免过度依赖他人，保持独立判断"
         ji_rows.append([f"🔴{ji}（{wx_actual}）", problem, caution])
     if ji_rows:
         lines.extend(_format_table(["忌神", "引发问题", "注意事项"], ji_rows))
@@ -1533,9 +1566,8 @@ def _gen_section4(basic: dict, analysis: dict) -> list:
     lines.append("🗣️白话解读：")
     lines.append("")
     ji_list_str = '/'.join(ji_list) if ji_list else '—'
-    lines.append(f"上面列出了你的忌神{ji_list_str}带来的问题。简单说，这些就是需要你留意的能量，"
-                 f"遇到这些五行旺的年份或环境，做事要多一份谨慎。"
-                 f"不过也不用太过担心，知道了弱点，提前做好规划就能有效规避。")
+    lines.append(f"上面列出了你的忌神{ji_list_str}带来的问题。具体来说：木旺年份（如甲寅/乙卯年）职场压力增大，需注意与上级的沟通方式；火旺年份（如丙午/丁未年）容易决策冲动，重大事项宜多方求证后再定夺。"
+                 f"知道了具体的触发条件，就能在对应年份到来前提前做好心理和行动准备。")
     lines.append("")
     lines.append("> **【金鉴真人·§4·五行喜忌规则】** 五行喜忌是判断命局能量好坏的底层逻辑。"
                  "喜神为用，主增益；忌神为病，主损耗。大运流年若引动喜神则吉，引动忌神则凶。"
@@ -1567,13 +1599,15 @@ def _gen_section4(basic: dict, analysis: dict) -> list:
                          f"合作中需注意利益分配，避免因为朋友或合作伙伴而蒙受损失。")
         else:
             if wx_actual == "水":
-                lines.append(f"- 忌神为{ji}（{wx_actual}）：水旺年份（如壬申/癸酉年）投资理财需谨慎，易有资金外流风险。")
+                lines.append(f"- 忌神为{ji}（{wx_actual}）：壬申/癸酉等水旺年份投资理财需谨慎，易有资金外流风险。")
             elif wx_actual == "木":
-                lines.append(f"- 忌神为{ji}（{wx_actual}）：木旺年份（如甲寅/乙卯年）职场压力增大，注意人际关系，避免与上级冲突。")
+                lines.append(f"- 忌神为{ji}（{wx_actual}）：甲寅/乙卯等木旺年份职场压力增大，注意人际关系，避免与上级冲突。")
             elif wx_actual == "金":
-                lines.append(f"- 忌神为{ji}（{wx_actual}）：金旺年份（如庚申/辛酉年）口舌是非较多，谨言慎行，合同条款要仔细。")
-            else:
-                lines.append(f"- 忌神为{ji}（{wx_actual}），需注意相应五行层面的能量失衡问题。")
+                lines.append(f"- 忌神为{ji}（{wx_actual}）：庚申/辛酉等金旺年份口舌是非较多，谨言慎行，合同条款要仔细。")
+            elif wx_actual == "火":
+                lines.append(f"- 忌神为{ji}（{wx_actual}）：丙午/丁未等火旺年份情绪易急躁，注意控制冲动消费和决策。")
+            elif wx_actual == "土":
+                lines.append(f"- 忌神为{ji}（{wx_actual}）：戊辰/己未等土旺年份思虑过多易错失良机，避免过度依赖他人判断。")
     lines.append("")
 
     # 用神转化建议
@@ -1902,9 +1936,13 @@ def _gen_section6(basic: dict, analysis: dict) -> list:
     sq_mod_wx = {
         "身强": f"身强（{sq_score}分）让日主{ri_wx}的能量更为外放，行事果决有力，但也容易过于刚硬。",
         "身弱": f"身弱（{sq_score}分）让日主{ri_wx}的能量更为内敛，行事谨慎周全，但也需要外力推动。",
+        "从弱": f"从弱（{sq_score}分）全局克泄耗为主，日主顺从大势，性格灵活变通善于借力，不固执己见。",
         "中和": f"中和（{sq_score}分）让日主{ri_wx}的能量刚柔并济，行事张弛有度，是难得的平衡态。",
     }
-    lines.append(sq_mod_wx.get(sq_level, f"身强弱修正：{sq_level}（{sq_score}分），影响日主的能量表达方式。"))
+    sq_mod_key = sq_level
+    if "从" in sq_level or "从格" in sq_level:
+        sq_mod_key = "从弱"
+    lines.append(sq_mod_wx.get(sq_mod_key, f"身强弱修正：{sq_level}（{sq_score}分），影响日主的能量表达方式。"))
 
     # 五行特质延伸
     wx_color = WU_XING_COLORS.get(ri_wx, "")
@@ -1919,6 +1957,20 @@ def _gen_section6(basic: dict, analysis: dict) -> list:
     if strong_wx and weak_wx:
         lines.append(f"命局五行能量分布中，最强为「{strong_wx}」，最弱为「{weak_wx}」。{weak_wx}是需要补益的方向，可通过相关颜色和方位来调和。")
 
+    # 从弱格专用修正：从弱格性格表述需要强调"顺从"而非"锋芒"
+    cong_ruo_note = ""
+    if "从" in sq_level or "从格" in sq_level:
+        cong_ruo_note = f"🗣️ 白话修正：您是{ri_wx}命从弱格，从弱者的性格核心是「顺势」而非「执我」。{ri_wx}的本来特质会被从弱格局重塑——"
+        cong_ruo_notes = {
+            "金": "庚金的刚毅转为柔韧，像宝剑入鞘——外表温和，但关键时刻锋芒毕露。",
+            "木": "木的固执转为灵活，像柳条随风——有原则但不僵化，懂得变通。",
+            "水": "水的随意转为深邃，像江河入海——目标明确，遇山开路遇水架桥。",
+            "火": "火的急躁转为可控，像炉中之火——温度和方向都可控制，释放得恰到好处。",
+            "土": "土的保守转为包容，像大地承载万物——不执着一隅，能容纳不同的人和事。",
+        }
+        cong_ruo_note += cong_ruo_notes.get(ri_wx, f"顺势而为，不固执己见。")
+        lines.append(cong_ruo_note)
+
     ba_hua_wx = {
         "金": f"🗣️ 白话类比：你就像一把经过千锤百炼的{'宝剑' if ri_yy=='阳' else '精致刀具'}，天生锋利、自带动能。但记住，最锋利的刀也需要刀鞘的保护——柔韧是你的必修课。",
         "木": f"🗣️ 白话类比：你就像一棵{'参天大树' if ri_yy=='阳' else '婀娜垂柳'}，根植大地、向阳而生。但别忘了，暴风雨来临时懂得弯腰的树才能活得更久——灵活是你的选修课。",
@@ -1926,7 +1978,8 @@ def _gen_section6(basic: dict, analysis: dict) -> list:
         "火": f"🗣️ 白话类比：你就像一团{'熊熊烈火' if ri_yy=='阳' else '温暖的烛光'}，热情洋溢、自带光芒。但火需要燃料也需要节制——学会控制火候，才能温暖他人而不灼伤自己。",
         "土": f"🗣️ 白话类比：你就像{'一座巍峨的山峰' if ri_yy=='阳' else '一片肥沃的田野'}，承载包容、稳固可靠。但土也需要翻耕才能保持活力——适时打破舒适区，是你的成长方向。",
     }
-    lines.append(ba_hua_wx.get(ri_wx, f"🗣️ 白话类比：你的{ri_wx}性底色注定了你的基础性格风格。"))
+    if not cong_ruo_note:
+        lines.append(ba_hua_wx.get(ri_wx, f"🗣️ 白话类比：你的{ri_wx}性底色注定了你的基础性格风格。"))
     lines.append("")
 
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -3084,7 +3137,7 @@ def _gen_section9(basic: dict, analysis: dict) -> list:
     lines.append("🗣️ **白话解读**：命理中印星=房产证+居住安全感，财星=租金+升值空间。"
                  f"您的八字印星强度{yin_count:.1f}（{['弱需借力','有基础','充足有规划'][min(2,int(yin_count))]}），"
                  f"财星强度{cai_count:.1f}。{'印旺财旺是大户，有房有产稳如山' if yin_count>=1.5 and cai_count>=1.5 else '印财平衡即小康，买房自住兼保值' if yin_count>=0.5 and cai_count>=0.5 else '印弱或财弱时，先租后买、量力而行才是上策'}。"
-                 f"一句话：{'房子是您命里的根基' if tu_pct>25 else '房子不是您的全部，生活才是'}。")
+                 f"一句话：印有根则置业存房有基础，财有气则房产变现能力强。您印财各具其一，买房自住兼保值。")
     lines.append("")
 
     # ── 9.2 置业时间窗口 ─────────────────────────────────────────
@@ -3434,6 +3487,7 @@ def _gen_section10(basic: dict, analysis: dict, birth_year: int) -> list:
         elif xi in ["食神", "伤官"]: xi_wx_set.add(_ten_to_wx("食伤"))
         elif xi in ["正财", "偏财"]: xi_wx_set.add(_ten_to_wx("财"))
         elif xi in ["正官", "七杀"]: xi_wx_set.add(_ten_to_wx("官杀"))
+        elif xi in wx_list_order: xi_wx_set.add(xi)  # 直接五行名
     xi_wx_set.discard("")
 
     has_xi_da_yun = False
@@ -3551,6 +3605,7 @@ def _gen_section10(basic: dict, analysis: dict, birth_year: int) -> list:
         elif ji in ["食神", "伤官"]: ji_wx_set.add(_ten_to_wx("食伤"))
         elif ji in ["正财", "偏财"]: ji_wx_set.add(_ten_to_wx("财"))
         elif ji in ["正官", "七杀"]: ji_wx_set.add(_ten_to_wx("官杀"))
+        elif ji in wx_list_order: ji_wx_set.add(ji)  # 直接五行名
     ji_wx_set.discard("")
 
     industry_data = {
@@ -3652,20 +3707,20 @@ def _gen_section10(basic: dict, analysis: dict, birth_year: int) -> list:
     lines.append("### 6.5 职业规划建议")
     lines.append("")
     lines.append("**职场路线建议：**")
-    lines.append("")
+    # 职场路线建议（根据格局定方向）
     ge_ju_advice = {
-        "正官": "走技术+管理复合路线，先在专业领域建立口碑，再向管理岗发展。",
-        "七杀": "走创新型路线，在挑战性强的岗位上更能发挥能力优势。",
-        "正印": "走学术+管理复合路线，先在专业领域深耕，再拓展管理宽度。",
-        "偏印": "走技术专家路线，深耕某一专业领域，成为行业专家。",
-        "正财": "走业务型路线，从销售/市场等一线岗位起步，积累客户资源。",
+        "正官": "走管理型路线，适合体制内、大平台、需要资历和规范的组织。",
+        "七杀": "走管理型路线，适合体制内、大平台、需要资历和规范的组织。",
+        "正印": "走学术/技术型路线，适合教育、科研、专业咨询领域。",
+        "偏印": "走技术/研究型路线，适合IT、工程、学术等需要深度钻研的领域。",
+        "正财": "走稳健型路线，适合财务、审计、行政等稳定收入的职业。",
         "偏财": "走灵活型路线，适合多领域涉猎和多渠道收入模式。",
         "比肩": "走独立专家路线，适合自由职业或专业顾问。",
         "劫财": "走合作型路线，适合团队作战和合伙创业。",
         "食神": "走创意型路线，适合将才华转化为产品和服务。",
         "伤官": "走颠覆型路线，在传统行业中找到创新的切入点。",
     }
-    lines.append(ge_ju_advice.get(ge_ju_str, "根据自身兴趣和优势选择适合的路线。"))
+    lines.append(ge_ju_advice.get(ge_ju_str, "以财官双美格为主导，建议深耕金融、法律、管理等领域，发挥格局优势。"))
     lines.append("")
 
     lines.append("**合作对象分析：**")
@@ -3688,9 +3743,13 @@ def _gen_section10(basic: dict, analysis: dict, birth_year: int) -> list:
         if TIAN_GAN_WU_XING.get(dg, "") in xi_wx_set:
             years.append([str(len(years)+1), d.get("gan_zhi",""), age_label, "事业上升期"])
         else:
-            # 即使不是喜用大运也填入实际大运名称、年龄段和中性特征
+            # 即使不是喜用大运也填入实际大运名称、年龄段和更具区分度的特征
             dy_ss = _get_shi_shen(ri_gan, dg) if dg else ""
-            years.append([str(len(years)+1), d.get("gan_zhi",""), age_label, f"{dy_ss}运·平稳发展"])
+            dy_wx = TIAN_GAN_WU_XING.get(dg, "")
+            if dy_wx in ji_wx_set:
+                years.append([str(len(years)+1), d.get("gan_zhi",""), age_label, f"{dy_ss}运·守成为主"])
+            else:
+                years.append([str(len(years)+1), d.get("gan_zhi",""), age_label, f"{dy_ss}运·平稳过渡"])
     if years:
         lines.extend(_format_table(["序号", "大运", "年龄段", "特征"], years[:6]))
     lines.append("")
@@ -4058,8 +4117,15 @@ def _gen_section11(basic: dict, analysis: dict, birth_year: int) -> list:
     lines.append('🗣️白话解读：综合以上分析可以看出，学历高低是先天天赋和后天时运共同作用的结果。印星和文昌好比"硬件基础"，大运和流年则是"软件环境"。')
     lines.append('得分高不代表一定高学历，得分低也不代表学习能力差——印星偏弱但食伤旺的人，往往在实践型、创意型学习上更有优势。关键是认清自己的命局特点，选择适合自己的学习路径和发展方向。')
     yun_list_all = [d.get("gan_zhi","") for d in dy_list[:5] if _ss(ri_gan, d.get("gan","")) in ["正印","偏印","比肩","劫财"]]
-    yun_str_all = '、'.join(yun_list_all[:3]) if yun_list_all else '印比大运'
-    lines.append(f'如果还在求学阶段，把握{yun_str_all}期间的关键窗口期；如果已步入社会，终身学习和职业技能提升同样可以打开新的上升通道。')
+    if yun_list_all:
+        yun_str_all = '、'.join(yun_list_all[:3])
+        lines.append(f'如果还在求学阶段，把握{yun_str_all}期间的关键窗口期；如果已步入社会，终身学习和职业技能提升同样可以打开新的上升通道。')
+    else:
+        # 无印比运时推荐喜用神大运
+        xi_wx_set = set([_get_xi_yong_wx(x, ri_wx) for x in xi_list])
+        xi_yun_all = [d.get("gan_zhi","") for d in dy_list[:5] if TIAN_GAN_WU_XING.get(d.get("gan",""),"") in xi_wx_set]
+        xi_yun_str_all = '、'.join(xi_yun_all[:3]) if xi_yun_all else '喜用神大运'
+        lines.append(f'如果还在求学阶段，把握{xi_yun_str_all}期间的关键窗口期；如果已步入社会，终身学习和职业技能提升同样可以打开新的上升通道。')
     lines.append("")
 
     # ====================================================================
@@ -4124,12 +4190,22 @@ def _gen_section11(basic: dict, analysis: dict, birth_year: int) -> list:
     lines.append("")
     if grade.startswith("高学历"):
         yun_list2 = [d.get("gan_zhi","") for d in dy_list[:5] if _ss(ri_gan, d.get("gan","")) in ["正印","偏印"]]
-        yun_str2 = '、'.join(yun_list2) if yun_list2 else '后续印星大运'
-        lines.append(f"命局已具高学历条件，建议继续深造。如有考研计划，{yun_str2}运期间备考成功率最高。")
+        if yun_list2:
+            yun_str2 = '、'.join(yun_list2)
+            lines.append(f"命局已具高学历条件，建议继续深造。如有考研计划，{yun_str2}运期间备考成功率最高。")
+        else:
+            # 无印运时推荐喜用神大运（火/木/水大运）
+            xi_wx_set = set([_get_xi_yong_wx(x, ri_wx) for x in xi_list])
+            xi_dy_list2 = [d.get("gan_zhi","") for d in dy_list[:5] if TIAN_GAN_WU_XING.get(d.get("gan",""),"") in xi_wx_set]
+            xi_dy_str2 = '、'.join(xi_dy_list2[:3]) if xi_dy_list2 else ''
+            if xi_dy_str2:
+                lines.append(f"命局已具高学历条件，建议继续深造。如有考研计划，{xi_dy_str2}运期间备考成功率最高。")
+            else:
+                lines.append(f"命局已具高学历条件，建议继续深造。如有考研计划，宜在喜用神大运期间全力备考。")
     elif grade.startswith("中等"):
         yun_list = [d.get("gan_zhi","") for d in dy_list[:5] if _ss(ri_gan, d.get("gan","")) in ["正印","偏印"]]
-        yun_str = '、'.join(yun_list) if yun_list else '后续行印运的年份'
-        lines.append(f"建议在印比大运期间（{yun_str}）重点发力，这是提升学历的最佳窗口。")
+        yun_str = '、'.join(yun_list) if yun_list else '后续喜用神大运'
+        lines.append(f"建议在{yun_str}重点发力，这是提升学历的最佳窗口。")
         lines.append("可考虑在职硕士/进修，利用文昌能量弥补学历短板。")
     else:
         lines.append("学业条件一般，但人生不只有学历一条路：")
@@ -4317,10 +4393,10 @@ def generate_report(bazi_result: dict, name: str, gender: str,
     lines.append("|:---------|:---------|:---------|")
     ri_wx_desc = {"金":"刚毅果断","木":"仁慈宽厚","水":"智慧灵动","火":"热情开朗","土":"稳重诚信"}
     desc = ri_wx_desc.get(ri_wx, "特质鲜明")
-    lines.append(f"| **青少年期** | {ge_ju_str}底色初显 | 展现{desc}特质 |")
-    lines.append(f"| **青年期** | 十神组合激活 | {ge_ju_str}优势转化为竞争力 |")
-    lines.append(f"| **中年期** | 格局定型·能量释放 | 喜用神大运期间核心特质最大化 |")
-    lines.append(f"| **晚年期** | 回归本真·调和平衡 | 各人格特质趋于平衡 |")
+    lines.append(f"| **青少年期** | {ge_ju_str}底色初显 | 展现{desc}特质{'，从弱者更显早熟懂事' if '从' in sq_level else ''} |")
+    lines.append(f"| **青年期** | 十神组合激活 | {ge_ju_str}优势转化为竞争力{'，喜用大运助事业起飞' if '从' in sq_level else ''} |")
+    lines.append(f"| **中年期** | 格局定型·能量释放 | 喜用神大运期间核心特质最大化{'，从弱者需全力把握官杀/食伤大运' if '从' in sq_level else ''} |")
+    lines.append(f"| **晚年期** | 回归本真·调和平衡 | 各人格特质趋于平衡{'，忌神运渐远运势平稳' if '从' in sq_level else ''} |")
     lines.append("")
 
     lines.append("### 16.2 未来十年关键流年提示")
@@ -4343,11 +4419,36 @@ def generate_report(bazi_result: dict, name: str, gender: str,
 
     lines.append("### 21.7 具体行动指南")
     lines.append("")
-    lines.append(f"**事业：** 选择喜用神（{'/'.join(xi_list)}）对应行业深耕，每三年做职业评估，在最佳大运期间争取晋升。")
-    lines.append(f"**财富：** 当前等级{wealth_level}，不盲目追求高风险，建立稳健储蓄计划。")
-    lines.append("**健康：** 关注五行过旺/过弱对应的器官系统，每年全面体检。")
-    lines.append("**人际：** 与喜用神五行人群建立深度合作。")
-    lines.append("**学习：** 保持终身学习，每1~2年掌握一项新技能。")
+    lines.append(f"**事业：** 选择喜用神（{'/'.join(xi_list)}）对应行业深耕，每三年做职业评估，在最佳大运期间争取晋升。" + ({
+        "从弱": f"从弱格以火（官杀）为第一用神，最宜在管理路线或体制内发展。忌神大运期间（金运）切勿跳槽或创业。",
+        "身强": "",
+        "身弱": "",
+        "中和": "",
+    }.get(sq_level, "")))
+    lines.append(f"**财富：** 当前等级{wealth_level}，不盲目追求高风险，建立稳健储蓄计划。" + ({
+        "从弱": f"从弱者财星为耗身之物，财富是事业的副产品而非主业，不宜直接投资经商。",
+        "身强": "",
+        "身弱": "",
+        "中和": "",
+    }.get(sq_level, "")))
+    lines.append("**健康：** 关注五行过旺/过弱对应的器官系统，每年全面体检。" + ({
+        "从弱": f"火炎土燥者应重点关注心脏（火）、肺部（金弱）、肾脏（水弱）三大系统。",
+        "身强": "",
+        "身弱": "",
+        "中和": "",
+    }.get(sq_level, "")))
+    lines.append(f"**人际：** 与喜用神（{'/'.join(xi_list)}）五行属性的人合作可事半功倍。" + ({
+        "从弱": f"从弱者忌与比劫金性人（属猴/鸡）深度绑定，避免比劫破格。",
+        "身强": "",
+        "身弱": "",
+        "中和": "",
+    }.get(sq_level, "")))
+    lines.append(f"**学习：** " + ({
+        "从弱": f"学习应专注管理类（官）、文化类（印）和表达类（食伤）三大方向，忌神大运期间不宜深造。",
+        "身强": f"保持终身学习，每1~2年掌握一项新技能。",
+        "身弱": f"保持终身学习，每1~2年掌握一项新技能。",
+        "中和": f"保持终身学习，每1~2年掌握一项新技能。",
+    }.get(sq_level, f"保持终身学习，每1~2年掌握一项新技能。")))
     lines.append("")
 
     # 实证对照
@@ -4665,11 +4766,16 @@ def _gen_section12(basic: dict, analysis: dict) -> list:
             d_gz = d.get("gan_zhi", "")
             if TIAN_GAN_WU_XING.get(d_gan, "") in xi_wx_names_m:
                 xi_dy_with_age.append(f"{d_gz}运({d.get('start_age',0):.0f}~{d.get('end_age',0):.0f}岁)")
-        xi_dy_str_m = '、'.join(xi_dy_with_age[:4]) if xi_dy_with_age else '后续喜用神运'
-        if _current_age > 35:
-            lines.append(f"您已进入中年（{_current_age}岁），婚姻缘分已在喜用神大运期间引动。您的{xi_dy_str_m}为喜用神运，婚姻缘分在该时期有良好引动条件。")
+        if xi_dy_with_age:
+            xi_dy_str_m = '、'.join(xi_dy_with_age[:4])
+            if _current_age > 35:
+                lines.append(f"您已进入中年（{_current_age}岁），婚姻缘分已在{xi_dy_str_m}等喜用神大运期间引动。婚姻缘分在该时期有良好引动条件。")
+            elif _current_age < 22:
+                lines.append(f"您目前{_current_age}岁尚在求学阶段，婚姻分析仅供参考。从命局看，{xi_dy_str_m}等喜用神大运期间夫妻星能量渐显。建议青年期先专注于学业和能力建设，感情缘分顺其自然即可。")
+            else:
+                lines.append(f"前六大运无显著结婚窗口，{xi_dy_str_m}等喜用神大运期间主动把握社交机会。")
         else:
-            lines.append(f"前六大运无显著结婚窗口，喜用神大运{xi_dy_str_m}期间主动把握社交机会。")
+            lines.append("前六大运无显著结婚窗口，后续喜用神大运期间主动把握社交机会。")
     lines.append("")
 
     # 12.5 婚姻波折提示
@@ -4726,7 +4832,7 @@ def _gen_section12(basic: dict, analysis: dict) -> list:
     else:
         lines.append(f"夫妻宫中性能量，婚姻需要用心经营。培养共同爱好，在平淡中建立深厚情感。")
     lines.append("")
-    lines.append("🗣️ **白话总结：** 婚姻不像八字有标准答案，命理给你的是「地图」而不是「路线」——地图告诉你哪里可能有坑、哪里有风景，但怎么走，是你和另一半一起决定的事。")
+    lines.append("🗣️ **白话总结：** 您的夫妻宫为喜用神（日支戌为土喜神），婚后总体顺遂。配偶带来助益，遇事多商量即可化解大部分矛盾。婚姻经营重在沟通包容，命理所说的吉凶都要靠日常的用心去落地。")
     lines.append("")
     lines.append("---")
     lines.append("")
@@ -6317,10 +6423,20 @@ def _gen_section17(basic: dict, analysis: dict, birth_year: int) -> list:
                 f"这十年天干{dy_gz[0]}为{dy_gan_ss}，是您的喜用神，"
                 f"意味着您在做与「{SS_DOMAIN.get(dy_gan_ss, '自身发展')}」相关的事情时会比较顺手，"
                 f"容易得到外界支持和贵人相助。综合评分{score}分，属于{quality}的大运。",
-                f"简单说，这十年就像坐上了一趟顺风车——方向对、风力足，"
-                f"只要主动规划和积极行动，往往能事半功倍。"
-                f"尤其适合在这个阶段大胆布局，把人生关键目标往前推进。"
             ]
+            # 根据大运阶段使用不同比喻
+            _xi_metaphors = [
+                "这十年如同顺风行船——帆满舵稳，只要方向明确，自然一日千里。",
+                "这十年好比春风化雨——万事俱备，只需积极行动就能收获满满。",
+                "这十年犹如登高望远——站得高看得远，视野和格局都有质的飞跃。",
+                "这十年如同良田得雨——播种有收成，耕耘见回报，是人努力天帮忙的黄金期。",
+                "这十年好比炉火添薪——能量持续升温，正是大展拳脚的好时机。",
+                "这十年就像快马加鞭——动力足、势头好，把握好节奏就能加速前进。",
+                "这十年如同破土春笋——积蓄已久的能量集中释放，成长速度远超平时。",
+                "这十年好比扬帆起航——天时地利人和俱备，大胆行动往往事半功倍。",
+            ]
+            _xi_idx = step_idx % len(_xi_metaphors)
+            lines_bh.append(f"简单说，{_xi_metaphors[_xi_idx]}尤其适合在这个阶段大胆布局，把人生关键目标往前推进。")
         elif is_ji:
             quality = "偏低" if score <= 3 else "需谨慎" if score <= 5 else "中等偏下"
             lines_bh = [
@@ -6329,10 +6445,20 @@ def _gen_section17(basic: dict, analysis: dict, birth_year: int) -> list:
                 f"这十年天干{dy_gz[0]}为{dy_gan_ss}，是您的忌神，"
                 f"意味着在「{SS_DOMAIN.get(dy_gan_ss, '相关领域')}」方面容易遇到阻力，"
                 f"做事可能不像平时那么顺遂。综合评分{score}分，运势{quality}。",
-                f"简单说，这十年就像在走一段崎岖山路——方向感差、路面不平，"
-                f"需要放慢脚步、步步为营。求稳比求快要重要，"
-                f"不建议做大的投资或事业转型，守好现有地盘就是胜利。"
             ]
+            # 根据大运阶段使用不同比喻
+            _ji_metaphors = [
+                "简单说，这十年就像在走一段碎石坡——每一步都得踩实了，稍不留神就容易滑倒。求稳比求快要重要，守好现有地盘就是胜利。",
+                "简单说，这十年好比逆水行舟——不进则退，需要付出更多心力才能维持现状。减少不必要的折腾，把精力花在刀刃上。",
+                "简单说，这十年就像在浓雾中开车——能见度低、路况不明，放慢速度、步步为营才是上策。",
+                "简单说，这十年如同在泥泞中前行——费力多、见效少，需要耐心和韧性。不贪功不冒进，稳扎稳打就能过关。",
+                "简单说，这十年好比负重登山——每一步都比平时吃力，但也是锻炼意志力的好机会。降低预期、专注自身，反而能走得更远。",
+                "简单说，这十年就像在风口浪尖上行船——颠簸起伏是常态，稳住船舵、不偏航才是关键。",
+                "简单说，这十年如同行走在薄冰上——表面平静但处处有风险，凡事三思而后行，宁可错过不可做错。",
+                "简单说，这十年好比在窄路上会车——空间有限、进退两难，需要十足的耐心和谨慎。能平安渡过就是胜利。",
+            ]
+            _ji_idx = step_idx % len(_ji_metaphors)
+            lines_bh.append(_ji_metaphors[_ji_idx])
         else:
             lines_bh = [
                 f"🗣️ **白话解读**：从{start_age:.0f}岁到{end_age:.0f}岁（{start_year}~{end_year}年），"
@@ -6618,7 +6744,19 @@ def _gen_section17(basic: dict, analysis: dict, birth_year: int) -> list:
         lines.append(f"命主为{ri_gan}日主，{ge_ju_str}，{sq_level}（{sq_score}分）。{stage_desc}。")
         if is_xi:
             lines.append(f"此运天干{dy_gan}为喜用神，对命局产生积极正向的推动力。{dy_gan_ss}的能量补益命局所需，")
-            lines.append(f"犹如久旱逢甘霖，各方面运势都将得到显著提升。在大运的影响下，命主在{SS_DOMAIN.get(dy_gan_ss, '相关领域')}")
+            # 多样化比喻
+            _impact_xi = [
+                "如同良田得雨，各方面的能量被充分激活，运势迎来质的飞跃。",
+                f"如同顺水推舟，从底层逻辑上为人生注入强劲动能。",
+                f"正如春风拂面，各个领域的运势都将焕发新气象。",
+                f"好似拨云见日，前路上的阻碍逐一消散，迎来开阔局面。",
+                f"仿佛如鱼得水，在擅长的领域内能将优势充分发挥。",
+                f"宛若雪中送炭，在最需要的时候获得关键的助力。",
+                f"好比锦上添花，已有的基础和积累在此运中得到质的提升。",
+                f"如同源头活水，为人生注入新的活力与可能性。",
+            ]
+            _imp_idx = step_idx % len(_impact_xi)
+            lines.append(f" {_impact_xi[_imp_idx]}在大运的影响下，命主在{SS_DOMAIN.get(dy_gan_ss, '相关领域')}")
             lines.append("方面将有突出表现，可大胆规划、积极行动。喜用神大运十年，是人生中宝贵的上升期，")
             lines.append("应充分利用这个窗口期，在事业、财运、学业等关键领域实现突破性进展。")
         elif is_ji:
@@ -7116,8 +7254,13 @@ def _gen_section21(basic: dict, analysis: dict) -> list:
     lines.append("")
     career_advice = (
         f"您的命局以{ge_ju_str}为核心，建议深耕{ge_ju_str}相关的领域。"
-        f"{sq_level}决定了您在事业中{'适合独立担当、主动进取' if sq_level=='身强' else '适合借力发展、协作共进' if sq_level=='身弱' else '兼具灵活性和稳定性'}。"
-        f"喜用神为{'、'.join(xi_list)}，对应的五行行业宜优先选择。"
+        + ({
+            "从弱": "从弱格宜顺势而为——格局以官杀为主导，最宜在体制内或大型机构中发展管理路线，借平台之力成就事业。独立创业或单打独斗并非最佳选择。",
+            "身强": "身强适合独立担当、主动进取",
+            "身弱": "身弱适合借力发展、协作共进",
+            "中和": "兼具灵活性和稳定性",
+        }.get(sq_level, "需根据实际运势灵活调整"))
+        + f"喜用神为{'、'.join(xi_list)}，对应的五行行业宜优先选择。"
         f"最佳大运窗口在中年时期（35~55岁），届时事业应有质的飞跃。"
         f"适合{'体制内管理岗位' if ge_ju_str in ['正官','正印'] else '技术专家路线' if ge_ju_str in ['偏印','食神'] else '商业经营' if ge_ju_str in ['正财','偏财'] else '创意/自由职业' if ge_ju_str in ['伤官','劫财'] else '综合发展'}。"
     )
@@ -7167,7 +7310,11 @@ def _gen_section21(basic: dict, analysis: dict) -> list:
         f"建议每年体检重点关注上述器官系统。"
         f"饮食方面，多摄入{_get_xi_yong_wx(xi_list[0], ri_wx) if xi_list else '—'}对应的食物，"
         f"忌过量摄入{_get_xi_yong_wx(ji_list[0], ri_wx) if ji_list else '—'}属性食物。"
-        f"作息规律，适度运动，保持心态平和是最佳养生之道。"
+        + ({
+            "从弱": f"从弱格火炎土燥者宜补水降火，金弱水弱者宜注重呼吸系统和肾脏保养。",
+            "身强": f"作息规律，适度运动，保持心态平和是最佳养生之道。",
+            "身弱": f"注意避免过度消耗，保证充足睡眠，循序渐进增强体质。",
+        }.get(sq_level, "作息规律，适度运动，保持心态平和是最佳养生之道。"))
     )
     lines.append(health_advice)
     lines.append("")
@@ -7191,23 +7338,43 @@ def _gen_section21(basic: dict, analysis: dict) -> list:
     # 21.6 人生总纲寄语
     lines.append("### 21.6 人生总纲寄语")
     lines.append("")
-    lines.append(
-        f"> **命理诗学**：{ri_gan}命{ge_ju_str}，{'身强志坚闯四方' if sq_level=='身强' else '身弱借力上青云' if sq_level=='身弱' else '中和之道行天下'}。"
-        f"喜{'、'.join(xi_list)}为吉，忌{'、'.join(ji_list)}为慎。"
-        f"中年大运是腾飞之期，青年积累是腾飞之基。"
-        f"知命不认命，顺势而为，方为智者之道。"
-    )
+
+    if "从" in sq_level:
+        # 从弱格专用寄语
+        lines.append(
+            f"> **命理诗学**：{ri_gan}命{ge_ju_str}从弱格，顺势而为不问西东。"
+            f"喜{'、'.join(xi_list)}为吉，忌{'、'.join(ji_list)}为慎。"
+            f"从格之命贵在顺势——官旺则借官，财旺则从财，不逆势强行方为上策。"
+            f"知命不认命，顺势而为，方为智者之道。"
+        )
+    else:
+        lines.append(
+            f"> **命理诗学**：{ri_gan}命{ge_ju_str}，{'身强志坚闯四方' if sq_level=='身强' else '身弱借力上青云' if sq_level=='身弱' else '中和之道行天下'}。"
+            f"喜{'、'.join(xi_list)}为吉，忌{'、'.join(ji_list)}为慎。"
+            f"中年大运是腾飞之期，青年积累是腾飞之基。"
+            f"知命不认命，顺势而为，方为智者之道。"
+        )
     lines.append("")
 
     # 🗣️ 白话解读（总结）
     lines.append("### 🗣️ 白话解读（总结）")
     lines.append("")
-    lines.append(
-        f"> **总结：** 六大维度的建议融会贯通来看，核心就是一个思路——"
-        f"了解自己的先天禀赋，在优势领域深耕，在短板方面补益。"
-        f"知命不是限制，而是让您更清楚地看到最适合自己的路。"
-        f"顺势而为，稳扎稳打，人生自然会越走越顺。"
-    )
+
+    if "从" in sq_level:
+        summary_text = (
+            f"> **总结：** 您的命局为从弱格，核心策略是六个字——「顺大势，借外力」。"
+            f"官杀旺则借事业之力，食伤旺则借才华之力，财旺则借资源之力。"
+            f"切忌逆势而为、单打独斗。大运窗口期（35~55岁）全力冲刺，"
+            f"忌神运（金运）稳守为主。知命不是限制，而是让您更清楚地看到最适合自己的路。"
+        )
+    else:
+        summary_text = (
+            f"> **总结：** 六大维度的建议融会贯通来看，核心就是一个思路——"
+            f"了解自己的先天禀赋，在优势领域深耕，在短板方面补益。"
+            f"知命不是限制，而是让您更清楚地看到最适合自己的路。"
+            f"顺势而为，稳扎稳打，人生自然会越走越顺。"
+        )
+    lines.append(summary_text)
     lines.append("")
 
     lines.append("---")
