@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-金鉴真人·八字排盘引擎 v7.0
-基于九龙道长原始规则体系重写
+|金鉴真人·八字排盘引擎 v7.0
+基于金鉴真人原始规则体系重写
 规则来源：weiwuji-knowledge-base 理论知识体系
 v7.0更新：
   - 燥土规则：未/戌对金日主，被火引化不计分
@@ -455,7 +455,7 @@ def calc_bazi_energy_analysis(ri_gan: str, nian_zhi: str, yue_zhi: str, ri_zhi: 
     return {"relationships": results, "total_multiplier": total_energy, "count": len(results)}
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 身强弱评分（九龙道长原始规则 v7.0）
+# 身强弱评分（金鉴真人原始规则 v7.0）
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 # 位置基础分（满分100，日干不计）
@@ -465,7 +465,7 @@ def calc_shen_qiang_ruo(ri_gan: str, nian_gan: str, yue_gan: str, shi_gan: str,
                          nian_zhi: str, yue_zhi: str, ri_zhi: str, shi_zhi: str) -> dict:
     """
     身强弱评分 v7.0
-    规则（九龙道长原始规则）：
+    规则（金鉴真人原始规则）：
     - 印只在月令本气计分（40分）
     - 比劫在所有位置都计分
     - 燥土规则：未/戌对金日主，火引化时不记分（v7.0新增）
@@ -601,7 +601,7 @@ def _detect_top10_ge_ju(ri_gan: str,
                         sqr_level: str = "", zhuan_wang_flag: bool = False,
                         is_hua_qi: bool = False) -> dict:
     """
-    检测十大格局（九龙道长_八字最好的格局排名）
+    检测十大格局（金鉴真人_八字最好的格局排名）
     返回 {"ge_ju": str, "rank": int|None, "rank_name": str|None, "details": list}
     """
     details = []
@@ -881,7 +881,7 @@ def calc_cai_xing(ri_gan: str, nian_gan: str, yue_gan: str, shi_gan: str,
                   nian_zhi: str, yue_zhi: str, ri_zhi: str, shi_zhi: str,
                   sq_level: str = "") -> dict:
     """
-    财星评分 v7.0（九龙道长规则 + 财库计算）
+    财星评分 v7.0（金鉴真人规则 + 财库计算）
     规则：
     - 只含正偏财，不含劫财
     - 财库：仅日/时柱辰戌丑未才算自己的库
@@ -1981,7 +1981,7 @@ def calc_da_yun_ji_xiong(da_yun_list: list, ri_gan: str, sqr_level: str,
 # 财富量级评估模型
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-# 财富五级（素材11第349~433行·九龙道长原始定级）
+# 财富五级（素材11第349~433行·金鉴真人原始定级）
 # 等级 | 身价范围 | 核心条件 | 来源
 CAI_FU_WU_JI = [
     ("贫穷",   0,   12, "八字无财（一丁点财星都没有）+身弱，俗称和尚命"),
@@ -2001,6 +2001,9 @@ CAI_FU_STATES = {
     "身弱财弱":       {"level":"小富",     "desc":"身弱（<40分）+财弱（<40分），辛苦钱，遇印比则发中财"},
     "无财+身弱":      {"level":"贫穷",     "desc":"四柱无财+身弱(或从弱格+财星极弱)，和尚命，一辈子难发财"},
     "无财+身强":      {"level":"小富",     "desc":"四柱无财+身强，遇财星年份有钱进账但不长久，短暂小财"},
+    "从弱格+无财":    {"level":"贫穷",     "desc":"从弱格+财星极弱（<1分），穷命，靠贵气也难生财"},
+    "中和财旺":       {"level":"大富",     "desc":"中和（40~60分）+财旺（≥40分），财能为我用，发大财格局"},
+    "中和财弱":       {"level":"中富",     "desc":"中和（40~60分）+财弱（<40分），财星不足但自身运势平稳，逢食伤大运可发中财"},
 }
 
 def calc_cai_fu_deng_ji(cai_xing_total: float, sqr_score: float, sqr_level: str,
@@ -2023,11 +2026,15 @@ def calc_cai_fu_deng_ji(cai_xing_total: float, sqr_score: float, sqr_level: str,
             base_score = 70  # 大富基准
             score = min(base_score + 10, 90)
         else:
-            # 从弱格+财弱 → 小富~中富（贵气生财）
-            state = "从弱格+财弱"
-            # 财星分数按比例映射到小富区间(12-36)
-            base_score = 12 + (cai_xing_total / 40.0) * 24
-            base_score = min(base_score, 36)
+            # 从弱格+财弱 → 小富~中富（贵气生财），除非财星极弱
+            if cai_xing_total < 1:
+                state = "从弱格+无财"
+                base_score = 0
+            else:
+                state = "从弱格+财弱"
+                # 财星分数按比例映射到小富区间(12-36)
+                base_score = 12 + (cai_xing_total / 40.0) * 24
+                base_score = min(base_score, 36)
             score = base_score  # 不加额外加成，贵气>财气
         info = CAI_FU_STATES[state]
         # 按分数映射到具体财富五级
@@ -2067,6 +2074,10 @@ def calc_cai_fu_deng_ji(cai_xing_total: float, sqr_score: float, sqr_level: str,
         state = "身强财弱"
     elif shen_state == "身弱" and cai_strong:
         state = "身弱财旺"
+    elif shen_state == "中和" and cai_strong:
+        state = "中和财旺"
+    elif shen_state == "中和" and not cai_strong:
+        state = "中和财弱"
     else:
         state = "身弱财弱"
     
@@ -2087,6 +2098,10 @@ def calc_cai_fu_deng_ji(cai_xing_total: float, sqr_score: float, sqr_level: str,
         score = 0 + min(sqr_score, 12)  # 0-12分
     elif state == "无财+身强":
         score = 12 + min(sqr_score - 40, 24)  # 12-36分
+    elif state == "中和财旺":
+        score = 48 + (cai_xing_total - 40) * 0.6
+    elif state == "中和财弱":
+        score = 24 + (cai_xing_total / 40.0) * 24
     else:
         score = 25.0
     
@@ -2974,6 +2989,8 @@ def calculate_bazi(year: int, month: int, day: int,
         nian_gan=ng, yue_gan=yg, shi_gan=sg,
         has_ku=cx.get("has_ku", False)
     )
+    # 统一财富等级：以calc_cai_fu_deng_ji的level为权威来源
+    cx["wealth_level"] = cai_fu["level"]
     # 流年分析（当前年份及附近5年）
     current_year = 2026
     liu_nian_list = []
