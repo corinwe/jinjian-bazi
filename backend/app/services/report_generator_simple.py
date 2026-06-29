@@ -1068,14 +1068,18 @@ def _gen_section2(basic: dict, analysis: dict) -> list:
     lines.append('')
 
     if yue_ben_qi_ss in ['正官', '七杀']:
-        if sq_level == '身强':
+        if '从弱' in sq_level:
+            match_note = f'⚠️ 从弱格官杀为喜用，顺势借官杀之力成就事业。'
+        elif sq_level == '身强':
             match_note = f'✅ 身强可担{yue_ben_qi_ss}，官杀为贵气，身强则能承压受责，事业上有较好的发展空间。'
         elif sq_level == '中和':
             match_note = f'➖ 中和之命亦能担{yue_ben_qi_ss}，但压力与机遇并存，需大运助力。'
         else:
             match_note = f'⚠️ 身弱担{yue_ben_qi_ss}压力较大，需印星（学习/贵人）生扶或比劫（朋友/团队）相助。'
     elif yue_ben_qi_ss in ['正财', '偏财']:
-        if sq_level == '身强':
+        if '从弱' in sq_level:
+            match_note = f'⚠️ 从弱格财星为喜用，顺势求财可成。'
+        elif sq_level == '身强':
             match_note = f'✅ 身强胜财，财星为用，求财顺利，商业头脑敏锐。'
         elif sq_level == '中和':
             match_note = f'➖ 中和可担财，但财运的发挥需要大运中财星助力。'
@@ -1091,15 +1095,23 @@ def _gen_section2(basic: dict, analysis: dict) -> list:
         else:
             match_note = f'⚠️ 身强印星为忌，可能带来固执保守、依赖心重的倾向。'
     elif yue_ben_qi_ss in ['食神', '伤官']:
-        if sq_level == '身强':
+        if '从弱' in sq_level:
+            match_note = f'⚠️ 从弱格食伤为喜用，顺势发挥才华可成。'
+        elif sq_level == '身强':
             match_note = f'✅ 身强泄秀，才华有出口，创意和表现力能得到充分发挥。'
+        elif sq_level == '中和':
+            match_note = f'➖ 中和有食伤，才华表现均衡，无过无不及。'
         else:
             match_note = f'⚠️ 身弱食伤泄身太过，易思虑过度、精力消耗大，需印星制化。'
     elif yue_ben_qi_ss in ['比肩', '劫财']:
-        if sq_level == '身强':
+        if '从弱' in sq_level:
+            match_note = f'⚠️ 从弱格比劫为忌，需顺势依靠外界而非自身。'
+        elif sq_level == '身强':
             match_note = f'✅ 身强比劫旺，独立性极强，适合自主创业或自由职业。'
-        else:
+        elif sq_level == '中和':
             match_note = f'➖ 中和之命比劫为朋，社交广泛但需注意合作关系。'
+        else:
+            match_note = f'⚠️ 身弱比劫为助，需借朋友团队之力。'
     else:
         match_note = f'➖ {sq_level}与{yue_ben_qi_ss}格匹配度中性。'
 
@@ -1151,12 +1163,14 @@ def _gen_section2(basic: dict, analysis: dict) -> list:
     lines.append('')
     lines.append('**简单来说**：')
     lines.append(f"您的命格以{yue_ben_qi_ss}为核心特质，命局中的其他十神围绕这个核心展开互动。"
-                 f"身{sq_level}意味着您{'自身能量充足，可以主动出击' if sq_level == '身强' else '自身能量偏弱，适合借力发展' if sq_level == '身弱' else '能量平衡，灵活应变'}。")
+                 f"身{sq_level}意味着您{'从弱格，顺势而为是上策' if '从弱' in sq_level else '自身能量充足，可以主动出击' if sq_level == '身强' else '自身能量偏弱，适合借力发展' if sq_level == '身弱' else '能量平衡，灵活应变'}。")
     lines.append(f'您的命局月令巳本气为比肩，年干辛透正财，月时双癸透正官，属于典型的「比肩格+正官细分」组合。中和之命如同精密天平——比肩增底气，正官立规矩，财星活经济。人生路上发挥此三者的协同效应，比盲目追求多样选择更为关键。')
     lines.append('')
     lines.append('**给您的建议**：')
     # 根据身强弱给出具体建议
-    if sq_level == '身强' and yue_ben_qi_ss in ['正官', '七杀', '正财', '偏财', '食神', '伤官']:
+    if '从弱' in sq_level:
+        lines.append('您为从弱格，顺势而为是核心策略——借官杀之力成事业，借食伤之力展才华，切忌逆势硬扛。')
+    elif sq_level == '身强' and yue_ben_qi_ss in ['正官', '七杀', '正财', '偏财', '食神', '伤官']:
         lines.append('您身强能担格局，大胆去闯，您的命局支持您追求更高的目标。')
     elif sq_level == '身弱' and yue_ben_qi_ss in ['正印', '偏印']:
         lines.append('您身弱有印生，多学习、多交贵人，用知识和人脉来弥补自身能量的不足。')
@@ -1275,7 +1289,9 @@ def _gen_section3(basic: dict, analysis: dict) -> list:
     lines.append("**评分详解白话总结：**")
     lines.append("")
     main_source = "月令" if any("月令" in d for d in details) else "天干" if any("天干" in d for d in details) else "地支"
-    if sq_level == "身强":
+    if '从弱' in sq_level:
+        lines.append(f"从评分明细可以看出，你的命局为从弱格（{sq_score}分）。从弱格的人好比「轻舟顺流」，最忌逆水行舟。你的最大优势是灵活善变、顺势而为——善用外界资源来成就自己，而非一味依赖自身力量。")
+    elif sq_level == "身强":
         lines.append(f"从评分明细可以看出，你的命局能量主要来自{main_source}的支持，各维度加起来总分{sq_score}。身强的人好比「自带干粮上路」，不依赖外界也能独立前行。在人群中你往往是那个拿主意的人，有天然的号召力和执行力。")
     elif sq_level == "身弱":
         lines.append(f"从评分明细可以看出，你的命局在{main_source}方面获得了一定支持，但整体能量还需借助外力。身弱的人好比「轻装上阵的探险家」，虽然负重不大却能灵活应变。你的核心竞争力不在于硬拼，而在于借力打力——善于用人际关系和资源整合来弥补自身力量的不足。")
@@ -1286,7 +1302,9 @@ def _gen_section3(basic: dict, analysis: dict) -> list:
     # 3.2 判定结果
     lines.append("### 3.2 判定结果")
     lines.append("")
-    if sq_level == "身强":
+    if '从弱' in sq_level:
+        conclusion = f"从弱（{sq_score}分）：命主为从弱格，顺势而为是核心策略，善借外力成就事业"
+    elif sq_level == "身强":
         conclusion = f"身强（{sq_score}分）：命主自身能量充足，能够承载财官，但需防比劫过旺导致固执"
     elif sq_level == "身弱":
         conclusion = f"身弱（{sq_score}分）：您身虽弱，但格局清奇，宜借印比之力补益，不宜独当一面"
@@ -1298,7 +1316,12 @@ def _gen_section3(basic: dict, analysis: dict) -> list:
     # 判定依据深度分析
     lines.append("**判定依据深度分析：**")
     lines.append("")
-    if sq_level == "身强":
+    if '从弱' in sq_level:
+        lines.append(f"从弱（{sq_score}分）判定依据：命局中日主极弱，无根无助，只能从旺势而行。")
+        lines.append(f"从弱格之人最忌逆势强行，顺势借力是成功的唯一途径。")
+        lines.append(f"从弱并非劣势——刘邦、朱元璋等帝王均为从格，关键在于懂得「借」字诀。")
+        lines.append(f"大运中遇到官杀/财/食伤等喜用神运时，是顺势腾飞的最佳时机。")
+    elif sq_level == "身强":
         lines.append(f"身强（{sq_score}分）判定依据：月令和地支多个位置提供了比劫/印星的根气支撑，"
                      f"日主得地得助。在八字中印比能量的贡献超过了总分的60%。")
         lines.append(f"身强之人性格主动，有决策力和担当力，有能力去追求和掌控更大的事业版图。")
@@ -2223,7 +2246,12 @@ def _gen_section6(basic: dict, analysis: dict) -> list:
     lines.append("### 特质四：身强弱修正")
     lines.append("")
 
-    if sq_level == "身强":
+    if '从弱' in sq_level:
+        lines.append(f"从弱（{sq_score}分）——你的命局为从弱格，顺势而为是核心策略，最忌逆水行舟。")
+        lines.append(f"从弱之人有如轻舟顺流，以借力打力为天赋技能。一生运势曲线：早年宜顺势积累，中年借官杀/财/食伤大运发力腾飞，晚年可享清福。")
+        lines.append(f"从弱者宜做操盘手而非拼体力——借力打力、顺势而为是你的核心竞争力，不必逆势硬扛。")
+        lines.append("🗣️ 一句话概括：你不是能量不够，而是懂得「顺势」才是最高级的智慧——从格者的最大优势在于灵活善变。")
+    elif sq_level == "身强":
         lines.append(f"身强（{sq_score}分）——你的能量池水位较高，做事有底气、敢于担当，有天然的主动性和控制欲。")
         lines.append(f"身强之人有如满弓之箭，蓄势充足但容易用力过猛。一生运势曲线：早年锋芒崭露，中年事业持续上升，晚年需学会示弱与放手。")
         lines.append(f"身强者宜做先锋和开拓者，忌事必躬亲——学会把执行层面的工作交给他人，自己专注战略和方向。")
@@ -2265,7 +2293,7 @@ def _gen_section6(basic: dict, analysis: dict) -> list:
     lines.append(f"- 你的{ri_wx}性底色决定了思维方式，{ge_ju_str}局决定了价值取向——二者共同构成了你的核心人格。")
     wx_ss_note = f"- 十神「{top3_ss[0]}」和「{top3_ss[1] if len(top3_ss)>1 else ''}」则是在这个核心基础上添加的色彩，决定了你在社交、工作、情感中的具体表现。"
     lines.append(wx_ss_note)
-    lines.append(f"- {sq_level}的力道控制着以上所有特质的「输出音量」——{'音量大、气势足，但需要学会调节音量' if sq_level=='身强' else '音量小、柔和细腻，但需要学会在关键时刻调大音量' if sq_level=='身弱' else '音量适中、收放自如，是别人最舒服的相处对象'}。")
+    lines.append(f"- {sq_level}的力道控制着以上所有特质的「输出音量」——{'从弱格顺势而为，不拘一格降人才' if '从弱' in sq_level else '音量大、气势足，但需要学会调节音量' if sq_level=='身强' else '音量小、柔和细腻，但需要学会在关键时刻调大音量' if sq_level=='身弱' else '音量适中、收放自如，是别人最舒服的相处对象'}。")
     lines.append(f"- 喜用神{xi_str}是你的人生「加速器」，在相关年份和场景中顺势而为，可以达到事半功倍的效果。")
     lines.append("")
 
@@ -2289,7 +2317,9 @@ def _gen_section6(basic: dict, analysis: dict) -> list:
     lines.append("")
     growth_items = []
 
-    if sq_level == "身强":
+    if '从弱' in sq_level:
+        growth_items.append("🌊 从弱格者最大的智慧是顺势——但顺势不等于随波逐流，在顺的同时建立自己的核心价值才是根本。")
+    elif sq_level == "身强":
         growth_items.append("🛡️ 身强者最大的敌人是自己——学会倾听、示弱、放权，刚柔并济才是真正的强大。")
     elif sq_level == "身弱":
         growth_items.append("🌱 身弱者最大的靠山是贵人——但贵人不会永远在身边，趁势建立自己的专业壁垒才是根本。")
@@ -2336,7 +2366,7 @@ def _gen_section6(basic: dict, analysis: dict) -> list:
         "土": "一片承载万物的大地",
     }
     metaphor = wx_metaphor.get(ri_wx, "一个独特的存在")
-    sq_power_str = "身强" if sq_level == "身强" else ("借力蓄势" if sq_level == "身弱" else "恰到好处")
+    sq_power_str = "从弱格顺势而为" if '从弱' in sq_level else ("身强" if sq_level == "身强" else ("借力蓄势" if sq_level == "身弱" else "恰到好处"))
 
     lines.append(f"🗣️ **一句话总结你的性格：**")
     lines.append("")
@@ -2439,7 +2469,12 @@ def _gen_section7(basic: dict, analysis: dict) -> list:
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     lines.append("### 13.2 身强弱修正（力量与气质的放大器）")
     lines.append("")
-    if sq_level == "身强":
+    if '从弱' in sq_level:
+        lines.append(f"从弱（{sq_score}分）：骨架偏细腻，体态轻盈，气质灵动。"
+                     f"从弱格的人往往身形灵活、不拘一格，体态可塑性高。"
+                     f"{ri_wx}性的特点在从弱状态下更显顺势而为——"
+                     f"{'清冷中见锋芒' if ri_wx=='金' else '柔韧中见风骨' if ri_wx=='木' else '灵动中见韵味' if ri_wx=='水' else '温暖中见光芒' if ri_wx=='火' else '温和中见韧性' if ri_wx=='土' else ''}。")
+    elif sq_level == "身强":
         lines.append(f"身强（{sq_score}分）：骨架偏大，体格较壮实，肌肉量充足，整体给人力量感和压迫感。"
                      f"基础代谢率较高，不易发胖，但过旺五行对应的器官可能偏大。"
                      f"{ri_wx}性的基础气质在身强的加持下会更外放、更有冲击力——"
@@ -2604,6 +2639,8 @@ def _gen_section7(basic: dict, analysis: dict) -> list:
         height = f"{height}，骨架偏大更显身高"
     elif sq_level == "身弱":
         height = f"{height}，体形偏清瘦"
+    elif '从弱' in sq_level:
+        height = f"{height}，体态轻盈灵动"
 
     lines.append(f"**📏 身高推断**：{height}")
     lines.append("")
@@ -2632,15 +2669,15 @@ def _gen_section7(basic: dict, analysis: dict) -> list:
     # 🗣️ 白话综合总结
     baihua_final_map = {
         "金": f"总的来说，{ri_gan}命主的长相属于「高级耐看型」——不是那种可爱路线，而是越看越有味道的类型。"
-              f"皮肤白是基因彩票，骨架好是老天赏饭。{'身强的话更有气场' if sq_level=='身强' else '身弱的话更显清冷' if sq_level=='身弱' else '中和则是最舒服的状态'}。",
+              f"皮肤白是基因彩票，骨架好是老天赏饭。{'从弱格轻灵飘逸，自有一番气质' if '从弱' in sq_level else '身强的话更有气场' if sq_level=='身强' else '身弱的话更显清冷' if sq_level=='身弱' else '中和则是最舒服的状态'}。",
         "木": f"总的来说，{ri_gan}命主的长相属于「舒服耐看型」——身形修长是最大优势，气质温和让人没有距离感。"
-              f"{'身强的话像参天大树，很有存在感' if sq_level=='身强' else '身弱的话像风中杨柳，有种弱不禁风的美感' if sq_level=='身弱' else '中和则是最自然舒展的状态'}。",
+              f"{'从弱格如藤蔓绕枝，柔韧中见风骨' if '从弱' in sq_level else '身强的话像参天大树，很有存在感' if sq_level=='身强' else '身弱的话像风中杨柳，有种弱不禁风的美感' if sq_level=='身弱' else '中和则是最自然舒展的状态'}。",
         "水": f"总的来说，{ri_gan}命主的长相属于「韵味耐看型」——皮肤好、眼神灵，是越接触越觉得有魅力的类型。"
-              f"{'身强的话气场丰润充沛' if sq_level=='身强' else '身弱的话更显柔弱灵气' if sq_level=='身弱' else '中和则达到了最佳的灵秀状态'}。",
+              f"{'从弱格如水随形，变幻莫测尽显韵味' if '从弱' in sq_level else '身强的话气场丰润充沛' if sq_level=='身强' else '身弱的话更显柔弱灵气' if sq_level=='身弱' else '中和则达到了最佳的灵秀状态'}。",
         "火": f"总的来说，{ri_gan}命主的长相属于「阳光活力型」——气色好是最大优势，走到哪里都能照亮周围的人。"
-              f"{'身强的话火力全开，存在感极强' if sq_level=='身强' else '身弱的话像炉火，温暖但不灼人' if sq_level=='身弱' else '中和则是最舒服的温度'}。",
+              f"{'从弱格如烛火摇曳，灵动中见光芒' if '从弱' in sq_level else '身强的话火力全开，存在感极强' if sq_level=='身强' else '身弱的话像炉火，温暖但不灼人' if sq_level=='身弱' else '中和则是最舒服的温度'}。",
         "土": f"总的来说，{ri_gan}命主的长相属于「可靠踏实型」——可能不是第一眼帅哥/美女，但绝对是越相处越有安全感的类型。"
-              f"{'身强的话如大山压阵，给人满满的安全感' if sq_level=='身强' else '身弱的话更显温和亲切' if sq_level=='身弱' else '中和则达到了最佳的平衡状态'}。",
+              f"{'从弱格如细沙流转，温和中见韧性' if '从弱' in sq_level else '身强的话如大山压阵，给人满满的安全感' if sq_level=='身强' else '身弱的话更显温和亲切' if sq_level=='身弱' else '中和则达到了最佳的平衡状态'}。",
     }
     lines.append(f"🗣️ **白话总结**：{baihua_final_map.get(ri_wx, f'{ri_gan}命主的外貌气质以{ri_wx}性为底色，{sq_level}为修饰，整体恰到好处。')}")
     lines.append("")
@@ -3465,8 +3502,12 @@ def _gen_section10(basic: dict, analysis: dict, birth_year: int) -> list:
             lines.append("有压力但能转化为动力，有敌人但也能化为良师。这种结构是事业高度最重要的加分项。")
         else:
             lines.append("⚠️ **七杀无制化**：七杀无制则原局压力较大。")
-            if sq_level == "身强":
+            if '从弱' in sq_level:
+                lines.append("从弱格顺势而为，七杀为喜用神，借官杀之力顺势而行即可。")
+            elif sq_level == "身强":
                 lines.append("但身强足以承载七杀的冲击，能在高压竞争中越挫越勇。「身杀两停」结构，是顶级竞争者的底色。")
+            elif sq_level == "中和":
+                lines.append("中和之命遇七杀有制化，压力与机遇并存，能妥善应对。")
             else:
                 lines.append("同时身偏弱，逢七杀/官杀旺的大运时需格外谨慎，不宜主动承压。")
     else:
@@ -3587,7 +3628,7 @@ def _gen_section10(basic: dict, analysis: dict, birth_year: int) -> list:
     lines.append(f"> **①格局定方向**——{ge_ju_str}决定了您做什么行业容易出彩；")
     if qs_cnt > 0:
         lines.append(f"> **②恶神制化定级别**——您命中有{qs_cnt}处七杀，{'有制化所以压力变动力' if qs_zhi else '无制化所以压力较大'}；")
-    lines.append(f"> **③身强弱定承载**——您{sq_level}，{'能扛得住大风大浪' if sq_level == '身强' else '需要印比大运助身' if sq_level == '身弱' else '平衡稳健'}。")
+    lines.append(f"> **③身强弱定承载**——您{sq_level}，{'从弱格顺势而为，借力打力' if '从弱' in sq_level else '能扛得住大风大浪' if sq_level == '身强' else '需要印比大运助身' if sq_level == '身弱' else '平衡稳健'}。")
     lines.append("")
 
     # ====================================================================
@@ -3669,7 +3710,7 @@ def _gen_section10(basic: dict, analysis: dict, birth_year: int) -> list:
     checks.append(f"{'✅' if cai_tou else '❌'} 财星透干")
     checks.append(f"{'✅' if cai_gen else '❌'} 财星有根")
     checks.append(f"{'✅' if ss_sc else '❌'} {'食伤生财' if ss_sc else '无食伤生财路径'}")
-    checks.append(f"{'✅' if sq_level=='身强' else '❌'} {'身强能扛风险' if sq_level=='身强' else '身弱扛风险能力不足'}")
+    checks.append(f"{'✅' if sq_level=='身强' else '❌'} {'身强能扛风险' if sq_level=='身强' else '从弱格需顺势借力，不宜独自扛风险' if '从弱' in sq_level else '身弱扛风险能力不足' if sq_level=='身弱' else '中和扛风险能力适中'}")
     checks.append(f"{'✅' if cai_score>=40 else '❌'} {'财星能量充足' if cai_score>=40 else '财星能量偏弱'}")
 
     lines.append("**创业条件自查：**")
@@ -6939,7 +6980,9 @@ def _gen_section18(basic: dict, analysis: dict) -> list:
     lines.append(f"**其人**：{ge_ju_str}人才，{sq_level}，喜{'/'.join(xi_list)}")
     lines.append(f"**其事**：事业成就等级与领域")
     lines.append(f"**其时**：喜用神大运中年窗口（约35~55岁）")
-    if sq_level == "身强":
+    if '从弱' in sq_level:
+        degree = "顺势借力型人才"
+    elif sq_level == "身强":
         degree = "中高层管理/专家级"
     elif sq_level == "身弱":
         degree = "中层骨干/技术专才"
@@ -7349,7 +7392,7 @@ def _gen_section21(basic: dict, analysis: dict) -> list:
         )
     else:
         lines.append(
-            f"> **命理诗学**：{ri_gan}命{ge_ju_str}，{'身强志坚闯四方' if sq_level=='身强' else '身弱借力上青云' if sq_level=='身弱' else '中和之道行天下'}。"
+            f"> **命理诗学**：{ri_gan}命{ge_ju_str}，{'从弱格顺势而为行天下' if '从弱' in sq_level else '身强志坚闯四方' if sq_level=='身强' else '身弱借力上青云' if sq_level=='身弱' else '中和之道行天下'}。"
             f"喜{'、'.join(xi_list)}为吉，忌{'、'.join(ji_list)}为慎。"
             f"中年大运是腾飞之期，青年积累是腾飞之基。"
             f"知命不认命，顺势而为，方为智者之道。"
