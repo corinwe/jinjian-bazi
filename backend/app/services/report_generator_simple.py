@@ -498,7 +498,7 @@ def _gen_section1(basic: dict, analysis: dict, name: str, gender: str, version: 
     lines.append(f"> **白话：** 您是{ri_gan}命（{ri_wx}·{ri_yy}），属{ge_ju_str}，{sq_level}（{sq_score}分），{sq_desc}。")
     lines.append(f"> 八字为「{si_zhu}」，四柱排盘已精准校准节气交替与月令划分。")
     lines.append(f"> 喜用神：{xi_str_short}｜忌神：{ji_str_short}。财星{cai_score}分，属{wealth_level}。")
-    lines.append(f"> 简而言之，您先天命局以{ge_ju_str}为主体架构，{sq_desc}，人生基调由此奠定。")
+    lines.append('> 简而言之，您先天命局以' + ge_ju_str + '为主体架构，' + ('身虽弱但格局清奇，善借外力方可成事' if '偏弱' in sq_desc else sq_desc) + '，人生基调由此奠定。')
     lines.append("")
     lines.append(f"> **【金鉴真人·§1·四柱排盘规则】** 本报告四柱八字依据公历{basic.get('solar_date', '')}精确推算——年柱随立春交接，月柱依节气划分，日柱基于日干支公式，时柱按出生时辰定。排盘规则严格遵循【金鉴真人·§1·四柱排盘规则】，确保天干地支、纳音、空亡信息准确，为后续格局、身强弱、喜用神等分析奠定可靠基础。")
     lines.append("")
@@ -536,7 +536,7 @@ def _gen_section1(basic: dict, analysis: dict, name: str, gender: str, version: 
         ]
     ))
     lines.append("")
-    lines.append(f"> **【金鉴真人·§1·身强弱规则】** {ri_gan}命主身强弱判定基于月令旺衰、地支根气、印比生扶三要素综合评分。本项采用【金鉴真人·§1·身强弱规则】，得分{sq_score}分，评定为「{sq_level}」。{sq_desc}")
+    lines.append(f'> 【金鉴真人·§1·身强弱规则】 {ri_gan}命主身强弱判定基于月令旺衰、地支根气、印比生扶三要素综合评分。本项采用【金鉴真人·§1·身强弱规则】，得分{sq_score}分，评定为「{sq_level}」。{"身弱需借火土之力方可成事" if sq_desc.startswith("命主自身能量偏弱") else sq_desc}')
     lines.append("")
     lines.append(f"> **【金鉴真人·§1·喜用神规则】** 喜用神与忌神依据身强弱格局、五行平衡、调候需求综合取定。本项遵循【金鉴真人·§1·喜用神规则】，喜用神为「{xi_str_short}」，忌神为「{ji_str_short}」，为后续大运流年吉凶判断提供核心依据。")
     lines.append("")
@@ -695,7 +695,7 @@ def _gen_section1(basic: dict, analysis: dict, name: str, gender: str, version: 
 
     dy_show = "→".join([d.get("gan_zhi", "") for d in dy_list[:5]])
 
-    lines.append(f"> **总结：** 您是{ri_gan}命（{ri_wx}·{ri_yy}），日主{sq_level}（{sq_score}分），{sq_desc}。")
+    lines.append('> **总结：** 您是' + ri_gan + '命（' + ri_wx + '·' + ri_yy + '），日主' + sq_level + '（' + str(sq_score) + '分），' + ('身弱常得贵人助，善借外力方能展翅高飞' if '偏弱' in sq_desc else sq_desc) + '。')
     lines.append(f"> 命局核心格局为{ge_ju_str}，喜用神为{xi_str}，忌神为{ji_str}。")
     lines.append(f"> 财星评分{cai_score}分，属{wealth_level}层次。大运走势：{dy_show}…")
     lines.append(f"> 健康方面需关注{WU_XING_ORGANS.get(wx_strong, '旺五行')}（{wx_strong}过旺）和{WU_XING_ORGANS.get(wx_weak, '弱五行')}（{wx_weak}过弱）相关器官。")
@@ -953,8 +953,9 @@ def _gen_section2(basic: dict, analysis: dict) -> list:
             cg_wt = cg.get('weight', 0)
             if cg_ss:
                 cg_effect = cg_effect_map.get(cg_ss, '补充相应能量')
-                lines.append(f'- {pos_label}藏干{cg_gan}（{cg_ss}·{cg_wt}%）：{cg_effect}，权重{cg_wt}%的该十神力量潜藏于地支中，待大运引动时爆发。')
+                lines.append(f'- {pos_label}藏干{cg_gan}（{cg_ss}·{cg_wt}%）：{cg_effect}')
     lines.append('')
+    lines.append('> 以上藏干各自蕴含相应十神能量，待大运流年引动时方显其力。')
 
     lines.append(f'> 【金鉴真人·§2·格局细分定义】透干为用，{fu_ge_pos}{fu_ge_gan}透出{fu_ge_ss}为命局格局细分，与主格{yue_ben_qi_ss}格共同构成命局的格局框架。')
     lines.append('')
@@ -1254,7 +1255,7 @@ def _gen_section3(basic: dict, analysis: dict) -> list:
     if sq_level == "身强":
         conclusion = f"身强（{sq_score}分）：命主自身能量充足，能够承载财官，但需防比劫过旺导致固执"
     elif sq_level == "身弱":
-        conclusion = f"身弱（{sq_score}分）：命主自身能量偏弱，宜借印比之力补益，不宜独当一面"
+        conclusion = f"身弱（{sq_score}分）：您身虽弱，但格局清奇，宜借印比之力补益，不宜独当一面"
     else:
         conclusion = f"中和（{sq_score}分）：命主自身能量平衡，灵活性强，能适应各种环境"
     lines.append(f"**{conclusion}**")
@@ -1480,8 +1481,18 @@ def _gen_section4(basic: dict, analysis: dict) -> list:
             problem = "竞争激烈，易被夺财"
             caution = "谨慎合伙，注意防小人"
         else:
-            problem = "能量失衡"
-            caution = "注意相应五行层面的平衡"
+            if wx_actual == "水":
+                problem = "投资风险/资金外流"
+                caution = "水旺年份控制负债和风险敞口"
+            elif wx_actual == "木":
+                problem = "职场压力/人际关系"
+                caution = "木旺年份宜守不宜攻，避免重大职业变动"
+            elif wx_actual == "金":
+                problem = "口舌是非/合约风险"
+                caution = "金旺年份签合同需逐条审核"
+            else:
+                problem = "能量失衡"
+                caution = "注意相应五行层面的平衡"
         ji_rows.append([f"🔴{ji}（{wx_actual}）", problem, caution])
     if ji_rows:
         lines.extend(_format_table(["忌神", "引发问题", "注意事项"], ji_rows))
@@ -1528,7 +1539,14 @@ def _gen_section4(basic: dict, analysis: dict) -> list:
             lines.append(f"- 忌神为{ji}（{wx_actual}）：比劫为忌时，竞争和争夺是生活中需要面对的主要课题。"
                          f"合作中需注意利益分配，避免因为朋友或合作伙伴而蒙受损失。")
         else:
-            lines.append(f"- 忌神为{ji}（{wx_actual}），需注意相应五行层面的能量失衡问题。")
+            if wx_actual == "水":
+                lines.append(f"- 忌神为{ji}（{wx_actual}）：水旺年份（如壬申/癸酉年）投资理财需谨慎，易有资金外流风险。")
+            elif wx_actual == "木":
+                lines.append(f"- 忌神为{ji}（{wx_actual}）：木旺年份（如甲寅/乙卯年）职场压力增大，注意人际关系，避免与上级冲突。")
+            elif wx_actual == "金":
+                lines.append(f"- 忌神为{ji}（{wx_actual}）：金旺年份（如庚申/辛酉年）口舌是非较多，谨言慎行，合同条款要仔细。")
+            else:
+                lines.append(f"- 忌神为{ji}（{wx_actual}），需注意相应五行层面的能量失衡问题。")
     lines.append("")
 
     # 用神转化建议
@@ -2732,7 +2750,7 @@ def _gen_section8(basic: dict, analysis: dict) -> list:
     # ─── 8.6 第六层：大运窗口精确化（v8.3：使用引擎da_yun_ji_xiong数据）───
     lines.append("### 7.6 第六层：大运财星窗口精确化")
     lines.append("")
-    lines.append("【金鉴真人·§8·大运窗口规则】大运财星到位为窗口期，食伤生财为次窗口。以下仅展示**剩余（未过期）**的大运信息。")
+    lines.append("【金鉴真人·§8·大运窗口规则】大运财星到位为窗口期，食伤生财为次窗口。以下展示全部大运的财星助力分析，已过期大运标注加以说明。")
     lines.append("")
     # 使用引擎的da_yun_ji_xiong数据
     dy_jx = analysis.get("da_yun_ji_xiong", [])
@@ -2744,14 +2762,15 @@ def _gen_section8(basic: dict, analysis: dict) -> list:
             ss = d.get("gan_ss", "")
             jx = d.get("ji_xiong", "平")
             base_score = d.get("score", 5.0)
-            # 先判断是否已过期：通过匹配da_yun中的start_age/end_age
+            # 匹配年龄信息（用于排序和过期标注）
             _s_age = 999
+            _e_age = 999
             for r in dy_list:
                 if r.get("gan_zhi","") == gz:
-                    _s_age = r.get("end_age", 999)
+                    _s_age = r.get("start_age", 999)
+                    _e_age = r.get("end_age", 999)
                     break
-            if _s_age < _current_age:
-                continue  # 已过期的大运不展示
+            _expired = _e_age < _current_age
             # 十神财星助力：正财偏财直接支持，食伤生财间接支持
             if ss in ("正财", "偏财"):
                 cai_score_dy = min(base_score * 1.2, 10)
@@ -2765,8 +2784,8 @@ def _gen_section8(basic: dict, analysis: dict) -> list:
             else:
                 cai_score_dy = max(base_score * 0.4, 2)
                 window_type = "一般"
-            scored.append((d, round(cai_score_dy, 1), window_type))
-        scored.sort(key=lambda x: -x[1])
+            scored.append((d, round(cai_score_dy, 1), window_type, _s_age, _expired))
+        scored.sort(key=lambda x: x[3])  # 按年龄从早到晚排序
         t3 = scored[:3]
         # 匹配年龄
         dy_raw = dy_data.get("da_yun", [])
@@ -2777,8 +2796,9 @@ def _gen_section8(basic: dict, analysis: dict) -> list:
             return ""
         if t3:
             lines.extend(_format_table(["大运","年龄段","财星助力","窗口类型"],
-                [[d.get("gan_zhi",""), find_age(d.get("gan_zhi","")),
-                  f"{s}分", wt] for d,s,wt in scored[:5]]))
+                [[d.get("gan_zhi",""),
+                  (find_age(d.get("gan_zhi","")) + "（已过期）") if expired else find_age(d.get("gan_zhi","")),
+                  f"{s}分", wt] for d,s,wt,_sa,expired in scored[:5]]))
             lines.append("")
             lines.append(f"**最佳窗口**：{t3[0][0].get('gan_zhi','')}运({find_age(t3[0][0].get('gan_zhi',''))})，财星助力{t3[0][1]}分。")
             lines.append("")
@@ -4552,6 +4572,16 @@ def _gen_section12(basic: dict, analysis: dict) -> list:
     # 8.4 结婚窗口
     lines.append("### 8.4 结婚窗口")
     lines.append("")
+    # 计算当前年龄
+    _birth_year = 1980
+    _solar = basic.get("solar_date", "")
+    if "年" in _solar:
+        try:
+            _birth_year = int(_solar.split("年")[0])
+        except (ValueError, IndexError):
+            pass
+    import datetime as _dt
+    _current_age = _dt.datetime.now().year - _birth_year
     window_years = []
     for d in dy_list[:6]:
         d_gan = d.get("gan", "")
@@ -4563,24 +4593,60 @@ def _gen_section12(basic: dict, analysis: dict) -> list:
         lines.append(f"最佳结婚窗口：{'、'.join(window_years[:3])}")
     else:
         xi_wx_names_m = [_get_xi_yong_wx(xi, ri_wx) for xi in xi_list]
-        xi_dy_names_m = [d.get('gan_zhi','') for d in dy_list[:8] if TIAN_GAN_WU_XING.get(d.get('gan',''),'') in xi_wx_names_m]
-        xi_dy_str_m = '、'.join(xi_dy_names_m[:4]) if xi_dy_names_m else '后续喜用神运'
-        lines.append(f"前六大运无显著结婚窗口，喜用神大运{xi_dy_str_m}期间主动把握社交机会。")
+        xi_dy_with_age = []
+        for d in dy_list[:10]:
+            d_gan = d.get("gan", "")
+            d_gz = d.get("gan_zhi", "")
+            if TIAN_GAN_WU_XING.get(d_gan, "") in xi_wx_names_m:
+                xi_dy_with_age.append(f"{d_gz}运({d.get('start_age',0):.0f}~{d.get('end_age',0):.0f}岁)")
+        xi_dy_str_m = '、'.join(xi_dy_with_age[:4]) if xi_dy_with_age else '后续喜用神运'
+        if _current_age > 35:
+            lines.append(f"您已进入中年（{_current_age}岁），婚姻缘分已在喜用神大运期间引动。您的{xi_dy_str_m}为喜用神运，婚姻缘分在该时期有良好引动条件。")
+        else:
+            lines.append(f"前六大运无显著结婚窗口，喜用神大运{xi_dy_str_m}期间主动把握社交机会。")
     lines.append("")
 
     # 12.5 婚姻波折提示
     lines.append("### 8.5 婚姻波折提示")
     lines.append("")
+    ri_zhi = basic.get("ri_zhi", "")
+    # 地支关系映射表
     chong_map = {"子":"午","午":"子","丑":"未","未":"丑","寅":"申","申":"寅","卯":"酉","酉":"卯","辰":"戌","戌":"辰","巳":"亥","亥":"巳"}
-    conflict_years = []
-    for d in dy_list[:6]:
-        d_zhi = d.get("zhi", "")
+    he6_map = {"子":"丑","丑":"子","寅":"亥","亥":"寅","卯":"戌","戌":"卯","辰":"酉","酉":"辰","巳":"申","申":"巳","午":"未","未":"午"}
+    harm_map = {"子":"未","未":"子","丑":"午","午":"丑","寅":"巳","巳":"寅","卯":"辰","辰":"卯","申":"亥","亥":"申","酉":"戌","戌":"酉"}
+    anhe_pairs = {("午","亥"), ("亥","午")}
+    he3_groups = [{"寅","午","戌"}, {"巳","酉","丑"}, {"申","子","辰"}, {"亥","卯","未"}]
+    dy_relations = []
+    for d in dy_list[:8]:
+        d_gz = d.get("gan_zhi", "")
+        d_zhi = d_gz[1:] if len(d_gz) >= 2 else ""  # 从gan_zhi取值如"戊子"→"子"
+        rels = []
+        # 六冲
         if d_zhi == chong_map.get(ri_zhi, ""):
-            conflict_years.append(f"{d.get('gan_zhi','')}运（{d.get('start_age',0):.0f}~{d.get('end_age',0):.0f}岁）")
-    if conflict_years:
-        lines.append(f"⚠️ 夫妻宫被冲大运：{'、'.join(conflict_years)}——此期间感情易有波动，需加强沟通。")
-    else:
-        lines.append("✅ 前六大运无夫妻宫被冲，婚姻稳定性较好。")
+            rels.append(f"{ri_zhi}{d_zhi}冲")
+        # 六合
+        if d_zhi == he6_map.get(ri_zhi, ""):
+            rels.append(f"{ri_zhi}{d_zhi}合")
+        # 暗合
+        if (ri_zhi, d_zhi) in anhe_pairs:
+            rels.append(f"{ri_zhi}{d_zhi}暗合")
+        # 三合
+        for group in he3_groups:
+            if ri_zhi in group and d_zhi in group and ri_zhi != d_zhi:
+                rels.append(f"{ri_zhi}{d_zhi}三合")
+                break
+        # 六害
+        if d_zhi == harm_map.get(ri_zhi, ""):
+            rels.append(f"{ri_zhi}{d_zhi}害")
+        if rels:
+            label = "⚠️ " + "、".join(rels)
+        else:
+            label = "✅ 无冲合"
+        dy_relations.append(f"{d_gz}运（{d.get('start_age',0):.0f}~{d.get('end_age',0):.0f}岁）：{label}")
+    if dy_relations:
+        lines.append("各步大运与夫妻宫（日支）的冲合关系：")
+        for rel_line in dy_relations:
+            lines.append(f"- {rel_line}")
     lines.append("【金鉴真人·§8·婚姻波折规则】夫妻宫被冲的年份，婚姻易有波动；被合的年份，姻缘易成。")
     lines.append("")
 
