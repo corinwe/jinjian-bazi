@@ -106,8 +106,32 @@ def zhi_idx(z): return DI_ZHI.index(z)
 def wx_of(g): return TIAN_GAN_WU_XING[g]
 def ri_yin(g): return gan_idx(g) % 2  # 0阳1阴
 
-def shi_shen(ri_gan: str, gan: str) -> str:
-    """十神"""
+def shi_shen(ri_gan: str, gan: str, mark_xiao: bool = False, tian_gan_list: list = None) -> str:
+    """十神
+    新增: mark_xiao=True 时，偏印在天干且食神/伤官也在天干 → 标记为"枭神"
+    """
+    ri = gan_idx(ri_gan); g = gan_idx(gan)
+    rw = WX_ORDER.index(wx_of(ri_gan)); gw = WX_ORDER.index(wx_of(gan))
+    ry = ri % 2; gy = g % 2
+    if rw == gw: return "比肩" if ry==gy else "劫财"
+    if gw == (rw+1)%5: return "食神" if ry==gy else "伤官"
+    if gw == (rw+2)%5: return "正财" if ry!=gy else "偏财"
+    if gw == (rw+3)%5: return "正官" if ry!=gy else "七杀"
+    if gw == (rw+4)%5:
+        # 偏印 → 检查是否枭神夺食
+        if mark_xiao and tian_gan_list:
+            # 检查天干是否有食神或伤官
+            for tg in tian_gan_list:
+                if tg:
+                    tg_ss = _raw_shi_shen(ri_gan, tg)
+                    if tg_ss in ("食神", "伤官"):
+                        return "枭神"  # 夺食状态
+        return "偏印"
+    return ""
+
+
+def _raw_shi_shen(ri_gan: str, gan: str) -> str:
+    """内部原始十神（无mark_xiao逻辑，避免递归）"""
     ri = gan_idx(ri_gan); g = gan_idx(gan)
     rw = WX_ORDER.index(wx_of(ri_gan)); gw = WX_ORDER.index(wx_of(gan))
     ry = ri % 2; gy = g % 2
@@ -534,30 +558,221 @@ GE_JU_NAME = {"食神":"食神格","伤官":"伤官格",
               "正官":"正官格","七杀":"七杀格",
               "正印":"正印格","偏印":"偏印格"}
 
+# ── 十大格局排名表 ──
+TOP_10_GE_JU = [
+    (1, "食神制杀格/杀印相生",
+     "食神+七杀同时出现（食神制杀）或印星+七杀（杀印相生）"),
+    (2, "伤官配印格",
+     "伤官+印星同时出现"),
+    (3, "财官双美格",
+     "正官/七杀+财星同时出现且相生"),
+    (4, "从官杀格",
+     "从弱格+官杀为主要克泄"),
+    (5, "从财格",
+     "从弱格+财星为主要克泄"),
+    (6, "官印相生格",
+     "正官+正印相生"),
+    (7, "食伤生财格",
+     "食伤+财星同时出现"),
+    (8, "五行流通格",
+     "五行无冲无克，用神得生扶"),
+    (9, "专旺格",
+     "全局五行专旺"),
+    (10, "木火通明格",
+     "木火两旺+无水破局"),
+]
+
+# 格局名 → (rank, rank_name) 映射（仅对正八格）
+GE_JU_RANK_MAP = {
+    "食神格": (1, "食神制杀格/杀印相生"),
+    "伤官格": (2, "伤官配印格"),
+    "正官格": (3, "财官双美格"),
+    "七杀格": (3, "财官双美格"),
+    "正财格": (3, "财官双美格"),
+    "偏财格": (3, "财官双美格"),
+    "正印格": (6, "官印相生格"),
+    "偏印格": (6, "官印相生格"),
+}
+
+
+def _detect_top10_ge_ju(ri_gan: str,
+                        nian_gan: str, yue_gan: str, shi_gan: str,
+                        nian_zhi: str, yue_zhi: str, ri_zhi: str, shi_zhi: str,
+                        sqr_level: str = "", zhuan_wang_flag: bool = False,
+                        is_hua_qi: bool = False) -> dict:
+    """
+    检测十大格局（九龙道长_八字最好的格局排名）
+    返回 {"ge_ju": str, "rank": int|None, "rank_name": str|None, "details": list}
+    """
+    details = []
+    ge_ju_base = None  # 基础格局名（正八格名称）
+    rank = None
+    rank_name = None
+
+    # 构建 十神列表（四柱天干）
+    tian_gan_list = [nian_gan, yue_gan, shi_gan]
+    all_ss = set()
+    # 天干十神
+    for tg in tian_gan_list:
+        if tg:
+            all_ss.add(shi_shen(ri_gan, tg, mark_xiao=False))
+    # 月支+日支+时支本气十神
+    for zhi in [yue_zhi, ri_zhi, shi_zhi]:
+        cg = DI_ZHI_CANG_GAN[zhi][0][0]
+        all_ss.add(shi_shen(ri_gan, cg, mark_xiao=False))
+
+    has_shi_shen = "食神" in all_ss
+    has_shang_guan = "伤官" in all_ss
+    has_zheng_yin = "正印" in all_ss
+    has_pian_yin = "偏印" in all_ss
+    has_zheng_guan = "正官" in all_ss
+    has_qi_sha = "七杀" in all_ss
+    has_zheng_cai = "正财" in all_ss
+    has_pian_cai = "偏财" in all_ss
+    has_yin = has_zheng_yin or has_pian_yin
+    has_guan_sha = has_zheng_guan or has_qi_sha
+    has_cai = has_zheng_cai or has_pian_cai
+    has_shi_shang = has_shi_shen or has_shang_guan
+
+    # 天干五行计数（用于木火通明）
+    gan_wx_count = {"木": 0, "火": 0, "水": 0, "金": 0, "土": 0}
+    for tg in tian_gan_list:
+        if tg:
+            gan_wx_count[TIAN_GAN_WU_XING[tg]] += 1
+
+    # 地支五行计数
+    zhi_wx_count = {"木": 0, "火": 0, "水": 0, "金": 0, "土": 0}
+    for zhi in [nian_zhi, yue_zhi, ri_zhi, shi_zhi]:
+        zhi_wx_count[DI_ZHI_WU_XING[zhi]] += 1
+
+    # 四柱地支列表
+    zhi_list = [nian_zhi, yue_zhi, ri_zhi, shi_zhi]
+
+    # ════════════════════════════════════════════
+    # 检测逻辑（按优先级从高到低）
+    # ════════════════════════════════════════════
+
+    # ── 第9名：专旺格 ──
+    if zhuan_wang_flag:
+        rank = 9
+        rank_name = "专旺格"
+        details.append("全局五行专旺，构成专旺格")
+        return {"ge_ju": rank_name, "rank": rank, "rank_name": rank_name, "details": details}
+
+    # ── 第5名：从财格（从弱格+财星为主要克泄） ──
+    if sqr_level == "从弱" and has_cai and has_shi_shang:
+        # 从弱格+有财+有食伤→从财格
+        rank = 5
+        rank_name = "从财格"
+        details.append("从弱格，财星旺相，从财格成立")
+        return {"ge_ju": rank_name, "rank": rank, "rank_name": rank_name, "details": details}
+
+    # ── 第4名：从官杀格（从弱格+官杀为主要克泄） ──
+    if sqr_level == "从弱" and has_guan_sha:
+        rank = 4
+        rank_name = "从官杀格"
+        details.append("从弱格，官杀旺相，从官杀格成立")
+        return {"ge_ju": rank_name, "rank": rank, "rank_name": rank_name, "details": details}
+
+    # ── 第10名：木火通明格 ──
+    mu_count = gan_wx_count["木"] * 3 + zhi_wx_count["木"] * 4
+    huo_count = gan_wx_count["火"] * 3 + zhi_wx_count["火"] * 4
+    shui_count = gan_wx_count["水"] * 3 + zhi_wx_count["水"] * 4
+    if mu_count >= 8 and huo_count >= 8 and shui_count < 4:
+        rank = 10
+        rank_name = "木火通明格"
+        details.append(f"木能量{mu_count}+火能量{huo_count}，无水破局，木火通明格成立")
+        return {"ge_ju": rank_name, "rank": rank, "rank_name": rank_name, "details": details}
+
+    # ── 第1名：食神制杀格/杀印相生 ──
+    if has_shi_shen and has_qi_sha:
+        rank = 1
+        rank_name = "食神制杀格/杀印相生"
+        details.append("食神+七杀同时出现，食神制杀格成立")
+        return {"ge_ju": rank_name, "rank": rank, "rank_name": rank_name, "details": details}
+    if has_yin and has_qi_sha:
+        rank = 1
+        rank_name = "食神制杀格/杀印相生"
+        details.append("印星+七杀同时出现，杀印相生格成立")
+        return {"ge_ju": rank_name, "rank": rank, "rank_name": rank_name, "details": details}
+
+    # ── 第2名：伤官配印格 ──
+    if has_shang_guan and has_yin:
+        rank = 2
+        rank_name = "伤官配印格"
+        details.append("伤官+印星同时出现，伤官配印格成立")
+        return {"ge_ju": rank_name, "rank": rank, "rank_name": rank_name, "details": details}
+
+    # ── 第3名：财官双美格 ──
+    if has_guan_sha and has_cai:
+        rank = 3
+        rank_name = "财官双美格"
+        details.append("官杀+财星同时出现且相生，财官双美格成立")
+        return {"ge_ju": rank_name, "rank": rank, "rank_name": rank_name, "details": details}
+
+    # ── 第6名：官印相生格 ──
+    if has_zheng_guan and has_zheng_yin:
+        rank = 6
+        rank_name = "官印相生格"
+        details.append("正官+正印相生，官印相生格成立")
+        return {"ge_ju": rank_name, "rank": rank, "rank_name": rank_name, "details": details}
+
+    # ── 第7名：食伤生财格 ──
+    if has_shi_shang and has_cai:
+        rank = 7
+        rank_name = "食伤生财格"
+        details.append("食伤+财星同时出现，食伤生财格成立")
+        return {"ge_ju": rank_name, "rank": rank, "rank_name": rank_name, "details": details}
+
+    # ── 第8名：五行流通格（无冲无克，简化检测） ──
+    # 检查四柱地支之间是否有六冲
+    has_chong = False
+    for i, z1 in enumerate(zhi_list):
+        for z2 in zhi_list[i+1:]:
+            if LIU_CHONG.get(z1) == z2 or LIU_CHONG.get(z2) == z1:
+                has_chong = True
+                break
+        if has_chong:
+            break
+    if not has_chong and has_yin and has_shi_shang:
+        # 无冲+有印+有食伤 → 五行流通格
+        rank = 8
+        rank_name = "五行流通格"
+        details.append("五行无冲无克，用神得生扶，五行流通格成立")
+        return {"ge_ju": rank_name, "rank": rank, "rank_name": rank_name, "details": details}
+
+    return None
+
+
 def get_ge_ju(ri_gan: str, yue_zhi: str,
-              nian_gan: str = "", yue_gan: str = "", shi_gan: str = "") -> str:
+              nian_gan: str = "", yue_gan: str = "", shi_gan: str = "",
+              nian_zhi: str = "", ri_zhi: str = "", shi_zhi: str = "",
+              sqr_level: str = "", zhuan_wang_flag: bool = False,
+              is_hua_qi: bool = False) -> dict:
     """
-    格局 v7.3：严格遵循知识库正格判定规则
+    格局 v7.4：十大格局分级增强版
     ────────────────
-    核心规则（每格）：「月令本气为日主X，或月干透出X」
+    返回格式：
+      {"ge_ju": "正官格", "rank": 3, "rank_name": "财官双美", "details": [...]}
+      非十大格局时只返回 ge_ju 字段，无 rank
     ────────────────
-    判定流程（四维）：
-      第1维：月令本气 → 取月支主气藏干的十神
-        如为正八格之一 → 直接取格
-        如为比劫 → 不入格，进入下一维
-      
-      第2维：月干透出 → 月柱天干的十神
-        如为正八格之一 → 取该格
-      
-      第3维：月令中/余气透干
-        月支中气/余气的十神如在正八格中
-        且该藏干字符在年/月/时天干中出现(字符匹配) → 取该格
-      
-      第4维：月令中/余气取首个非比劫
-        无人透干时，取月令中/余气中首个在正八格的
-      
-      均不匹配 → 返回"无正格"
+    判定流程：
+      ① 先检测十大格局（特殊组合）
+      ② 若非十大格局，走正八格四维判定
     """
+    details = []
+
+    # ── 第0步：先检测十大格局 ──
+    top10 = _detect_top10_ge_ju(
+        ri_gan, nian_gan, yue_gan, shi_gan,
+        nian_zhi, yue_zhi, ri_zhi, shi_zhi,
+        sqr_level=sqr_level, zhuan_wang_flag=zhuan_wang_flag,
+        is_hua_qi=is_hua_qi,
+    )
+    if top10 is not None:
+        return top10
+
+    # ── 非十大格局：走正八格四维判定 ──
     tian_gan = [nian_gan, yue_gan, shi_gan]
     cang_gan_list = DI_ZHI_CANG_GAN[yue_zhi]  # [本气, 中气, 余气]
     
@@ -565,13 +780,20 @@ def get_ge_ju(ri_gan: str, yue_zhi: str,
     ben_qi_gan = cang_gan_list[0][0]  # 本气对应的天干
     ben_qi_ss = shi_shen(ri_gan, ben_qi_gan)
     if ben_qi_ss in ZHENG_BA_GE:
-        return GE_JU_NAME[ben_qi_ss]
+        gj_name = GE_JU_NAME[ben_qi_ss]
+        details.append(f"月令本气{ben_qi_gan}为{ben_qi_ss}，取{gj_name}")
+        return {"ge_ju": gj_name, "details": details, "rank": None, "rank_name": None}
     
     # ── 第2维：月干透出 ──
     if yue_gan:
         yue_gan_ss = shi_shen(ri_gan, yue_gan)
         if yue_gan_ss in ZHENG_BA_GE:
-            return GE_JU_NAME[yue_gan_ss]
+            gj_name = GE_JU_NAME[yue_gan_ss]
+            details.append(f"月干{yue_gan}为{yue_gan_ss}，取{gj_name}")
+            rank_info = GE_JU_RANK_MAP.get(gj_name)
+            if rank_info:
+                return {"ge_ju": gj_name, "rank": rank_info[0], "rank_name": rank_info[1], "details": details}
+            return {"ge_ju": gj_name, "details": details}
     
     # ── 第3维：月令中/余气透干（字符匹配）──
     for cg, wt in cang_gan_list[1:]:  # 跳过本气
@@ -580,15 +802,25 @@ def get_ge_ju(ri_gan: str, yue_zhi: str,
             continue
         for tg in tian_gan:
             if tg and tg == cg:  # 字符匹配
-                return GE_JU_NAME[cg_ss]
+                gj_name = GE_JU_NAME[cg_ss]
+                details.append(f"月令{cg}({cg_ss})透干{tg}，取{gj_name}")
+                rank_info = GE_JU_RANK_MAP.get(gj_name)
+                if rank_info:
+                    return {"ge_ju": gj_name, "rank": rank_info[0], "rank_name": rank_info[1], "details": details}
+                return {"ge_ju": gj_name, "details": details}
     
     # ── 第4维：月令中/余气取首个非比劫 ──
     for cg, wt in cang_gan_list:
         cg_ss = shi_shen(ri_gan, cg)
         if cg_ss in ZHENG_BA_GE:
-            return GE_JU_NAME[cg_ss]
+            gj_name = GE_JU_NAME[cg_ss]
+            details.append(f"月令{cg}({cg_ss})取首非比劫，得{gj_name}")
+            rank_info = GE_JU_RANK_MAP.get(gj_name)
+            if rank_info:
+                return {"ge_ju": gj_name, "rank": rank_info[0], "rank_name": rank_info[1], "details": details}
+            return {"ge_ju": gj_name, "details": details}
     
-    return "无正格"
+    return {"ge_ju": "无正格", "details": []}
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 喜用神 / 忌神
@@ -2200,13 +2432,251 @@ def calc_shi_ye(ge_ju: str, shen_qiang: dict, da_yun_scores: list) -> dict:
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 主入口 v7.1
+# 婚姻分析引擎 v1.0
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+def calc_hunyin(ri_gan: str, nian_gan: str, yue_gan: str, shi_gan: str,
+                nian_zhi: str, yue_zhi: str, ri_zhi: str, shi_zhi: str,
+                gender: int = 1, xi_shen: list = None,
+                ji_shen: list = None) -> dict:
+    """
+    婚姻分析引擎 v1.0
+    基于金鉴真人·婚姻子女断事体系
+
+    规则来源：
+    - 婚姻子女知识点提取报告.md
+    - 金鉴真人_婚姻子女重点事件断事体系大全_补遗v1.0_20260606.md
+    - bazi-marriage-analysis/SKILL.md
+
+    返回值：
+      {"fuqi_xing": "正财/正官",
+       "fuqi_gong": {"zhi": "酉", "status": "喜/忌/冲/刑/害/破", "score": 0-100},
+       "guan_sha_hun_za": False,
+       "shang_guan_jian_guan": False,
+       "ru_mu": False,
+       "score": 75,
+       "level": "良好",
+       "details": [...]}
+    """
+    if xi_shen is None:
+        xi_shen = []
+    if ji_shen is None:
+        ji_shen = []
+
+    details = []
+    ri_wx = TIAN_GAN_WU_XING[ri_gan]
+    ri_idx = WX_ORDER.index(ri_wx)
+
+    # ── 1. 夫妻星定位 ──
+    is_male = (gender == 1)
+    if is_male:
+        # 男命：正财=妻星，偏财=偏缘
+        fuqi_wx = WX_ORDER[(ri_idx + 2) % 5]  # 我克者财
+        fuqi_xing = "正财"
+        fuqi_alt = "偏财"
+        fuqi_label = "妻星"
+    else:
+        # 女命：正官=夫星，七杀=偏缘
+        fuqi_wx = WX_ORDER[(ri_idx + 3) % 5]  # 克我者官杀
+        fuqi_xing = "正官"
+        fuqi_alt = "七杀"
+        fuqi_label = "夫星"
+
+    # 检测天干是否有夫妻星
+    tian_gan_list = [nian_gan, yue_gan, shi_gan]
+    fuqi_tg_found = False
+    for tg in tian_gan_list:
+        if tg:
+            tg_ss = shi_shen(ri_gan, tg)
+            if tg_ss == fuqi_xing:
+                fuqi_tg_found = True
+                details.append(f"天干{tg}为{fuqi_xing}({fuqi_label})透出")
+            elif tg_ss == fuqi_alt:
+                details.append(f"天干{tg}为{fuqi_alt}(偏{fuqi_label})")
+
+    # 检测地支是否有夫妻星（藏干）
+    all_zhi = [nian_zhi, yue_zhi, ri_zhi, shi_zhi]
+    fuqi_score = 0
+    for zhi in all_zhi:
+        for cg, wt in DI_ZHI_CANG_GAN[zhi]:
+            cg_ss = shi_shen(ri_gan, cg)
+            if cg_ss == fuqi_xing:
+                fuqi_score += wt / 100
+                details.append(f"地支{zhi}藏{cg}为{fuqi_xing}({fuqi_label}) 权重{wt}%")
+            elif cg_ss == fuqi_alt:
+                fuqi_score += wt / 200  # 偏星权重减半
+                details.append(f"地支{zhi}藏{cg}为{fuqi_alt}(偏{fuqi_label}) 权重{wt}%")
+
+    fuqi_xing_actual = fuqi_xing
+    if not fuqi_tg_found and fuqi_score < 0.5:
+        # 无正夫妻星，看替代
+        for tg in tian_gan_list:
+            if tg:
+                tg_ss = shi_shen(ri_gan, tg)
+                if tg_ss == fuqi_alt:
+                    fuqi_xing_actual = fuqi_alt
+                    details.append(f"无{fuqi_xing}，以{fuqi_alt}为{fuqi_label}")
+                    break
+        else:
+            # 官杀皆无→看夫妻宫
+            ri_zhi_ss = shi_shen(ri_gan, DI_ZHI_CANG_GAN[ri_zhi][0][0])
+            details.append(f"无{fuqi_xing}/{fuqi_alt}，看夫妻宫十神{ri_zhi_ss}")
+
+    # ── 2. 夫妻宫（日支）喜忌判定 ──
+    ri_zhi_wx = DI_ZHI_WU_XING[ri_zhi]
+    ri_zhi_ss = shi_shen(ri_gan, DI_ZHI_CANG_GAN[ri_zhi][0][0])
+    
+    fuqi_gong_status = "中"
+    if ri_zhi_wx in xi_shen:
+        fuqi_gong_status = "喜"
+        details.append(f"日支{ri_zhi}({ri_zhi_wx})为喜用神，夫妻宫吉利")
+    elif ri_zhi_wx in ji_shen:
+        fuqi_gong_status = "忌"
+        details.append(f"日支{ri_zhi}({ri_zhi_wx})为忌神，夫妻宫不利")
+
+    # ── 3. 夫妻宫刑冲害破检测 ──
+    fuqi_gong_score = 100
+    for zhi in all_zhi:
+        if zhi == ri_zhi:
+            continue
+        rel = calc_energy_relationship(ri_zhi, zhi)
+        if rel and rel.get("type"):
+            rtype = rel["type"]
+            if rtype == "六冲":
+                fuqi_gong_status += "+冲"
+                fuqi_gong_score -= 70
+                details.append(f"日支{ri_zhi}与{zhi}相冲，婚姻不稳定")
+            elif rtype == "三刑":
+                fuqi_gong_status += "+刑"
+                fuqi_gong_score -= 50
+                details.append(f"日支{ri_zhi}与{zhi}相刑，婚姻多矛盾")
+            elif rtype == "六害":
+                fuqi_gong_status += "+害"
+                fuqi_gong_score -= 30
+                details.append(f"日支{ri_zhi}与{zhi}相害，有第三者/小人")
+            elif rtype == "六破":
+                fuqi_gong_status += "+破"
+                fuqi_gong_score -= 20
+                details.append(f"日支{ri_zhi}与{zhi}相破，婚姻轻微不顺")
+            elif rtype == "自刑":
+                fuqi_gong_status += "+自刑"
+                fuqi_gong_score -= 20
+                details.append(f"日支{ri_zhi}自刑，婚姻自我纠结")
+
+    # 日支十神扣分
+    if is_male:
+        if ri_zhi_ss == "比肩":
+            fuqi_gong_score -= 10
+            details.append("男命日支比肩，婚姻有竞争")
+        elif ri_zhi_ss == "劫财":
+            fuqi_gong_score -= 20
+            details.append("男命日支劫财，离婚率较高")
+    else:
+        if ri_zhi_ss == "食神":
+            fuqi_gong_score -= 10
+            details.append("女命日支食神，欲望较强")
+        elif ri_zhi_ss == "伤官":
+            fuqi_gong_score -= 20
+            details.append("女命日支伤官，女坐伤官必克夫")
+
+    fuqi_gong_score = max(0, min(100, fuqi_gong_score))
+
+    # ── 4. 官杀混杂检测（女命） ──
+    guan_sha_hun_za = False
+    if not is_male:
+        has_zheng_guan = False
+        has_qi_sha = False
+        for tg in tian_gan_list:
+            if tg:
+                tg_ss = shi_shen(ri_gan, tg)
+                if tg_ss == "正官":
+                    has_zheng_guan = True
+                elif tg_ss == "七杀":
+                    has_qi_sha = True
+        # 藏干也检查
+        for zhi in all_zhi:
+            for cg, wt in DI_ZHI_CANG_GAN[zhi]:
+                cg_ss = shi_shen(ri_gan, cg)
+                if cg_ss == "正官":
+                    has_zheng_guan = True
+                elif cg_ss == "七杀":
+                    has_qi_sha = True
+        if has_zheng_guan and has_qi_sha:
+            guan_sha_hun_za = True
+            details.append("官杀混杂（正官+七杀同时存在），感情复杂")
+            fuqi_gong_score -= 20
+
+    # ── 5. 伤官见官检测（女命） ──
+    shang_guan_jian_guan = False
+    if not is_male:
+        has_shang_guan = False
+        has_zheng_guan = False
+        for tg in tian_gan_list:
+            if tg:
+                tg_ss = shi_shen(ri_gan, tg)
+                if tg_ss == "伤官":
+                    has_shang_guan = True
+                elif tg_ss == "正官":
+                    has_zheng_guan = True
+        if has_shang_guan and has_zheng_guan:
+            shang_guan_jian_guan = True
+            details.append("伤官见官（天干同时有伤官和正官），婚姻最大考验")
+            fuqi_gong_score -= 25
+
+    # ── 6. 入墓检测（夫妻星能量<40分） ──
+    ru_mu = False
+    if fuqi_score < 0.4:
+        ru_mu = True
+        details.append(f"{fuqi_xing_actual}能量{fuqi_score:.1f}<0.4，入墓状态，{fuqi_label}缘分浅")
+
+    # ── 7. 日支与日主生克关系（谁爱谁更多） ──
+    # 日支的五行生日干的五行 → 配偶爱自己更多
+    # 日干的五行生日支的五行 → 自己爱配偶更多
+    if WX_SHENG.get(ri_zhi_wx) == ri_wx:
+        details.append(f"日支{ri_zhi}({ri_zhi_wx})生日干{ri_gan}({ri_wx})，配偶爱你更多")
+        fuqi_gong_score += 5
+    elif WX_SHENG.get(ri_wx) == ri_zhi_wx:
+        details.append(f"日干{ri_gan}({ri_wx})生日支{ri_zhi}({ri_zhi_wx})，你爱配偶更多")
+        fuqi_gong_score += 2
+
+    # ── 8. 整体评分和等级 ──
+    score = min(100, max(0, fuqi_gong_score))
+    if score >= 80:
+        level = "优秀"
+    elif score >= 65:
+        level = "良好"
+    elif score >= 50:
+        level = "中平"
+    else:
+        level = "较差"
+
+    fuqi_gong = {
+        "zhi": ri_zhi,
+        "shi_shen": ri_zhi_ss,
+        "status": fuqi_gong_status,
+        "score": fuqi_gong_score,
+    }
+
+    return {
+        "fuqi_xing": fuqi_xing_actual,
+        "fuqi_gong": fuqi_gong,
+        "guan_sha_hun_za": guan_sha_hun_za,
+        "shang_guan_jian_guan": shang_guan_jian_guan,
+        "ru_mu": ru_mu,
+        "score": score,
+        "level": level,
+        "details": details,
+    }
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 主入口 v7.2
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 def calculate_bazi(year: int, month: int, day: int,
                    hour: int = 12, minute: int = 0,
                    is_lunar: bool = False, gender: int = 1) -> dict:
-    """八字排盘主入口 v7.1"""
+    """八字排盘主入口 v7.2"""
     # 农历转阳历（如适用）
     if is_lunar:
         try:
@@ -2236,16 +2706,35 @@ def calculate_bazi(year: int, month: int, day: int,
     
     # 分析
     sqr = calc_shen_qiang_ruo(rg, ng, yg, sg, nz, yz, rz, sz)
-    gj = get_ge_ju(rg, yz, ng, yg, sg)
-    # 从弱格/从强格覆盖普通格局判定
+
+    # 先调用能量分析/专旺格检测（格局增强需要）
+    wx_energy = calc_wu_xing_energy(ng, yg, rg, sg, nz, yz, rz, sz)
+    wx_pcts = wx_energy.get("percentages", wx_energy) if isinstance(wx_energy, dict) else {}
+    zhuan_wang = check_zhuan_wang_ge(rg, wx_pcts, sqr["score"])
+
+    # 格局判定（v7.4：十大格局分级增强版）
+    gj_dict = get_ge_ju(rg, yz, ng, yg, sg,
+                         nian_zhi=nz, ri_zhi=rz, shi_zhi=sz,
+                         sqr_level=sqr["level"],
+                         zhuan_wang_flag=zhuan_wang.get("is_zhuan_wang", False))
+    gj_str = gj_dict["ge_ju"]
+    # 从弱格/从强格覆盖普通格局判定（但保留rank信息）
     if sqr["level"] == "从弱":
-        gj = "从弱格"
+        gj_str = "从弱格"
+        if gj_dict.get("rank") is None:
+            gj_dict["rank"] = 4 if gj_dict.get("rank_name") != "从财格" else 5
+            gj_dict["rank_name"] = gj_dict.get("rank_name") or "从弱格"
     elif sqr["level"] == "从强":
-        gj = "从强格"
+        gj_str = "从强格"
+    # 专旺格覆盖
+    if zhuan_wang.get("is_zhuan_wang") and gj_dict.get("rank") is None:
+        gj_str = zhuan_wang.get("name", "专旺格")
+        gj_dict["rank"] = 9
+        gj_dict["rank_name"] = "专旺格"
+
     xys = get_xi_yong_shen(rg, sqr["level"], sqr["score"])
     dy = calc_da_yun(ng, nz, gender, year, month, day, hour, minute)
     cx = calc_cai_xing(rg, ng, yg, sg, nz, yz, rz, sz, sq_level=sqr["level"])
-    wx_energy = calc_wu_xing_energy(ng, yg, rg, sg, nz, yz, rz, sz)
     ss_sha = calc_shensha(rg, rz, ng, nz, yg, yz, sg, sz, gender)
     ss_flat = calc_all_shensha_with_positions(rg, rz, ng, nz, yg, yz, sg, sz, gender)
     ss_summary = calc_shensha_summary(rg, rz, ng, nz, yg, yz, sg, sz, gender)
@@ -2256,12 +2745,9 @@ def calculate_bazi(year: int, month: int, day: int,
     tian_gan_list = [ng, yg, rg, sg]
     tiao_hou = calc_tiao_hou(rg, yz, tian_gan_list)
     # 通关用神
-    wx_pcts = wx_energy.get("percentages", wx_energy) if isinstance(wx_energy, dict) else {}
     tong_guan = calc_tong_guan(rg, wx_pcts)
     # 假旺真弱
     jwzr = check_jia_wang_zhen_ruo(rg, sqr["score"], sqr["level"], nz, yz, rz, sz, tian_gan_list)
-    # 专旺格
-    zhuan_wang = check_zhuan_wang_ge(rg, wx_pcts, sqr["score"])
     # 化气格
     hua_qi = check_hua_qi_ge(rg, tian_gan_list, yz)
     # 大运吉凶 v2.0（喜用神驱动评分）
@@ -2274,7 +2760,7 @@ def calculate_bazi(year: int, month: int, day: int,
     # 财富量级（知识库六态矩阵法v8.0）
     cai_fu = calc_cai_fu_deng_ji(
         cx.get("score", 0), sqr["score"], sqr["level"],
-        rg, gj,
+        rg, gj_str,
         nian_gan=ng, yue_gan=yg, shi_gan=sg,
         has_ku=cx.get("has_ku", False)
     )
@@ -2290,8 +2776,14 @@ def calculate_bazi(year: int, month: int, day: int,
     # 学历评分 v8.0（第0层年柱有印三档法+六步排查+从弱格特殊处理）
     dy_list = dy.get("da_yun", []) if isinstance(dy, dict) else []
     xy = calc_xue_ye(rg, ng, yg, sg, nz, yz, rz, sz,
-                     ge_ju=gj, shen_score=sqr["score"], da_yun_list=dy_list,
+                     ge_ju=gj_str, shen_score=sqr["score"], da_yun_list=dy_list,
                      sqr_level=sqr["level"])
+
+    # 婚姻分析引擎 v1.0
+    hunyin = calc_hunyin(rg, ng, yg, sg, nz, yz, rz, sz,
+                          gender=gender,
+                          xi_shen=xys.get("xi_shen", []),
+                          ji_shen=xys.get("ji_shen", []))
 
     basic = {"ba_zi":ba_zi,"ri_zhu":rg+rz,"ri_gan":rg,"ri_zhi":rz,
              "nian_gan":ng,"nian_zhi":nz,"yue_gan":yg,"yue_zhi":yz,
@@ -2302,7 +2794,8 @@ def calculate_bazi(year: int, month: int, day: int,
              "shensha":ss_sha,
              "shensha_flat":ss_flat}
 
-    analysis = {"shen_qiang_ruo":sqr,"ge_ju":gj,"xi_yong_shen":xys,
+    analysis = {"shen_qiang_ruo":sqr,"ge_ju":gj_str,"ge_ju_detail":gj_dict,
+                "xi_yong_shen":xys,
                 "cai_xing":cx,"da_yun":dy,"wu_xing_energy":wx_energy,
                 "shensha_summary":ss_summary,"energy_analysis":energy_analysis,
                 "tiao_hou":tiao_hou,"tong_guan":tong_guan,
@@ -2310,6 +2803,7 @@ def calculate_bazi(year: int, month: int, day: int,
                 "hua_qi_ge":hua_qi,"da_yun_ji_xiong":da_yun_jx,
                 "cai_fu_deng_ji":cai_fu,"cai_yun":cai_fu,
                 "liu_nian":liu_nian_list,
-                "xue_ye":xy,"shi_ye":calc_shi_ye(gj, sqr, da_yun_jx)}
+                "xue_ye":xy,"shi_ye":calc_shi_ye(gj_str, sqr, da_yun_jx),
+                "hun_yin":hunyin}
     
     return {"basic":basic,"analysis":analysis}
