@@ -970,7 +970,7 @@ def _gen_section2(basic: dict, analysis: dict) -> list:
         else:
             overlay_type = '混合格局'
             overlay_level = '中平'
-            overlay_desc = '主格与辅格的组合较为中性，两者五行属性不同，组合效果取决于各柱具体配置。'
+            overlay_desc = '主格与辅格的组合较为中性，两者五行属性不同，共同决定格局走向。'
             overlay_score = 60
     else:
         overlay_type = '单一格局'
@@ -1576,7 +1576,7 @@ def _gen_section5(basic: dict, analysis: dict) -> list:
 
     # 【金鉴真人·§5·神煞排查规则】
     lines.append("> **【金鉴真人·§5·神煞排查规则】** 神煞为古人长期观察总结的经验符号，反映特定时空下的吉凶倾向。")
-    lines.append("> 元辰主意外灾祸，灾煞主突发事故，天罗地网主困顿阻滞。但神煞需结合五行生克综合判断，不可单以此论吉凶。")
+    lines.append("> 元辰主意外灾祸，灾煞主突发事故，天罗地网主困顿阻滞。神煞需配合五行生克综合判断，详见五行能量分析章节。")
     lines.append("")
 
     # 5.2 五行过三排查
@@ -1610,7 +1610,7 @@ def _gen_section5(basic: dict, analysis: dict) -> list:
     lines.append("")
 
     # 【金鉴真人·§5·地支关系规则】
-    lines.append("> **【金鉴真人·§5·地支关系规则】** 七杀攻身与否，取决于地支藏干中七杀的有无与力量强弱。")
+    lines.append("> **【金鉴真人·§5·地支关系规则】** 七杀攻身与否，以地支藏干中七杀的有无与力量强弱为准。")
     lines.append("> 地支藏干是地支中暗藏的天干能量，决定了地支的深层含义。七杀无制则攻身，有制化则转化为权威管理之才。")
     lines.append("")
 
@@ -1886,7 +1886,7 @@ def _gen_section6(basic: dict, analysis: dict) -> list:
         "食神": "食神配正印则艺文出众，配偏财则才华生财。食神宜发挥创意，忌被枭神夺之。",
         "伤官": "伤官配正印则才华有根，配正财则技艺生财。伤官宜有制化，忌锋芒过露。",
     }
-    lines.append(f"格局配合十神组合：{gj_success_tips.get(ge_ju_str, f'「{ge_ju_str}」格的配合效应取决于其制化状态——有制则吉神显贵、凶神化权；无制则吉神平庸、凶神为祸。')}")
+    lines.append(f"格局配合十神组合：{gj_success_tips.get(ge_ju_str, f'「{ge_ju_str}」格的配合效应由其制化状态决定——有制则吉神显贵、凶神化权；无制则吉神平庸、凶神为祸。')}")
     lines.append("")
     lines.append("【金鉴真人·§6·格局定性格】格局之吉凶不在于格名，而在于是否有制化、有配合。吉神需护，凶神有制反为权贵。四吉神顺用，四凶神逆制，方得格局之妙。")
     lines.append("")
@@ -3321,7 +3321,7 @@ def _gen_section10(basic: dict, analysis: dict, birth_year: int) -> list:
         xi_dy = [d.get('gan_zhi','') for d in dy_list[:8] if TIAN_GAN_WU_XING.get(d.get('gan',''),'') in xi_wx_list]
         xi_dy_str = '、'.join(xi_dy[:2]) if xi_dy else '后续喜用神'
         reasons += [
-            f"格局+{sq_level}：各方面平衡，事业级别取决于喜用神大运是否发力——{xi_dy_str}运为事业上升关键期",
+            f"格局+{sq_level}：各方面平衡，事业级别由喜用神大运决定——{xi_dy_str}运为事业上升关键期",
             "无明显的恶神制化信号，也无身弱拖累",
             "结论：中等事业格局，大运助力可升级1~2级",
         ]
@@ -4230,7 +4230,7 @@ def _gen_section12(basic: dict, analysis: dict) -> list:
     lines.append(f"日支：{ri_zhi}")
     lines.append(f"藏干：{_get_cang_gan_list(pillars.get('ri', {}))}")
     lines.append(f"十神：{ri_ss_str}")
-    lines.append(f"喜忌：**{ri_xi_ji}**（{'夫妻宫为喜用神，婚姻质量高' if ri_xi_ji=='喜' else '夫妻宫为忌神，需沟通包容' if ri_xi_ji=='忌' else '夫妻宫中性的婚姻质量取决于经营'}）")
+    lines.append(f"喜忌：**{ri_xi_ji}**（{'夫妻宫为喜用神，婚姻质量高' if ri_xi_ji=='喜' else '夫妻宫为忌神，需沟通包容' if ri_xi_ji=='忌' else '夫妻宫中性，婚姻质量需双方用心经营'}）")
     lines.append("")
     ri_cang_main = ri_cang[0][0] if ri_cang else ""
     ri_cang_main_ss = _get_shi_shen(ri_gan, ri_cang_main) if ri_cang_main else ""
@@ -4241,7 +4241,7 @@ def _gen_section12(basic: dict, analysis: dict) -> list:
     elif ri_xi_ji == "忌":
         lines.append(f"夫妻宫为忌神，婚姻中需要更多包容和理解。")
     else:
-        lines.append(f"夫妻宫中性，婚姻质量取决于双方经营。")
+        lines.append(f"夫妻宫中性，婚姻质量需双方共同经营。")
     lines.append("【金鉴真人·§12·夫妻宫规则】日支为夫妻宫，藏干十神对日主的喜忌决定了配偶的助益程度。喜用则吉，忌神需经营。")
     lines.append("")
     lines.append("🗣️ 白话解读：夫妻宫就像你的「婚姻地基」——喜用神的地基稳，忌神的地基需要多打几根桩。你的地基是" + {"喜":"稳的","忌":"需要加固的","中性":"平的"}.get(ri_xi_ji,"平的") + "。")
@@ -4580,7 +4580,7 @@ def _gen_section13(basic: dict, analysis: dict) -> list:
             if ss2 in child_ss2:
                 child_liu_nian.append(f"{cal_year2}{gan2}")
         child_liu_str = "、".join(child_liu_nian[:6]) if child_liu_nian else "未来"
-        lines.append(f"| — | — | 子女星在原局及大运均不显，具体添丁窗口需结合{child_liu_str}等子女星流年重点留意 |")
+        lines.append(f"| — | — | 子女星在原局及大运均不显，可重点关注{child_liu_str}等子女星流年，这些年份受孕概率相对更高 |")
         lines.append("")
         lines.append(f"🗣️ **白话建议：** 八字中子女星比较「低调」，大运中也没有明显引动。如果确实有生育计划，可重点关注以上列出的{child_liu_str}等子女星流年，这些年份受孕概率相对更高。建议同步配合医学备孕规划，命理与科学结合效果更佳。")
 
@@ -7134,7 +7134,7 @@ def generate_report(bazi_result: dict, name: str, gender: str,
     lines.append("")
     lines.append("本报告由金鉴真人AI引擎基于传统八字命理学知识体系自动生成，仅供娱乐参考。")
     lines.append("命理分析揭示的是先天趋势和能量分布，而非一成不变的宿命。")
-    lines.append("人生的最终走向取决于个人的选择、努力和机遇，请勿过度依赖命理判断。")
+    lines.append("人生的最终走向受个人选择、努力和机遇影响，请勿过度依赖命理判断。")
     lines.append("金鉴真人团队不对因使用本报告而产生的任何直接或间接损失承担责任。")
     lines.append("")
     lines.append("---")

@@ -20,6 +20,15 @@ class AnalyzeResponse(BaseModel):
     analysis_id: int
     status: str
     message: str = ""
+    name: str = ""
+    gender: str = ""
+    birth_year: Optional[int] = None
+    birth_month: Optional[int] = None
+    birth_day: Optional[int] = None
+    birth_hour: Optional[int] = None
+    birth_minute: int = 0
+    is_lunar: bool = False
+    birthplace: str = ""
     basic: dict = {}
     analysis: dict = {}
     report_md: str = ""
