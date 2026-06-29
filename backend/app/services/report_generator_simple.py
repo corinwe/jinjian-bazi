@@ -1850,13 +1850,81 @@ def _gen_section5(basic: dict, analysis: dict) -> list:
     lines.append("该规避的规避，该补益的补益，日子照样过得精彩。")
     lines.append("")
 
+    # ── 化解方法扩展：五行补益 · 神煞化解 · 风水调理 ──
+    lines.append("### 11.5.1 化解方法详细建议")
+    lines.append("")
+    lines.append("**【金鉴真人·§5·化解三法】** 五行补益、神煞化解、风水调理三法并用，方能全面趋吉避凶。")
+    lines.append("")
+
+    # 初始化喜用神数据（供化解方法使用）
+    xys_ss = analysis.get("xi_yong_shen", {})
+    xi_list_ss5 = xys_ss.get("xi_shen", [])
+    ji_list_ss5 = xys_ss.get("ji_shen", [])
+
+    # 方法一：五行补益
+    lines.append("#### 方法一：五行补益（补喜用神五行之气）")
+    lines.append("")
+    xi_wx_names_5 = []
+    for xi in xi_list_ss5:
+        wx = _get_xi_yong_wx(xi, ri_wx)
+        if wx and wx not in xi_wx_names_5:
+            xi_wx_names_5.append(wx)
+    if xi_wx_names_5:
+        xi_colors = [WU_XING_COLORS.get(wx, "") for wx in xi_wx_names_5 if WU_XING_COLORS.get(wx)]
+        xi_dirs = [WU_XING_DIRECTIONS.get(wx, "") for wx in xi_wx_names_5 if WU_XING_DIRECTIONS.get(wx)]
+        xi_seasons = [WU_XING_SEASONS.get(wx, "") for wx in xi_wx_names_5 if WU_XING_SEASONS.get(wx)]
+        lines.append(f"- **色彩补益**：喜用神{'/'.join(xi_wx_names_5)}，日常多使用{'/'.join(xi_colors)}色系服饰、家居和办公用品。")
+        lines.append(f"- **方位补益**：喜用神方位为{'/'.join(xi_dirs)}，办公桌朝向、睡床方位宜朝此方向。")
+        lines.append(f"- **季节补益**：喜用神旺于{'/'.join(xi_seasons)}，此节气宜多出行、多行动、多决断。")
+        lines.append(f"- **佩戴补益**：选择喜用神五行对应的材质饰品——"
+                     f"{'木：绿松石/翡翠/木质饰品；' if '木' in xi_wx_names_5 else ''}"
+                     f"{'火：红玛瑙/石榴石/红色饰品；' if '火' in xi_wx_names_5 else ''}"
+                     f"{'土：黄水晶/蜜蜡/陶瓷饰品；' if '土' in xi_wx_names_5 else ''}"
+                     f"{'金：金银饰品/白水晶/金属腕表；' if '金' in xi_wx_names_5 else ''}"
+                     f"{'水：黑曜石/海蓝宝/黑色饰品。' if '水' in xi_wx_names_5 else ''}")
+    else:
+        lines.append("- **色彩补益**：根据命局五行缺失，补益对应的色彩。")
+        lines.append("- **方位补益**：选择与命局五行相生的方位。")
+    lines.append("")
+
+    # 方法二：神煞化解
+    lines.append("#### 方法二：神煞化解（针对特定凶神）")
+    lines.append("")
+    if yc_hit:
+        lines.append(f"- **元辰化解**：元辰在{yc}，主意外灾祸。可在{yc}方位放置泰山石敢当或铜葫芦化解。逢元辰被冲的年份减少夜间出行和远行。")
+    if zs_hit:
+        lines.append(f"- **灾煞化解**：灾煞在{zs}，主突发事故。佩戴生肖六合/三合属相饰品（如属{zs}的六合属相），灾煞年减少冒险活动。")
+    if tian_luo:
+        lines.append("- **天罗化解**：辰巳同现为天罗，主困顿阻滞。可在家中东南方（辰巳位）放置绿色植物或水晶簇化解。")
+    if di_wang:
+        lines.append("- **地网化解**：戌亥同现为地网，主困顿阻滞。可在西北方（戌亥位）放置金属饰品或白色摆件化解。")
+    if xue_ren_found:
+        lines.append(f"- **血刃化解**：血刃在{xue_ren_found}，主血光外伤。避免高危运动，定期体检，献血可化解血光之灾。")
+    if not any([yc_hit, zs_hit, tian_luo, di_wang, xue_ren_found]):
+        lines.append("- 命局无明显凶神入命，无需特定神煞化解方案。")
+    lines.append("")
+
+    # 方法三：风水调理
+    lines.append("#### 方法三：风水调理（环境能量调节）")
+    lines.append("")
+    lines.append("- **卧室风水**：床位宜靠实墙（背有靠山），避开横梁压顶、镜子对床。床头朝向宜对喜用神方位。")
+    lines.append("- **书房/办公风水**：书桌或办公桌宜靠墙而设（背后有靠），面向喜用神方位。桌面保持整洁，左青龙右白虎布局（左高右低）。")
+    lines.append("- **客厅风水**：客厅为核心气场，保持明亮通风。沙发宜靠墙形成「藏风聚气」格局，避免穿堂煞（大门直对窗户）。")
+    lines.append("- **五行调和**：家中对应喜用神五行的方位加强摆放相关元素——"
+                 f"{'木：绿植/书画；' if '木' in xi_wx_names_5 else ''}"
+                 f"{'火：灯光/红色装饰；' if '火' in xi_wx_names_5 else ''}"
+                 f"{'土：陶瓷/黄水晶；' if '土' in xi_wx_names_5 else ''}"
+                 f"{'金：金属/白色装饰；' if '金' in xi_wx_names_5 else ''}"
+                 f"{'水：鱼缸/黑色装饰。' if '水' in xi_wx_names_5 else ''}")
+    lines.append("- **外部环境**：住宅外部不宜正对尖角（角煞）、直路（路冲）、医院/殡仪馆（阴煞），可通过悬挂八卦镜或山海镇化解。")
+    lines.append("")
+    lines.append("🗣️ 白话总结：化解不是迷信，而是一种积极的能量管理。五行补益增强自身气场，神煞化解化解特定风险，风水调理优化生活环境——三管齐下，让命局的吉最大化、凶最小化。")
+    lines.append("")
+
     # 5.6 刑冲合害能量分析（基于energy_engine数据）
     lines.append("### 11.6 刑冲合害能量分析")
     lines.append("")
     energy_data = analysis.get("energy_analysis", {})
-    xys_ss = analysis.get("xi_yong_shen", {})
-    xi_list_ss5 = xys_ss.get("xi_shen", [])
-    ji_list_ss5 = xys_ss.get("ji_shen", [])
     rels = energy_data.get("relationships", [])
     if rels:
         lines.append("**刑冲合害关系及其能量倍数（总纲v1.0）：**")
@@ -3525,6 +3593,28 @@ def _gen_section10(basic: dict, analysis: dict, birth_year: int) -> list:
     lines.append("**【金鉴真人·§10·KB六级事业等级】**")
     lines.append("")
 
+    # ── 引擎事业评分透明化 ──
+    engine_shi_ye = analysis.get("shi_ye", {})
+    if engine_shi_ye:
+        eng_level = engine_shi_ye.get("level", "")
+        eng_score = engine_shi_ye.get("score", 0)
+        eng_base = engine_shi_ye.get("base_score", 5)
+        eng_shen_factor = engine_shi_ye.get("shen_factor", 1.0)
+        eng_dy_mod = engine_shi_ye.get("dy_mod", 0)
+        eng_evil_mod = engine_shi_ye.get("evil_mod", 0)
+        eng_nian_sg = engine_shi_ye.get("nian_sg_penalty", 0)
+        # 引擎等级 → 报告等级映射
+        eng_to_report = {
+            "顶级/统帅级": "顶级", "高层管理/专家级": "上等",
+            "中高层管理": "中上", "中层管理/专业人士": "中等",
+            "基层/稳定工作": "中下", "普通工作": "下等",
+        }
+        eng_report_level = eng_to_report.get(eng_level, "中等")
+        lines.append(f"**引擎事业评分：{eng_score}分 | 引擎等级：{eng_level}**")
+        lines.append(f"**计算链路**：基础分{eng_base} × 身弱系数{eng_shen_factor} + 大运{eng_dy_mod} + 恶神{eng_evil_mod} + 年干伤官{eng_nian_sg} = 总分{round(eng_score/10 if eng_score else 0, 1)}")
+        lines.append(f"**映射为报告等级：{eng_report_level}**")
+        lines.append("")
+
     # 计算喜用神五行集
     xi_wx_set = set()
     for xi in xi_list:
@@ -3543,8 +3633,8 @@ def _gen_section10(basic: dict, analysis: dict, birth_year: int) -> list:
             has_xi_da_yun = True
             break
 
-    # 定级
-    level_tag = "中等"
+    # 定级 — 以引擎输出为准，报告逻辑为辅
+    level_tag = eng_report_level if engine_shi_ye else "中等"
     reasons = [f"格局：{ge_ju_str}"]
 
     # 顶级
@@ -3620,6 +3710,10 @@ def _gen_section10(basic: dict, analysis: dict, birth_year: int) -> list:
         "中下": "⭐ 中下等事业格局",
         "下等": "☆ 基础事业格局",
     }
+
+    # 以引擎等级覆盖报告等级（引擎为准）
+    if engine_shi_ye and engine_shi_ye.get("level"):
+        level_tag = eng_report_level
 
     lines.append(f"**事业等级：{alias.get(level_tag, '中等')}**")
     lines.append("")
@@ -4159,6 +4253,71 @@ def _gen_section11(basic: dict, analysis: dict, birth_year: int) -> list:
         lines.append(f"**→ 引擎判定等级: {eng_level}**")
         lines.append("")
     lines.append(gd)
+    lines.append("")
+
+    # ── 三合/三会印星增强检测 ──
+    energy_data_xy = analysis.get("energy_analysis", {})
+    xy_rels = energy_data_xy.get("relationships", [])
+    san_he_yin_boost = ""
+    for rel in xy_rels:
+        rel_type = rel.get("detail", "")
+        rel_mult = rel.get("multiplier", 0)
+        if "三合" in rel_type or "三会" in rel_type:
+            # 检查该地支对应的五行是否生印星
+            zhi_a = rel.get("zhi_a", "")
+            zhi_b = rel.get("zhi_b", "")
+            for z in [zhi_a, zhi_b]:
+                z_wx = DI_ZHI_WU_XING.get(z, "")
+                if z_wx and z_wx == _get_xi_yong_wx("印", ri_wx):
+                    san_he_yin_boost += f"\n✅ {rel_type}（能量倍数×{rel_mult}）增强印星（{z_wx}），对学业有利。"
+    if san_he_yin_boost:
+        lines.append("**三合/三会印星增强检测：**")
+        lines.append(san_he_yin_boost)
+        lines.append("")
+
+    # ── 学历维度细化 ──
+    # 细分维度：①印星力量 ②文昌配置 ③大运窗口 ④身强弱承载 ⑤神煞辅助
+    dims = []
+    # 维度1: 印星（四柱天干 + 月支本气）
+    yin_positions = []
+    if np.get("gan_shi_shen", "") in ["正印","偏印"]:
+        yin_positions.append("年干")
+    if yp.get("gan_shi_shen", "") in ["正印","偏印"]:
+        yin_positions.append("月干")
+    if ybq in ["正印","偏印"]:
+        yin_positions.append("月支本气")
+    # 时干
+    sp = pillars.get("shi", {})
+    if sp.get("gan_shi_shen", "") in ["正印","偏印"]:
+        yin_positions.append("时干")
+    if nian_yin:
+        yin_positions.append("年柱藏干") if "年干" not in yin_positions else None
+    yin_count = len(yin_positions)
+    dims.append(f"①**印星力量**：{'旺盛' if yin_count>=2 else '有根' if yin_count>=1 else '偏弱'}——{', '.join(yin_positions) if yin_positions else '无印透干'}（{'高分段' if yin_count>=2 else '中分段' if yin_count>=1 else '低分段'}）")
+    # 维度2: 文昌
+    wc_detail = "原局有文昌" if wc_in else ("大运带文昌" if early_wc else "文昌不显")
+    dims.append(f"②**文昌配置**：{wc_detail}（{'考试运稳定' if wc_in or early_wc else '需后天努力补足'}）")
+    # 维度3: 大运窗口
+    window_detail = "有印运/文昌运窗口" if s5 else "无印运窗口"
+    dims.append(f"③**大运窗口**：{window_detail}（{'可借大运之力' if s5 else '主要靠自身努力'}）")
+    # 维度4: 身强弱承载
+    sq_carry = f"{sq_level}（{sq_score}分）——{'能扛学业压力' if sq_level=='身强' else '需印星扶助' if sq_level=='身弱' else '中和稳健'}"
+    dims.append(f"④**身强弱承载**：{sq_carry}")
+    # 维度5: 神煞辅助
+    xys_all = analysis.get("shensha_summary", {})
+    shensha_edu = []
+    for pos_ss in xys_all.values():
+        if isinstance(pos_ss, dict):
+            for ss_name, ss_val in pos_ss.items():
+                if ss_val and ss_name in ["文昌贵人","学堂","词馆","天乙贵人"]:
+                    shensha_edu.append(ss_name)
+    if shensha_edu:
+        dims.append(f"⑤**神煞辅助**：{'、'.join(set(shensha_edu))}（学业神煞加持）")
+    else:
+        dims.append("⑤**神煞辅助**：无显著学业神煞（需后天努力）")
+    lines.append("**学历五维分析：**")
+    for d in dims:
+        lines.append(f"- {d}")
     lines.append("")
     lines.append('🗣️白话解读：综合以上分析可以看出，学历高低是先天天赋和后天时运共同作用的结果。印星和文昌好比"硬件基础"，大运和流年则是"软件环境"。')
     lines.append('得分高不代表一定高学历，得分低也不代表学习能力差——印星偏弱但食伤旺的人，往往在实践型、创意型学习上更有优势。关键是认清自己的命局特点，选择适合自己的学习路径和发展方向。')
@@ -4780,6 +4939,54 @@ def _gen_section12(basic: dict, analysis: dict) -> list:
     lines.append("")
     lines.append("🗣️ 白话解读：以上信号就像「绿灯」——亮得越多，婚姻缘分越顺。红鸾星动主婚缘信号，天喜星至主喜事临门。")
     lines.append("【金鉴真人·§8·结婚信号规则】夫妻宫被合、桃花在日时、夫妻星透干、大运引动，四者有其二则姻缘易成。红鸾天喜为加速器——信号叠加越多，缘分越早到来。")
+    lines.append("")
+
+    # ── 婚姻五维分析（细分维度） ──
+    lines.append("### 8.3.1 婚姻五维细分分析")
+    lines.append("")
+    hy_dims = []
+    # 维度①：夫妻宫品质
+    fg_score = hy_fuqi_gong.get("score", 50)
+    fg_quality = "优" if fg_score >= 70 else "良" if fg_score >= 50 else "中" if fg_score >= 30 else "差"
+    hy_dims.append(f"①**夫妻宫品质**：{fg_score}分（{fg_quality}）——{'配偶助力大、婚姻质量高' if fg_score>=70 else '婚姻基本顺遂、需用心经营' if fg_score>=50 else '婚姻中需更多包容理解' if fg_score>=30 else '婚姻挑战较多、需提前经营'}。")
+    # 维度②：夫妻星状态
+    pei_status = "透干有力" if pei_transparent else "藏支深沉"
+    if hy_guan_sha_hun_za:
+        pei_status += "，官杀混杂多情"
+    if hy_shang_guan_jian_guan:
+        pei_status += "，伤官见官挑战"
+    if hy_ru_mu:
+        pei_status += "，夫妻星入墓缘浅"
+    hy_dims.append(f"②**夫妻星状态**：{pei_ou_ss}/{pei_ou_ss2}{pei_status}。")
+    # 维度③：结婚信号强度
+    signal_count = sum([
+        1 if has_he else 0,
+        1 if has_tao else 0,
+        1 if pei_transparent else 0,
+        1 if dy_triggered else 0,
+        1 if has_hong_luan else 0,
+        1 if has_tian_xi else 0,
+    ])
+    hy_dims.append(f"③**结婚信号强度**：{signal_count}/6项信号——{'缘分旺盛、婚恋顺遂' if signal_count>=4 else '信号充足、机缘可期' if signal_count>=2 else '信号偏弱、需主动经营'}。")
+    # 维度④：五行匹配度
+    pei_cat = "财" if pei_ou_ss in ["正财","偏财"] else ("官杀" if pei_ou_ss in ["正官","七杀"] else "")
+    pei_cat2 = "财" if pei_ou_ss2 in ["正财","偏财"] else ("官杀" if pei_ou_ss2 in ["正官","七杀"] else "")
+    pei_ou_wx = _get_xi_yong_wx(pei_cat, ri_wx) if pei_cat else ""
+    pei_ou_wx2 = _get_xi_yong_wx(pei_cat2, ri_wx) if pei_cat2 else ""
+    ri_born_pei = (ri_wx in [_get_xi_yong_wx(x, ri_wx) for x in xi_list]) if xi_list else False
+    hy_dims.append(f"④**五行匹配度**：夫妻星五行{'/'.join(filter(None, [pei_ou_wx, pei_ou_wx2]))}，{'与喜用神相合、配偶匹配度高' if ri_born_pei else '中性匹配、需互相适应'}。")
+    # 维度⑤：大运窗口数量
+    win_count = 0
+    for d in dy_list[:8]:
+        d_ss = _get_shi_shen(ri_gan, d.get("gan", ""))
+        if d_ss in [pei_ou_ss, pei_ou_ss2]:
+            win_count += 1
+    hy_dims.append(f"⑤**大运窗口数量**：{win_count}步夫妻星大运——{'窗口期充足、缘分时机多' if win_count>=3 else '有1~2步窗口、关键时点把握即可' if win_count>=1 else '窗口偏少、需流年引动'}。")
+    lines.append("**婚姻五维分析：**")
+    for d in hy_dims:
+        lines.append(f"- {d}")
+    lines.append("")
+    lines.append("🗣️ 白话总结：婚姻的维度远比想象中丰富——夫妻宫决定基础品质，夫妻星影响缘分深浅，结婚信号指示时机，五行匹配度影响相处融洽度，大运窗口决定把握时机。五维综合考量，方能全面认知婚姻走势。")
     lines.append("")
 
     # 8.4 结婚窗口

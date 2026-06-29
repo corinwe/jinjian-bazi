@@ -639,14 +639,17 @@ POS_SCORE = {'nian_gan':8,'nian_zhi':4,'yue_gan':12,'yue_zhi':40,'ri_zhi':12,'sh
 def calc_shen_qiang_ruo(ri_gan: str, nian_gan: str, yue_gan: str, shi_gan: str,
                          nian_zhi: str, yue_zhi: str, ri_zhi: str, shi_zhi: str) -> dict:
     """
-    身强弱评分 v7.0
+    身强弱评分 v7.1
     规则（金鉴真人原始规则）：
     - 印只在月令本气计分（40分）
     - 比劫在所有位置都计分
     - 燥土规则：未/戌对金日主，火引化时不记分（v7.0新增）
     - 从弱=0分→恒定50分，从强=>100分→恒定20分
     - 自坐比劫永不从弱（v7.0新增）
-    - 三段式：<40身弱, 40-60中和, >60身强
+    - 七段式：<20身弱, 20-40偏弱, 40-60中和, 60-80偏强, >=80身强
+    - 从弱/从强逻辑保持不变
+    - 月令被克降级（v7.1新增）：月令被年/日/时支五行相克次数≥2时，月令得分减半
+    - 天干五合成功率（v7.1新增）：隔合减半、遥合无效、有根不减、无根全减
     """
     tian_gan_list = [nian_gan, yue_gan, ri_gan, shi_gan]
     
@@ -683,6 +686,22 @@ def calc_shen_qiang_ruo(ri_gan: str, nian_gan: str, yue_gan: str, shi_gan: str,
         score -= yue_ling_score / 2
         details.append(f"月令({yue_zhi})逢空亡({','.join(yz_kong)})，月令分数减半 -{yue_ling_score/2:.1f}")
     
+    # 月令被克降级：月令地支被年/日/时支五行相克次数≥2时，月令得分减半
+    # 五行相克关系：木克土、土克水、水克火、火克金、金克木
+    yz_wx = DI_ZHI_WU_XING[yue_zhi]
+    ke_count = 0
+    for other_zhi, other_pos in [(nian_zhi, "年支"), (ri_zhi, "日支"), (shi_zhi, "时支")]:
+        if other_zhi == yue_zhi:
+            continue
+        other_wx = DI_ZHI_WU_XING[other_zhi]
+        # WX_KE: {被克者: 克者} → 如果 other_wx 能克 yz_wx，则 yz_wx 被克
+        if WX_KE.get(yz_wx) == other_wx:
+            ke_count += 1
+            details.append(f"月令{yue_zhi}({yz_wx})被{other_pos}{other_zhi}({other_wx})相克 ({ke_count})")
+    if ke_count >= 2 and yue_ling_score > 0:
+        score -= yue_ling_score / 2
+        details.append(f"月令被克{ke_count}次≥2，月令分数减半 -{yue_ling_score/2:.1f}")
+    
     # 3. 天干比劫（日干不计）
     for pos, gan, pts in [('年干',nian_gan,8),('月干',yue_gan,12),('时干',shi_gan,12)]:
         if TIAN_GAN_WU_XING[gan] == bi_wx:
@@ -716,18 +735,22 @@ def calc_shen_qiang_ruo(ri_gan: str, nian_gan: str, yue_gan: str, shi_gan: str,
         score += 7
         details.append(f"半三合局({he_name})与日主同五行 +7")
 
-    # 6. 从格 + 三段式（v7.0：自坐比劫永不从弱）
+    # 6. 从格 + 七段式（v7.0：自坐比劫永不从弱）
     if score <= 0 and not ri_zi_zuo_bi_jie:
         return {"score": 50.0, "level": "从弱", "details": details}
     if score <= 0 and ri_zi_zuo_bi_jie:
         score = 20.0  # 自坐比劫给最低身弱分
     if score > 100:
         return {"score": 20.0, "level": "从强", "details": details}
-    if score < 40:
-        return {"score": round(score,1), "level": "身弱", "details": details}
-    if score <= 60:
+    if score >= 80:
+        return {"score": round(score,1), "level": "身强", "details": details}
+    if score >= 60:
+        return {"score": round(score,1), "level": "偏强", "details": details}
+    if score >= 40:
         return {"score": round(score,1), "level": "中和", "details": details}
-    return {"score": round(score,1), "level": "身强", "details": details}
+    if score >= 20:
+        return {"score": round(score,1), "level": "偏弱", "details": details}
+    return {"score": round(score,1), "level": "身弱", "details": details}
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1029,8 +1052,8 @@ def get_xi_yong_shen(ri_gan: str, shen_qiang_level: str, shen_qiang_score: float
         
         xi = [ke_wo, wo_sheng, wo_ke]  # 官杀 > 食伤 > 财星
         ji = [sheng_wo, tong_wo]  # 印 > 比劫
-    elif shen_qiang_level in ("身强",):
-        # 身强喜克泄耗：财 > 官 > 食伤
+    elif shen_qiang_level in ("身强", "偏强"):
+        # 身强/偏强喜克泄耗：财 > 官 > 食伤
         ke_xi = [WX_ORDER[(ri_idx+2)%5], WX_ORDER[(ri_idx+3)%5], WX_ORDER[(ri_idx+1)%5]]
         ke_ji = [WX_ORDER[(ri_idx+4)%5], WX_ORDER[ri_idx]]
         xi, ji = ke_xi, ke_ji
@@ -1045,7 +1068,7 @@ def get_xi_yong_shen(ri_gan: str, shen_qiang_level: str, shen_qiang_score: float
         else:
             xi = [WX_ORDER[(ri_idx+4)%5], WX_ORDER[ri_idx]]
             ji = [WX_ORDER[(ri_idx+2)%5], WX_ORDER[(ri_idx+3)%5], WX_ORDER[(ri_idx+1)%5]]
-    else:  # 身弱
+    else:  # 身弱 / 偏弱
         xi = [WX_ORDER[(ri_idx+4)%5], WX_ORDER[ri_idx]]
         ji = [WX_ORDER[(ri_idx+2)%5], WX_ORDER[(ri_idx+3)%5], WX_ORDER[(ri_idx+1)%5]]
 
@@ -1116,12 +1139,22 @@ def calc_cai_xing(ri_gan: str, nian_gan: str, yue_gan: str, shi_gan: str,
                     found_ku = f"{pos_name}{zhi}(藏{cg})"
                     break
     
-    # 从弱格：财星分数如实返回，不加额外加分
-    # 从弱格的财星加分已在calc_cai_fu_deng_ji中处理
-    # 知识库：从弱格"财得令+40分"指月令生财的情况
-    # 但财星分数应该只反映原局，不预加从弱加成
+    # ── 从弱格特殊处理 ──
+    # 规则（金鉴真人规则·总纲）：
+    #   从弱格以克泄耗为喜，财星(我克者)为喜神之一
+    #   "财得令+40分"：当从弱格月令生财（月令的五行能生财星五行）时，
+    #   财星额外+40分，表示财星得令而旺
+    #
+    # 设计决策：
+    #   calc_cai_xing 仅反映原局财星原始分数（不含从弱加成），
+    #   确保原局财星强弱判断独立于身强弱状态
+    #   从弱格的额外加分（+40分逻辑）在 calc_cai_fu_deng_ji 中处理，
+    #   见该函数的"从弱格+财旺→亿万级"分支：
+    #     - 财旺(cai_strong=True, score≥40)时直接映射大富(70-90分)
+    #     - 财弱时按比例映射小富区间(12-36分)
+    #   此处仅记录从弱标记，供调用方参考
     if sq_level == "从弱":
-        pass  # 不加分，由财富等级评估函数处理
+        details.append("从弱格：财星原局分数如实计算，额外加成由calc_cai_fu_deng_ji处理（财得令+40→大富基准70分）")
     
     # 财富五级（基于实际验证校准）
     if score >= 60: level = "大富"
@@ -1869,7 +1902,7 @@ def check_jia_wang_zhen_ruo(ri_gan: str, sqr_score: float, sqr_level: str,
     
     # 判断
     actual_score = sqr_score - penalty
-    if penalty >= 10 and sqr_level in ("身强", "中和"):
+    if penalty >= 10 and sqr_level in ("身强", "偏强", "中和"):
         if actual_score < 40:
             return {
                 "is_jia_wang": True,
@@ -2361,12 +2394,12 @@ def calc_cai_fu_deng_ji(cai_xing_total: float, sqr_score: float, sqr_level: str,
         }
     
     # 3. 常规状态判断
-    # 判断身强身弱（基于知识库三段式：<40身弱，40-60中和，>60身强）
-    if sqr_score >= 60:
+    # 判断身强身弱（基于知识库：适配七段式评分映射）
+    if sqr_level in ("身强", "偏强", "从强"):
         shen_state = "身强"
-    elif sqr_score >= 40:
-        shen_state = "中和"  # 中和不属于身强也不属于身弱
-    else:
+    elif sqr_level in ("中和",):
+        shen_state = "中和"
+    else:  # 身弱 / 偏弱 / 从弱
         shen_state = "身弱"
     
     # 四柱无财检查（cai_xing_total < 1分视为无财）
@@ -2600,6 +2633,58 @@ def _calc_zai_huo_indicators(ri_gan: str, liu_nian_gan: str, liu_nian_zhi: str,
         "has_zai_huo": count >= 1,
     }
 
+# ── 天干五合成功率检测 ──
+# 规则：隔合减半、遥合无效、有根不减、无根全减
+# 位置距离：年(0) 月(1) 日(2) 时(3)
+#   相邻(d=1)：合有效  隔合(d=2)：减半  遥合(d≥3)：无效
+_POSITION_ORDER = {"年": 0, "月": 1, "日": 2, "时": 3}
+
+def _calc_tian_gan_wu_he_success_rate(gan_a: str, pos_a: str,
+                                       gan_b: str, pos_b: str,
+                                       zhi_list: list) -> dict:
+    """计算天干五合成功率
+    返回: {"success_rate": float, "reason": str}
+    """
+    # 检查是否构成五合
+    if GAN_WU_HE.get(gan_a) != gan_b:
+        return {"success_rate": 0.0, "reason": f"{gan_a}{gan_b}不构成五合"}
+
+    # 位置距离
+    idx_a = _POSITION_ORDER.get(pos_a, 0)
+    idx_b = _POSITION_ORDER.get(pos_b, 3)
+    dist = abs(idx_a - idx_b)
+
+    if dist >= 3:
+        return {"success_rate": 0.0, "reason": f"{pos_a}{pos_b}遥合，无效"}
+
+    base_rate = 1.0 if dist == 1 else 0.5  # 相邻=1.0, 隔合=0.5
+
+    # 检查是否有根：gan_b（原局组合中处于较远位置的天干）的五行
+    # 是否在地支藏干中有支撑
+    has_root = False
+    wx_b = TIAN_GAN_WU_XING[gan_b]
+    for zhi in zhi_list:
+        for cg, wt in DI_ZHI_CANG_GAN[zhi]:
+            if TIAN_GAN_WU_XING[cg] == wx_b:
+                has_root = True
+                break
+        if has_root:
+            break
+
+    if not has_root:
+        base_rate = 0.0  # 无根全减
+
+    reason_parts = [f"{pos_a}{pos_b}"]
+    if dist == 2:
+        reason_parts.append("隔合")
+    if has_root:
+        reason_parts.append("有根")
+    else:
+        reason_parts.append("无根")
+    reason_parts.append(f"成功率{int(base_rate*100)}%")
+
+    return {"success_rate": base_rate, "reason": "，".join(reason_parts)}
+
 
 def calc_liu_nian(year: int, ri_gan: str, da_yun_list: list,
                   nian_gan: str = "", nian_zhi: str = "",
@@ -2750,10 +2835,23 @@ def calc_liu_nian(year: int, ri_gan: str, da_yun_list: list,
     for pos, pg in yuan_gan_list:
         if not pg:
             continue
-        # 五合（甲己、乙庚、丙辛、丁壬、戊癸）
+        # 五合（甲己、乙庚、丙辛、丁壬、戊癸）带成功率检测
         if GAN_WU_HE.get(nian_gan) == pg:
-            yuan_ju_gan_he[pos] = f"{nian_gan}{pg}合"
-            yuan_ju_detail_parts.append(f"流年天干{nian_gan}与{pos}柱天干{pg}五合")
+            # 计算成功率（隔合减半、遥合无效、有根不减、无根全减）
+            # 流年天干视作"年"位，与各柱构成对比
+            wu_he_result = _calc_tian_gan_wu_he_success_rate(
+                nian_gan, "年", pg, pos,
+                [nian_zhi, yue_zhi, ri_zhi, shi_zhi]
+            )
+            if wu_he_result["success_rate"] > 0:
+                yuan_ju_gan_he[pos] = f"{nian_gan}{pg}合({wu_he_result['reason']})"
+                yuan_ju_detail_parts.append(
+                    f"流年天干{nian_gan}与{pos}柱天干{pg}五合，{wu_he_result['reason']}"
+                )
+            else:
+                yuan_ju_detail_parts.append(
+                    f"流年天干{nian_gan}与{pos}柱天干{pg}五合但{wu_he_result['reason']}"
+                )
         # 相冲（甲庚冲、乙辛冲、丙壬冲、丁癸冲）
         if gan_chong_pairs.get(nian_gan) == pg:
             yuan_ju_gan_ke[pos] = f"{nian_gan}{pg}冲"
@@ -3299,7 +3397,18 @@ def calc_shi_ye(ge_ju: str, shen_qiang: dict, da_yun_scores: list,
                 evil_mod += 1
                 evil_details.append("食神制杀+1")
     
-    total = base + shen_mod + dy_mod + evil_mod
+    # 身弱修正采用乘法（乘法替加法）：身强/从弱者基础分乘以更大系数
+    shen_factor = 1.0 + shen_mod * 0.15  # shen_mod=0→1.0, =1→1.15, =2→1.30
+    total = base * shen_factor + dy_mod + evil_mod
+    
+    # ── 年干伤官负信号（学业维度） ──
+    nian_sg_penalty = 0
+    nian_sg_detail = ""
+    if tian_gan_list and ri_gan and len(tian_gan_list) >= 4:
+        nian_gan = tian_gan_list[0]
+        if nian_gan and shi_shen(ri_gan, nian_gan) == "伤官":
+            nian_sg_penalty = -2
+            nian_sg_detail = "年干伤官强负信号-2"
     
     # 等级判定（含恶神制化后的升级）
     if total >= 12:
@@ -3316,8 +3425,10 @@ def calc_shi_ye(ge_ju: str, shen_qiang: dict, da_yun_scores: list,
         level = "普通工作"
     
     return {"score": round(total * 10, 1), "level": level,
-            "base_score": base, "shen_mod": shen_mod, "dy_mod": dy_mod,
-            "evil_mod": evil_mod, "evil_details": evil_details}
+            "base_score": base, "shen_mod": shen_mod, "shen_factor": round(shen_factor, 2),
+            "dy_mod": dy_mod,
+            "evil_mod": evil_mod, "evil_details": evil_details,
+            "nian_sg_penalty": nian_sg_penalty, "nian_sg_detail": nian_sg_detail}
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
