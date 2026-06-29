@@ -5490,9 +5490,9 @@ def _gen_section15(basic: dict, analysis: dict) -> list:
     ji_shen_list = ["正官","正印","食神","正财"]
     e_shen_list  = ["七杀","偏印","伤官","劫财"]
     def _is_ji(ss): return ss in ji_shen_list
-    def _xi_biao(ss):
-        if ss in xi_list: return "✅喜用"
-        if ss in ji_list: return "⚠️忌神"
+    def _xi_biao(gan):
+        if TIAN_GAN_WU_XING.get(gan, "") in xi_list: return "✅喜用"
+        if TIAN_GAN_WU_XING.get(gan, "") in ji_list: return "⚠️忌神"
         return "➖中性"
 
     # 🗣️ 白话总览
@@ -5514,16 +5514,16 @@ def _gen_section15(basic: dict, analysis: dict) -> list:
         ["宫位", "干支", "天干十神", "喜忌", "六亲指向"],
         [
             ["年柱（祖上）", f"{nian.get('gan','')}{nian.get('zhi','')}", nian_ss,
-             _xi_biao(nian_ss),
+             _xi_biao(nian.get('gan','')),
              "祖业根基·祖辈福荫" if _is_ji(nian_ss) else "祖业起伏·祖辈艰辛"],
             ["月柱（父母兄弟）", f"{yue.get('gan','')}{yue.get('zhi','')}", yue_ss,
-             _xi_biao(yue_ss),
+             _xi_biao(yue.get('gan','')),
              "父母助力·兄弟互助" if _is_ji(yue_ss) else "父母操劳·兄弟缘薄"],
             ["日支（配偶）", ri_zhi, rizhi_ss,
-             _xi_biao(rizhi_ss),
+             _xi_biao(DI_ZHI_CANG_GAN.get(ri_zhi, [[None]])[0][0]),
              "配偶宫·婚姻质量核心"],
             ["时柱（子女）", f"{shi.get('gan','')}{shi.get('zhi','')}", shi_ss,
-             _xi_biao(shi_ss),
+             _xi_biao(shi.get('gan','')),
              "子女运势·晚年福禄" if _is_ji(shi_ss) else "子女操心·晚年辛劳"],
         ]
     ))
@@ -5534,7 +5534,7 @@ def _gen_section15(basic: dict, analysis: dict) -> list:
     # ═══════════════════════════════════════════
     lines.append("### 15.1 年柱（祖上/祖业根基）")
     lines.append("")
-    lines.append(f"年柱：{nian.get('gan','')}{nian.get('zhi','')}　十神：{nian_ss}　{_xi_biao(nian_ss)}")
+    lines.append(f"年柱：{nian.get('gan','')}{nian.get('zhi','')}　十神：{nian_ss}　{_xi_biao(nian.get('gan',''))}")
     nian_cg_str = _get_cang_gan_list(nian)
     lines.append(f"藏干：{nian_cg_str}")
     lines.append("【金鉴真人·§15·年柱祖上规则】年干为十神之首，代表祖上荫庇和早年家风。"
@@ -5562,13 +5562,13 @@ def _gen_section15(basic: dict, analysis: dict) -> list:
     # ═══════════════════════════════════════════
     lines.append("### 15.2 月柱（父母/兄弟姐妹/出身环境）")
     lines.append("")
-    lines.append(f"月柱：{yue.get('gan','')}{yue.get('zhi','')}　十神：{yue_ss}　{_xi_biao(yue_ss)}")
+    lines.append(f"月柱：{yue.get('gan','')}{yue.get('zhi','')}　十神：{yue_ss}　{_xi_biao(yue.get('gan',''))}")
     yue_cg_str = _get_cang_gan_list(yue)
     lines.append(f"藏干：{yue_cg_str}")
     lines.append("【金鉴真人·§15·月柱父母规则】月柱为父母宫，月干代表父亲（男命）或母亲（女命），"
                  "月支代表对方。月柱十神为喜用则父母有助且家境良好，"
                  "为忌神则父母缘薄或原生家庭压力大。月令藏干可推断兄弟姐妹数量与关系。")
-    if yue_ss in xi_list:
+    if TIAN_GAN_WU_XING.get(yue.get('gan',''), "") in xi_list:
         lines.append(f"解读：月柱十神{yue_ss}为喜用神，父母/兄弟对日主有助力，"
                      "成长环境较好，家庭支持系统健全，人生易得贵人提携。")
     else:
@@ -5615,9 +5615,10 @@ def _gen_section15(basic: dict, analysis: dict) -> list:
     lines.append(f"日支：{ri_zhi}　藏干：{ri_cang_str}")
     if rizhi_ss:
         lines.append(f"日支本气十神：{rizhi_ss}（表征配偶的性格类型特征）")
-    if rizhi_ss in xi_list:
+    rizhi_gan = DI_ZHI_CANG_GAN.get(ri_zhi, [[None]])[0][0]
+    if rizhi_gan and TIAN_GAN_WU_XING.get(rizhi_gan, "") in xi_list:
         lines.append(f"解读：日支十神{rizhi_ss}为喜用神，配偶对日主有助益，婚姻质量较高，夫妻关系和谐。")
-    elif rizhi_ss in ji_list:
+    elif rizhi_gan and TIAN_GAN_WU_XING.get(rizhi_gan, "") in ji_list:
         lines.append(f"解读：日支十神{rizhi_ss}为忌神，配偶性格与日主有摩擦点，婚姻需双方包容磨合。")
     elif rizhi_ss:
         lines.append(f"解读：日支十神{rizhi_ss}中性，配偶性格温和，夫妻关系平稳，婚姻质量中等。")
@@ -5640,7 +5641,7 @@ def _gen_section15(basic: dict, analysis: dict) -> list:
     # ═══════════════════════════════════════════
     lines.append("### 15.4 时柱（子女/晚年归宿）")
     lines.append("")
-    lines.append(f"时柱：{shi.get('gan','')}{shi.get('zhi','')}　十神：{shi_ss}　{_xi_biao(shi_ss)}")
+    lines.append(f"时柱：{shi.get('gan','')}{shi.get('zhi','')}　十神：{shi_ss}　{_xi_biao(shi.get('gan',''))}")
     if shi_ss in ["食神","伤官","正印"]:
         lines.append(f"解读：时柱{shi_ss}为吉神，晚年生活安逸，子女有出息，能享天伦之乐。")
     elif shi_ss in ["七杀","劫财"]:
@@ -7067,7 +7068,7 @@ def _gen_section17(basic: dict, analysis: dict, birth_year: int) -> list:
                     y_cal = birth_year + int(d_start) + y_off
                     y_gan = TIAN_GAN_LIST[(y_cal - 4) % 10]
                     y_ss = _get_shi_shen(ri_gan, y_gan)
-                    if y_ss in xi_list:
+                    if TIAN_GAN_WU_XING.get(y_gan, "") in xi_list:
                         xi_year_list.append(f"{y_cal}年")
                 xi_year_str = '、'.join(xi_year_list[:3]) if xi_year_list else ''
                 if xi_year_str:

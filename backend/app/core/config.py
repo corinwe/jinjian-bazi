@@ -4,7 +4,7 @@ import os
 
 class Settings:
     app_name: str = "金鉴真人·八字命理分析API"
-    app_version: str = "1.0.0"
+    app_version: str = "1.0.1"
     debug: bool = True
 
     # 数据库 — MVP用SQLite
