@@ -161,22 +161,24 @@ def _get_cang_gan_list(pillar: dict) -> str:
 
 
 def _calc_gong_xi_ji(ri_gan: str, zhi: str, xi_list: list, ji_list: list) -> str:
-    """基于地支藏干权重比例计算宫位喜忌
-    
-    规则：藏干中喜用权重占比≥50%判喜用，<30%判忌神，中间判中性
+    """基于地支藏干五行权重比例计算宫位喜忌
+
+    规则：藏干五行中喜用权重占比≥50%判喜用，<30%判忌神，中间判中性
+    注意：xi_list/ji_list 为五行名称（如['火','木','水']），非十神名称
     """
     cang = DI_ZHI_CANG_GAN.get(zhi, [])
     if not cang:
         return "中性"
     total = sum(w for _, w in cang)
     xi_total = 0
+    ji_total = 0
     for gan, weight in cang:
-        ss = _get_shi_shen(ri_gan, gan)
-        if ss in xi_list:
+        wx = TIAN_GAN_WU_XING.get(gan, "")
+        if wx in xi_list:
             xi_total += weight
-        elif ss in ji_list:
-            # 注意：不在喜用也不在忌神的十神不计入
-            pass
+        elif wx in ji_list:
+            ji_total += weight
+        # 不在喜用也不在忌神的五行不计入
     if total == 0:
         return "中性"
     ratio = xi_total / total
@@ -558,11 +560,11 @@ def _gen_section1(basic: dict, analysis: dict, name: str, gender: str, version: 
     has_wenchang = wc_zhi in all_zhis if wc_zhi else False
     if nian_yin:
         if has_wenchang:
-            edu_level = "🎓 **985·本科及以上（年柱带印+文昌入命）**"
+            edu_level = "🎓 **本科潜力（年柱带印+文昌入命）**"
         else:
-            edu_level = "🎓 **985·本科（文昌需补，年柱正印+正官约束学业稳定）**"
+            edu_level = "🎓 **本科潜力（文昌需补，年柱带印学业基础好）**"
     elif has_wenchang:
-        edu_level = "🎓 **本科及以上（文昌入命）**"
+        edu_level = "🎓 **本科潜力（文昌入命）**"
     else:
         edu_level = "🎓 **中等学历（文昌需补）**"
 
@@ -2584,6 +2586,22 @@ def _gen_section8(basic: dict, analysis: dict) -> list:
     cai_ku = cx.get("cai_ku", "")
     wealth_level = cx.get("wealth_level", "小富")
     details_cai = cx.get("details", [])
+    # 防御性处理：当cai_xing引擎返回空数据时，从details_cai提取财星信息
+    if not cx and details_cai:
+        for d in details_cai[:10]:
+            parts = d.split(" ") if " " in d else [d]
+            # 尝试提取分数：格式如 "年支 己 15 8 偏财" 或类似
+            for p in parts:
+                try:
+                    val = float(p.replace("分",""))
+                    if 0 <= val <= 100:
+                        cai_score = max(cai_score, val)
+                        break
+                except (ValueError, AttributeError):
+                    continue
+        if cai_score == 0:
+            cai_score = cx.get("score", 0)  # 回退到原始默认值
+        wealth_level = cx.get("wealth_level", "小富") or "小富"
     sq = analysis.get("shen_qiang_ruo", {})
     sq_level = sq.get("level", "中和")
     sq_score = sq.get("score", 0)
@@ -2807,20 +2825,29 @@ def _gen_section8(basic: dict, analysis: dict) -> list:
             best_gz = t3[0][0].get('gan_zhi','')
             best_ss = t3[0][0].get('gan_ss','')
             best_jx = t3[0][0].get('ji_xiong','')
+            # 获取最佳窗口的起始年龄，判断是否为儿童/青少年期
+            best_start_age = t3[0][3] if len(t3[0]) > 3 else 999
+            is_child_window = best_start_age < 18
             lines.append(f"🗣️ **白话解读**：您是{ri_gan}命（{ri_wx}·{'阳' if ri_gan in '甲丙戊庚壬' else '阴'}），{'身强' if sq_score>60 else '身弱' if sq_score<40 else '中和'}")
             lines.append(f" 喜用神为{'/'.join(xi_list)}，忌神为{'/'.join(ji_list)}。")
             lines.append(f" {best_gz}运（{find_age(best_gz)}）天干为{best_ss}，{best_jx}，")
             if best_ss in ("正财","偏财"):
                 wx = TIAN_GAN_WU_XING.get(best_gz[0] if best_gz else "","")
-                lines.append(f" 财星十神到位，是**财富积累的最佳窗口期**。此运中喜用神{''.join(xi_list)}受生扶，")
-                if sq_score > 60:
-                    lines.append(f" 身强足以担财，可积极投资、拓展事业版图。")
-                elif sq_score < 40:
-                    lines.append(f" 身弱宜合作求财，借力打力，避免单打独斗。")
+                if is_child_window:
+                    lines.append(f" 财星十神引动，但此运处于{best_start_age:.0f}~{best_start_age+10:.0f}岁童年/青少年期，为人生早期财运基调参考期，不宜以财富积累衡量。")
                 else:
-                    lines.append(f" 中和平衡，进可攻退可守，把握节奏稳健推进。")
+                    lines.append(f" 财星十神到位，是**财富积累的最佳窗口期**。此运中喜用神{''.join(xi_list)}受生扶，")
+                    if sq_score > 60:
+                        lines.append(f" 身强足以担财，可积极投资、拓展事业版图。")
+                    elif sq_score < 40:
+                        lines.append(f" 身弱宜合作求财，借力打力，避免单打独斗。")
+                    else:
+                        lines.append(f" 中和平衡，进可攻退可守，把握节奏稳健推进。")
             elif best_ss in ("食神","伤官"):
-                lines.append(f" 食伤生财，才华和技能可转化为财富，**次窗口期**仍值得布局。")
+                if is_child_window:
+                    lines.append(f" 食伤生财的格局在童年期更多体现为天赋萌芽，不宜以财富论之。")
+                else:
+                    lines.append(f" 食伤生财，才华和技能可转化为财富，**次窗口期**仍值得布局。")
             elif "凶" in best_jx:
                 lines.append(f" 此运财务压力较大，宜守不宜攻，控制负债和风险敞口。")
             else:
@@ -3264,9 +3291,9 @@ def _gen_section10(basic: dict, analysis: dict, birth_year: int) -> list:
         i1, i2 = wx_list_order.index(w1), wx_list_order.index(w2)
         if i1 == i2: return "比肩" if yy1 == yy2 else "劫财"
         if i2 == (i1 + 1) % 5: return "食神" if yy1 == yy2 else "伤官"
-        if i2 == (i1 + 2) % 5: return "正财" if yy1 == yy2 else "偏财"
-        if i2 == (i1 + 3) % 5: return "正官" if yy1 == yy2 else "七杀"
-        if i2 == (i1 + 4) % 5: return "正印" if yy1 == yy2 else "偏印"
+        if i2 == (i1 + 2) % 5: return "偏财" if yy1 == yy2 else "正财"
+        if i2 == (i1 + 3) % 5: return "七杀" if yy1 == yy2 else "正官"
+        if i2 == (i1 + 4) % 5: return "偏印" if yy1 == yy2 else "正印"
         return ""
 
     def _ten_to_wx(ss_type):
@@ -3694,9 +3721,9 @@ def _gen_section11(basic: dict, analysis: dict, birth_year: int) -> list:
         i1, i2 = wx_order.index(w1), wx_order.index(w2)
         if i1 == i2: return "比肩" if yy1 == yy2 else "劫财"
         if i2 == (i1 + 1) % 5: return "食神" if yy1 == yy2 else "伤官"
-        if i2 == (i1 + 2) % 5: return "正财" if yy1 == yy2 else "偏财"
-        if i2 == (i1 + 3) % 5: return "正官" if yy1 == yy2 else "七杀"
-        if i2 == (i1 + 4) % 5: return "正印" if yy1 == yy2 else "偏印"
+        if i2 == (i1 + 2) % 5: return "偏财" if yy1 == yy2 else "正财"
+        if i2 == (i1 + 3) % 5: return "七杀" if yy1 == yy2 else "正官"
+        if i2 == (i1 + 4) % 5: return "偏印" if yy1 == yy2 else "正印"
         return ""
 
     def _ss_wx(ss_type):
@@ -3958,7 +3985,7 @@ def _gen_section11(basic: dict, analysis: dict, birth_year: int) -> list:
 
     if total >= 3:
         grade = "高学历（硕士以上）"
-        gd = "学业基因极强+大运配合+文昌到位，具备冲刺硕博的能力。"
+        gd = "学业基因较好+大运配合+文昌到位，有冲刺好学校的潜力。"
     elif total >= 1:
         grade = "中等偏上（本科~一本）"
         gd = "学业基因较好但存在制约因素，可达较好的本科水平。"
