@@ -1602,6 +1602,9 @@ def _gen_section5(basic: dict, analysis: dict) -> list:
     lines.append("🗣️白话解读：")
     lines.append("")
     xr_label = f"日主「{ri_gan}」的血刃在{xue_ren_found}，注意身体外伤风险" if xue_ren_found else "血刃未入四柱，无血光之忧"
+    yc_label = f"元辰在{yc}，主意外灾祸" if yc_hit else "元辰未入四柱"
+    zs_label = f"灾煞在{zs}，注意突发事故" if zs_hit else "灾煞未入四柱"
+    tl_label = f"{'天罗' if tian_luo else ''}{'、' if tian_luo and di_wang else ''}{'地网' if di_wang else ''}主困顿阻滞" if (tian_luo or di_wang) else "天罗地网未入"
     lines.append(f"上面的神煞排查显示：{yc_label}、{zs_label}、{xr_label}、{tl_label}。")
     lines.append("简单来说，神煞是古人长期观察总结出来的经验符号，有吉有凶。凶神入命不代表一定会出大事，")
     lines.append("关键要看有没有制化——就像一把刀既能伤人也能切菜，重在如何使用和应对。")
