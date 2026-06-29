@@ -55,6 +55,48 @@ LIU_HE = {"子":"丑","丑":"子","寅":"亥","亥":"寅","卯":"戌","戌":"卯
 SAN_HE = {frozenset(["申","子","辰"]):"水", frozenset(["亥","卯","未"]):"木",
            frozenset(["寅","午","戌"]):"火", frozenset(["巳","酉","丑"]):"金"}
 
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# P0-2: 辰戌丑未五行变性引擎
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# 辰戌丑未变性映射：
+#   辰(水库)：遇申+子 → 水（不以土论）
+#   戌(火库)：遇寅+午 → 火（不以土论）
+#   丑(金库)：遇巳+酉 → 金（不以土论）
+#   未(木库)：遇亥+卯 → 木（不以土论）
+BIAN_XING_RULES = {
+    "辰": {"trigger": {"申", "子"}, "to_wx": "水", "title": "水库"},
+    "戌": {"trigger": {"寅", "午"}, "to_wx": "火", "title": "火库"},
+    "丑": {"trigger": {"巳", "酉"}, "to_wx": "金", "title": "金库"},
+    "未": {"trigger": {"亥", "卯"}, "to_wx": "木", "title": "木库"},
+}
+
+def get_bian_xing_wu_xing(zhi: str, zhi_list: list) -> str | None:
+    """辰戌丑未五行变性检测
+    返回变性后的五行，若无变性则返回None
+    """
+    if zhi not in BIAN_XING_RULES:
+        return None
+    rule = BIAN_XING_RULES[zhi]
+    zhi_set = set(zhi_list)
+    if rule["trigger"].issubset(zhi_set):
+        return rule["to_wx"]
+    return None
+
+
+def get_zhi_wu_xing_with_bian_xing(zhi: str, zhi_list: list, original_func=None) -> str:
+    """带五行变性的地支五行查询
+    优先检测辰戌丑未变性，无变性则返回原始五行
+    """
+    bx = get_bian_xing_wu_xing(zhi, zhi_list)
+    if bx:
+        return bx
+    # 回退到原始查询
+    if original_func:
+        return original_func(zhi)
+    return DI_ZHI_WU_XING.get(zhi, "土")
+
+
 # 燥土地支（未/戌）
 ZAO_TU = {"未","戌"}
 
@@ -411,11 +453,29 @@ def calc_bazi_energy_analysis(ri_gan: str, nian_zhi: str, yue_zhi: str, ri_zhi: 
                                xi_shen: list = None) -> dict:
     """八字全局能量分析
     计算四柱地支之间的全部刑冲合害破关系及能量倍数
-    返回完整的关系列表和能量汇总"""
+    返回完整的关系列表和能量汇总
+    
+    伤害分体系（来自金鉴真人_八字命理终极总纲_v1.0）：
+      冲=-70, 害=-60, 破=-20, 刑=-50
+      三合局: 完整+15, 半合+7
+    """
+    # 关系类型 → 伤害分映射
+    DAMAGE_SCORE = {
+        "六冲": -70,
+        "六害": -60,
+        "六破": -20,
+        "三刑": -50,
+        "自刑": -50,
+        "三合局": 15,    # 完整三合正加成
+        "半三合": 7,     # 半三合正加成
+        "三会局": 0,     # 三会局无额外伤害/加成
+        "六合": 0,       # 六合无伤害
+    }
     zhi_list = [nian_zhi, yue_zhi, ri_zhi, shi_zhi]
     positions = ["年支","月支","日支","时支"]
     results = []
     total_energy = 0
+    total_damage = 0
 
     # 两两检查
     for i in range(4):
@@ -426,34 +486,45 @@ def calc_bazi_energy_analysis(ri_gan: str, nian_zhi: str, yue_zhi: str, ri_zhi: 
                 rel["zhi_b_pos"] = positions[j]
                 rel["zhi_a"] = zhi_list[i]
                 rel["zhi_b"] = zhi_list[j]
+                # 计算伤害分
+                rel_type = rel.get("type", "")
+                rel["damage_score"] = DAMAGE_SCORE.get(rel_type, 0)
                 results.append(rel)
                 total_energy += rel["multiplier"]
+                total_damage += rel["damage_score"]
 
     # 三合局检查(完整三合)
     sh_wx, sh_complete, sh_mult = check_san_he(zhi_list)
     if sh_complete:
         results.append({"type":"三合局", "name":f"{sh_wx}三合局", "multiplier":sh_mult,
-                        "detail":f"地支构成{sh_wx}三合局 +{sh_mult}倍"})
+                        "detail":f"地支构成{sh_wx}三合局 +{sh_mult}倍",
+                        "damage_score": DAMAGE_SCORE["三合局"]})
         total_energy += sh_mult
+        total_damage += DAMAGE_SCORE["三合局"]
     # 半三合
     elif sh_mult > 1:
         results.append({"type":"半三合", "name":f"{sh_wx}半三合", "multiplier":sh_mult,
-                        "detail":f"地支构成{sh_wx}半三合 +{sh_mult}倍"})
+                        "detail":f"地支构成{sh_wx}半三合 +{sh_mult}倍",
+                        "damage_score": DAMAGE_SCORE["半三合"]})
         total_energy += sh_mult
+        total_damage += DAMAGE_SCORE["半三合"]
 
     # 三会局检查
     hui_wx, hui_complete, hui_mult = check_san_hui(zhi_list)
     if hui_complete:
         results.append({"type":"三会局", "name":f"{hui_wx}三会局", "multiplier":hui_mult,
-                        "detail":f"地支构成{hui_wx}三会局 +{hui_mult}倍"})
+                        "detail":f"地支构成{hui_wx}三会局 +{hui_mult}倍",
+                        "damage_score": DAMAGE_SCORE.get("三会局", 0)})
         total_energy += hui_mult
 
     # 三刑检查
     xing_results = check_san_xing(zhi_list)
     for xr in xing_results:
         results.append({"type":"三刑", "name":xr[0], "multiplier":xr[2],
-                        "detail":f"{xr[0]}({xr[1]}) +{xr[2]}倍"})
+                        "detail":f"{xr[0]}({xr[1]}) +{xr[2]}倍",
+                        "damage_score": DAMAGE_SCORE["三刑"]})
         total_energy += xr[2]
+        total_damage += DAMAGE_SCORE["三刑"]
 
     # 空亡减半
     # (空亡在排盘阶段已计算，此处标记)
@@ -464,7 +535,12 @@ def calc_bazi_energy_analysis(ri_gan: str, nian_zhi: str, yue_zhi: str, ri_zhi: 
             # 判断关系涉及的五行方向是否喜用
             r["xi_ji"] = "喜" if r.get("multiplier",0) < 0 else "冲"  # placeholder for direction
 
-    return {"relationships": results, "total_multiplier": total_energy, "count": len(results)}
+    return {
+        "relationships": results,
+        "total_multiplier": total_energy,
+        "damage_score": total_damage,
+        "count": len(results),
+    }
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 身强弱评分（金鉴真人原始规则 v7.0）
@@ -1047,15 +1123,34 @@ def calc_wu_xing_energy(nian_gan: str, yue_gan: str, ri_gan: str, shi_gan: str,
     """计算四柱五行能量分布
     算法：每个天干10分，每个地支本气10分+中气6分+余气3分
     月令权重加倍（总纲规则）
-    统计比例并按五行分类，附带过旺过弱预警"""
+    统计比例并按五行分类，附带过旺过弱预警
+    v8.0新增：辰戌丑未五行变性检测 + 生多为克检测 + 恶神能量映射"""
     wu_xing_score = {wx: 0.0 for wx in WX_ORDER}
+
+    zhi_list = [nian_zhi, yue_zhi, ri_zhi, shi_zhi]
+    zhi_positions = ["年支", "月支", "日支", "时支"]
 
     # 天干4个，每个10分
     for gan_pos, gan in [("年干", nian_gan), ("月干", yue_gan), ("日干", ri_gan), ("时干", shi_gan)]:
         wu_xing_score[TIAN_GAN_WU_XING[gan]] += 10.0
 
+    # ── P0-2: 辰戌丑未五行变性检测 ──
+    bian_xing_list = []
+    for zhi_pos, zhi in zip(zhi_positions, zhi_list):
+        bx = get_bian_xing_wu_xing(zhi, zhi_list)
+        if bx:
+            rule = BIAN_XING_RULES[zhi]
+            bian_xing_list.append({
+                "zhi": zhi,
+                "position": zhi_pos,
+                "original_wx": DI_ZHI_WU_XING[zhi],
+                "transformed_wx": bx,
+                "title": rule["title"],
+                "detail": f"{zhi}({zhi_pos})遇{'+'.join(sorted(rule['trigger']))}→{rule['title']}({bx})，不以{DI_ZHI_WU_XING[zhi]}论"
+            })
+
     # 地支+藏干（月令权重加倍）
-    for zhi_pos, zhi in [("年支", nian_zhi), ("月支", yue_zhi), ("日支", ri_zhi), ("时支", shi_zhi)]:
+    for zhi_pos, zhi in zip(zhi_positions, zhi_list):
         cg_list = DI_ZHI_CANG_GAN[zhi]
         for cg, wt in cg_list:
             wx = TIAN_GAN_WU_XING[cg]
@@ -1080,6 +1175,100 @@ def calc_wu_xing_energy(nian_gan: str, yue_gan: str, ri_gan: str, shi_gan: str,
         elif pct < 5:
             warnings.append({"wx": wx, "pct": pct, "level": "过弱", "detail": f"{wx}占比{pct}%，低于5%阈值，五行过弱"})
 
+    # ── P0-1: 生多为克检测（当某五行能量超过平均值的5倍时，"生"变为"克"）──
+    sheng_duo_wei_ke = None
+    # 平均值 = 100% / 5 = 20%, 5倍 = 100% (百分比空间不可能)
+    # 改用原始分数: 若任一元素原始分 > 5 * (总分/5) = 总分
+    # 在百分比等价条件中: pct > 5 * (100-pct)/4  =>  pct > 55.56
+    for wx, pct in result.items():
+        # 条件: pct > 5 * (100 - pct) / 4
+        if pct > 5 * (100 - pct) / 4:
+            avg_pct = round(100.0 / 5, 1)
+            five_x = round(5 * avg_pct, 1)
+            sheng_duo_wei_ke = {
+                "wx": wx,
+                "detail": f"{wx}能量值{pct}%(平均{avg_pct}%的5倍={five_x}%)，生多为克"
+            }
+            break  # 只报告最严重的一个
+
+    # ── P0-3: 恶神能量对应表 ──
+    # 恶神：七杀、伤官、枭神、劫财
+    # 根据不同能量倍数映射具体事件
+    E_SHEN_EVENT_MAP = {
+        "七杀": [
+            (1, 3, "压力小人"),
+            (3, 7, "官非手术"),
+            (7, 10, "重大灾难"),
+            (10, 15, "生死大灾"),
+            (20, float('inf'), "牢狱之灾"),
+        ],
+        "伤官": [
+            (1, 3, "口舌是非"),
+            (3, 7, "官非失业"),
+            (7, 10, "重大官非"),
+            (10, 15, "刑狱巨灾"),
+        ],
+        "枭神": [
+            (1, 3, "孤独抑郁"),
+            (3, 7, "精神困扰"),
+            (7, 10, "严重抑郁"),
+            (10, 15, "精神崩溃"),
+        ],
+        "劫财": [
+            (1, 3, "破财小人"),
+            (3, 7, "重大破财"),
+            (7, 10, "破产危机"),
+            (10, 15, "倾家荡产"),
+        ],
+    }
+
+    # 计算每个恶神的能量倍数
+    # 基于天干中该十神的数量 + 地支藏干中该十神的数量 * 权重
+    # 用 position score 体系加权
+    POS_WEIGHT = {"年干": 8, "月干": 12, "日干": 0, "时干": 12,
+                  "年支": 4, "月支": 40, "日支": 12, "时支": 12}
+
+    e_shen_energy = {}
+    for gan_pos, gan in [("年干", nian_gan), ("月干", yue_gan), ("日干", ri_gan), ("时干", shi_gan)]:
+        ss = _raw_shi_shen(ri_gan, gan)
+        if ss in E_SHEN_EVENT_MAP:
+            e_shen_energy.setdefault(ss, 0)
+            e_shen_energy[ss] += POS_WEIGHT.get(gan_pos, 10)
+
+    for zhi_pos, zhi in zip(zhi_positions, zhi_list):
+        for cg, wt in DI_ZHI_CANG_GAN[zhi]:
+            ss = _raw_shi_shen(ri_gan, cg)
+            if ss in E_SHEN_EVENT_MAP:
+                e_shen_energy.setdefault(ss, 0)
+                ratio = wt / 100.0
+                base = POS_WEIGHT.get(zhi_pos, 12)
+                e_shen_energy[ss] += base * ratio
+
+    # 将原始能量值归一化为能量倍数（以10分为基准倍）
+    e_shen_map = {}
+    for ss_name, raw_energy in sorted(e_shen_energy.items(), key=lambda x: -x[1]):
+        # 能量倍数 = 原始能量 / 10 (每10分算1倍)
+        multiplier = round(raw_energy / 10.0, 1)
+        # 查找事件映射
+        events = []
+        for lo, hi, event in E_SHEN_EVENT_MAP.get(ss_name, []):
+            if lo <= multiplier < hi:
+                events.append({"range": f"{lo}-{hi}倍", "event": event})
+        if not events and multiplier > 0:
+            # 不在定义范围内的，按最近的级别
+            if multiplier < 1:
+                events.append({"range": "<1倍", "event": "轻微影响"})
+            else:
+                # 找最后一个
+                last_hi = max(h for _, h, _ in E_SHEN_EVENT_MAP.get(ss_name, [(0,1,"")]))
+                if multiplier >= last_hi:
+                    events.append({"range": f">={last_hi}倍", "event": "极凶"})
+        e_shen_map[ss_name] = {
+            "raw_energy": round(raw_energy, 1),
+            "multiplier": multiplier,
+            "events": events,
+        }
+
     # 排序：从高到低
     sorted_result = dict(sorted(result.items(), key=lambda x: -x[1]))
     return {
@@ -1087,6 +1276,9 @@ def calc_wu_xing_energy(nian_gan: str, yue_gan: str, ri_gan: str, shi_gan: str,
         "strongest_wx": list(sorted_result.keys())[0] if sorted_result else "",
         "weakest_wx": list(sorted_result.keys())[-1] if sorted_result else "",
         "warnings": warnings,
+        "sheng_duo_wei_ke": sheng_duo_wei_ke,
+        "bian_xing": bian_xing_list,  # P0-2: 辰戌丑未五行变性
+        "e_shen_energy_map": e_shen_map,  # P0-3: 恶神能量对应表
     }
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1188,9 +1380,10 @@ ZAI_SHA = {
 }
 
 # 血刃（以日干查四支地支）
+# 阳干血刃=羊刃位(same as 帝旺), 阴干血刃=羊刃后一位
 XUE_REN = {
-    "甲":"卯","乙":"寅","丙":"午","丁":"巳","戊":"午",
-    "己":"巳","庚":"酉","辛":"申","壬":"子","癸":"亥"
+    "甲":"卯","乙":"辰","丙":"午","丁":"未","戊":"午",
+    "己":"未","庚":"酉","辛":"戌","壬":"子","癸":"丑"
 }
 
 # 孤辰寡宿（以年支查四支地支）
