@@ -2109,7 +2109,7 @@ def calc_cai_fu_deng_ji(cai_xing_total: float, sqr_score: float, sqr_level: str,
     elif state == "身弱财弱":
         score = 12 + (cai_xing_total / 40.0) * 24  # 12-36分
     elif state == "无财+身弱":
-        score = 0 + min(sqr_score, 12)  # 0-12分
+        score = 0 + min(sqr_score, 11.9)  # 0-11.9分，保持在贫穷范围
     elif state == "无财+身强":
         score = 12 + min(sqr_score - 40, 24)  # 12-36分
     elif state == "中和财旺":

@@ -328,7 +328,7 @@ def _gen_four_features(basic: dict, analysis: dict, ri_gan: str, ri_wx: str,
     if has_wc:
         feature4 = f"文昌{wen_chang_zhi}到位学业利"
     else:
-        feature4 = f"文昌{wen_chang_zhi}未到位需补"
+        feature4 = f"文昌{wen_chang_zhi}未到位宜补文昌方位"
 
     return f"①{feature1} ②{feature2} ③{feature3} ④{feature4}"
 
@@ -401,10 +401,15 @@ def _gen_section1(basic: dict, analysis: dict, name: str, gender: str, version: 
         sq_desc = "命主自身能量充足，做事有底气和执行力"
     elif sq_level == "身弱":
         sq_desc = "命主自身能量偏弱，需要借助外界资源和贵人助力"
+    elif sq_level == "偏弱":
+        # 根据日主动态生成印比五行描述
+        _yin_wx_map = {'甲':'水','乙':'水','丙':'木','丁':'木','戊':'火','己':'火','庚':'土','辛':'土','壬':'金','癸':'金'}
+        _bi_wx_map = {'甲':'木','乙':'木','丙':'火','丁':'火','戊':'土','己':'土','庚':'金','辛':'金','壬':'水','癸':'水'}
+        sq_desc = f"命主自身能量略有不足，需借助印比({_yin_wx_map.get(ri_gan,'?')}{_bi_wx_map.get(ri_gan,'?')})生扶补足"
     elif "从弱" in sq_level or "从格" in sq_level:
         sq_desc = "命主为从弱格——全局克泄耗为主，弃命相从，顺势而为是上策"
     else:
-        sq_desc = f"命主自身能量中和（{sq_score}分），月令得比肩之助、天干透正官约束，形成外有规范内有动力的平衡格局"
+        sq_desc = "命主自身能量中和，五行较为平衡，能较好地兼顾各方"
     ge_ju_str = analysis.get("ge_ju", "正印")
     lines.append(f"# {name}·完整八字命理深析报告 {version}（标准格式·金鉴真人引擎版）")
     lines.append("")
@@ -435,12 +440,12 @@ def _gen_section1(basic: dict, analysis: dict, name: str, gender: str, version: 
     ji_str_short = "、".join(ji_list[:3]) if ji_list else "—"
     lines.append("### 🗣️ 白话解读（总览）")
     lines.append("")
-    lines.append(f"> **白话：** 您是{ri_gan}命（{ri_wx}·{ri_yy}），属{ge_ju_str}，{sq_level}（{sq_score}分），{sq_desc}。")
+    lines.append(f"> **白话：** 您是{ri_gan}命（{ri_wx}·{ri_yy}），属{ge_ju_str}，{sq_level}（{sq_score}分）。{sq_desc}。")
     lines.append(f"> 八字为「{si_zhu}」，四柱排盘已精准校准节气交替与月令划分。")
     lines.append(f"> 喜用神：{xi_str_short}｜忌神：{ji_str_short}。财星{cai_score}分，属{wealth_level}。")
     lines.append('> 简而言之，您先天命局以' + ge_ju_str + '为主体架构，' + (
         '从弱格弃命相从，顺势而为，借官杀之力成就事业' if '从弱' in sq_level or '从格' in sq_level else
-        '身虽弱但格局清奇，善借外力方可成事' if '偏弱' in sq_desc else sq_desc
+        '身虽弱但格局清奇，善借外力方可成事' if sq_level in ('偏弱', '身弱') else '五行得中和之妙，贵在平衡圆融'
     ) + '，人生基调由此奠定。')
     lines.append("")
     lines.append(f"> **【金鉴真人·§1·四柱排盘规则】** 本报告四柱八字依据公历{basic.get('solar_date', '')}精确推算——年柱随立春交接，月柱依节气划分，日柱基于日干支公式，时柱按出生时辰定。排盘规则严格遵循【金鉴真人·§1·四柱排盘规则】，确保天干地支、纳音、空亡信息准确，为后续格局、身强弱、喜用神等分析奠定可靠基础。")
@@ -503,11 +508,11 @@ def _gen_section1(basic: dict, analysis: dict, name: str, gender: str, version: 
         if has_wenchang:
             edu_level = "🎓 **本科潜力（年柱带印+文昌入命）**"
         else:
-            edu_level = "🎓 **本科潜力（文昌需补，年柱带印学业基础好）**"
+            edu_level = "🎓 **本科潜力（文昌未到位，宜补文昌方位增强学业运）**"
     elif has_wenchang:
         edu_level = "🎓 **本科潜力（文昌入命）**"
     else:
-        edu_level = "🎓 **中等学历（文昌需补）**"
+        edu_level = "🎓 **中等学历（文昌未到位，宜补文昌方位助学业）**"
 
     lines.append("**📊 第三段：量化评分（4项）**")
     lines.append("")
@@ -728,7 +733,14 @@ def _gen_section2(basic: dict, analysis: dict) -> list:
         lines.append(f'**② 主格判定**：命局为从弱格，格局判定以从势为主 → **「{ge_ju_str}」（从弱格局）**')
         lines.append(f'   💡 此命局为从弱格，格局判定以从势为主，月令本气仅作参考。')
     else:
-        lines.append(f'**② 主格判定**：月令本气{yue_ben_qi_gan} → {yue_ben_qi_ss} → 命局核心格局为 **「{yue_ben_qi_ss}格」（{main_ge_label}）**')
+        # 使用引擎全局格局判定，而非仅月令本气
+        if ge_ju_str and ge_ju_str not in ('正印', '偏印', '正官', '七杀', '正财', '偏财', '食神', '伤官', '比肩', '劫财'):
+            # 综合格局（如食神制杀格/杀印相生），需要说明月令本气与全局判定的关系
+            lines.append(f'**② 主格判定**：月令本气{yue_ben_qi_gan}→{yue_ben_qi_ss}，但综合四柱全局分析（透干·组合·制化）命局核心格局为 **「{ge_ju_str}」**')
+            lines.append(f'   💡 {ge_ju_str}属于综合格局，比单纯的{yue_ben_qi_ss}格更能反映命局整体气质。')
+        else:
+            # 常规格局，月令本气定主格
+            lines.append(f'**② 主格判定**：月令本气{yue_ben_qi_gan} → {yue_ben_qi_ss} → 命局核心格局为 **「{yue_ben_qi_ss}格」（{main_ge_label}）**')
     lines.append('')
 
     is_pure = (yue_gan_ss == yue_ben_qi_ss)
@@ -802,6 +814,8 @@ def _gen_section2(basic: dict, analysis: dict) -> list:
 
     if sq_level == '从弱':
         lines.append(f'> 【金鉴真人·§2·主格定义】格局以从势为宗，命局为从弱格，主格以从势五行判定为{ge_ju_str}。{pure_note}。')
+    elif ge_ju_str and ge_ju_str not in ('正印', '偏印', '正官', '七杀', '正财', '偏财', '食神', '伤官', '比肩', '劫财'):
+        lines.append(f'> 【金鉴真人·§2·主格定义】格局以月令本气为参考，综合四柱全局判定命局核心格局为{ge_ju_str}。{pure_note}。')
     else:
         lines.append(f'> 【金鉴真人·§2·主格定义】格局以月令本气为宗，月令{yue_zhi}本气{yue_ben_qi_gan}定主格为{yue_ben_qi_ss}格。{pure_note}。')
     lines.append('')
@@ -920,7 +934,7 @@ def _gen_section2(basic: dict, analysis: dict) -> list:
     if sq_level == '从弱':
         lines.append(f'> 【金鉴真人·§2·格局细分定义】透干为用，{fu_ge_pos}{fu_ge_gan}透出{fu_ge_ss}为命局格局细分，与从弱格主格{ge_ju_str}格共同构成命局的格局框架。')
     else:
-        lines.append(f'> 【金鉴真人·§2·格局细分定义】透干为用，{fu_ge_pos}{fu_ge_gan}透出{fu_ge_ss}为命局格局细分，与主格{yue_ben_qi_ss}格共同构成命局的格局框架。')
+        lines.append(f'> 【金鉴真人·§2·格局细分定义】透干为用，{fu_ge_pos}{fu_ge_gan}透出{fu_ge_ss}为命局格局细分，与主格{ge_ju_str}共同构成命局的格局框架。')
     lines.append('')
 
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -992,7 +1006,7 @@ def _gen_section2(basic: dict, analysis: dict) -> list:
     if sq_level == '从弱':
         lines.append(f'> 【金鉴真人·§2·格局叠加】主格{ge_ju_str}格（从弱格局）+ 格局细分{fu_ge_ss}格 → {overlay_type}，{overlay_level}。{overlay_desc}')
     else:
-        lines.append(f'> 【金鉴真人·§2·格局叠加】主格{yue_ben_qi_ss}格（{main_ge_label}）+ 格局细分{fu_ge_ss}格 → {overlay_type}，{overlay_level}。{overlay_desc}')
+        lines.append(f'> 【金鉴真人·§2·格局叠加】主格{ge_ju_str} + 格局细分{fu_ge_ss}格 → {overlay_type}，{overlay_level}。{overlay_desc}')
     lines.append('')
 
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1000,7 +1014,9 @@ def _gen_section2(basic: dict, analysis: dict) -> list:
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     lines.append('### 2.4 身强弱与格局匹配')
     lines.append('')
-    lines.append(f'日主{ri_gan}当前身状态为 **{sq_level}**（评分{sq_score}分），与{yue_ben_qi_ss}格的匹配情况如下：')
+    # 使用引擎全局格局作为匹配对象
+    match_geju = ge_ju_str if (ge_ju_str and ge_ju_str not in ('正印', '偏印', '正官', '七杀', '正财', '偏财', '食神', '伤官', '比肩', '劫财')) else yue_ben_qi_ss
+    lines.append(f'日主{ri_gan}当前身状态为 **{sq_level}**（评分{sq_score}分），与{match_geju}的匹配情况如下：')
     lines.append('')
 
     if yue_ben_qi_ss in ['正官', '七杀']:
@@ -1045,7 +1061,7 @@ def _gen_section2(basic: dict, analysis: dict) -> list:
         elif sq_level == '身强':
             match_note = f'✅ 身强比劫旺，独立性极强，适合自主创业或自由职业。'
         elif sq_level == '中和':
-            match_note = f'➖ 中和之命比劫为朋，社交广泛但需注意合作关系。'
+            match_note = f'➖ 中和之命比劫为朋，社交广泛。合作关系宜选择互补型伙伴（五行金水），避免利益冲突型合作（同五行火土）。'
         else:
             match_note = f'⚠️ 身弱比劫为助，需借朋友团队之力。'
     else:
@@ -1075,7 +1091,11 @@ def _gen_section2(basic: dict, analysis: dict) -> list:
     main_baidu = main_baidu_map.get(yue_ben_qi_ss, '')
 
     lines.append(f'**格局总览**：')
-    lines.append(f'您的命局以**「{yue_ben_qi_ss}格」**为核心格局。{main_baidu}是您命局的关键词。')
+    # 使用引擎的全局格局判定，而非仅月令本气
+    if ge_ju_str and ge_ju_str not in ('正印', '偏印', '正官', '七杀', '正财', '偏财', '食神', '伤官', '比肩', '劫财'):
+        lines.append(f'您的命局核心格局为**「{ge_ju_str}」**——这是一个综合格局，融合了{yue_ben_qi_ss}的{main_baidu}与全局十神制化的综合效果。')
+    else:
+        lines.append(f'您的命局以**「{yue_ben_qi_ss}格」**为核心格局。{main_baidu}是您命局的关键词。')
 
     if is_pure:
         lines.append(f'月令{yue_zhi}的{yue_ben_qi_ss}能量直接透到了月干{yue_gan}上，格局清纯不杂乱，说明您的核心特质非常突出，')
@@ -1098,9 +1118,11 @@ def _gen_section2(basic: dict, analysis: dict) -> list:
 
     lines.append('')
     lines.append('**简单来说**：')
-    lines.append(f"您的命格以{yue_ben_qi_ss}为核心特质，命局中的其他十神围绕这个核心展开互动。"
-                 f"身{sq_level}意味着您{'从弱格，顺势而为是上策' if '从弱' in sq_level else '自身能量充足，可以主动出击' if sq_level == '身强' else '自身能量偏弱，适合借力发展' if sq_level == '身弱' else '能量平衡，灵活应变'}。")
-    lines.append(f'您的命局月令{yue_zhi}本气为{yue_ben_qi_ss}，年干{nian_gan}透{nian_gan_ss}，月时诸干各有十神配置，属于典型的「{yue_ben_qi_ss}格」格局组合。命局的吉凶关键不在于十神多寡，而在于制化是否得当——喜用神得生扶则顺势有为，忌神受制则凶中藏吉。')
+    # 使用引擎全局格局描述
+    geju_display = ge_ju_str if (ge_ju_str and ge_ju_str not in ('正印', '偏印', '正官', '七杀', '正财', '偏财', '食神', '伤官', '比肩', '劫财')) else yue_ben_qi_ss
+    lines.append(f"您的命格以{geju_display}为主体架构，命局中的其他十神围绕这个核心展开互动。"
+                 f"身{sq_level}意味着您{'从弱格，顺势而为是上策' if '从弱' in sq_level else '自身能量充足，可以主动出击' if sq_level == '身强' else '自身能量偏弱，适合借力发展' if sq_level == '身弱' else '自身能量略有不足，需借印比补足' if sq_level == '偏弱' else '能量平衡，灵活应变'}。")
+    lines.append(f'您的命局综合判定为{geju_display}，年干{nian_gan}透{nian_gan_ss}，月时诸干各有十神配置。命局的吉凶关键不在于十神多寡，而在于制化是否得当——喜用神得生扶则顺势有为，忌神受制则凶中藏吉。')
     lines.append('')
     lines.append('**给您的建议**：')
     # 根据身强弱给出具体建议
@@ -1112,8 +1134,10 @@ def _gen_section2(basic: dict, analysis: dict) -> list:
         lines.append('您身弱有印生，多学习、多交贵人，用知识和人脉来弥补自身能量的不足。')
     elif sq_level == '身弱':
         lines.append('您身弱格局压力较大，建议稳扎稳打，先打好基础再谋发展。')
+    elif sq_level == '偏弱':
+        lines.append('您偏弱之命，印比(贵人/团队)是补能关键。宜多学习多社交，借助外界资源来弥补自身能量的不足。')
     else:
-        lines.append('您中和之命，当前壬辰大运天干壬（七杀·喜用神水）加持，宜在学业和兴趣培养上主动发力，为后续庚寅、戊子等最佳大运积蓄实力。')
+        lines.append('您中和之命，能量平衡灵活，宜在擅长的领域持续深耕，发挥平衡优势。')
     lines.append('')
 
     # 格局总结（三维度回顾）
@@ -1121,17 +1145,20 @@ def _gen_section2(basic: dict, analysis: dict) -> list:
     lines.append('')
     lines.append(f'| 维度 | 内容 | 解读 |')
     lines.append(f'|:---|:---|:---|')
-    main_label_display = main_ge_label
-    lines.append(f'| **① 主格** | {yue_ben_qi_ss}格 | 月令{yue_zhi}本气{yue_ben_qi_gan}定，{main_label_display}，{"纯正有力" if is_pure else "需大运引动"} |')
+    if ge_ju_str and ge_ju_str not in ('正印', '偏印', '正官', '七杀', '正财', '偏财', '食神', '伤官', '比肩', '劫财'):
+        lines.append(f'| **① 主格** | {ge_ju_str} | 综合格局，月令{yue_zhi}本气{yue_ben_qi_gan}为参考，全局判定 |')
+    else:
+        main_label_display = main_ge_label
+        lines.append(f'| **① 主格** | {yue_ben_qi_ss}格 | 月令{yue_zhi}本气{yue_ben_qi_gan}定，{main_label_display}，{"纯正有力" if is_pure else "需大运引动"} |')
     if candidate_fuge and fu_ge_ss:
         fu_label_display = _get_ji_e_label(fu_ge_ss)
         lines.append(f'| **② 格局细分** | {fu_ge_ss} | {fu_ge_pos}透{fu_ge_gan}，{fu_label_display}，辅助主格 |')
     else:
         lines.append(f'| **② 格局细分** | 无显著格局细分 | 格局以主格为核心 |')
     lines.append(f'| **③ 叠加** | {overlay_type} | {overlay_level} — {overlay_desc[:40]}... |')
-    lines.append(f'| **④ 身匹配** | {sq_level}（{sq_score}分） | 与{yue_ben_qi_ss}格匹配{match_note[:20]}... |')
+    lines.append(f'| **④ 身匹配** | {sq_level}（{sq_score}分） | 与格局匹配{match_note[:20]}... |')
     lines.append('')
-    lines.append(f'**总结**：命局以月令本气{yue_ben_qi_ss}格为骨架，以天干透出格局为羽翼，两者叠加形成命局的整体格局气质。身状态{sq_level}与格局的匹配度决定了命主的事业方向和发力方式：{sq_level}者能驾驭格局能量主动出击，中和者稳健推进，身弱者需借喜用神大运助身方可发挥格局优势。')
+    lines.append(f'**总结**：命局以{ge_ju_str}为骨架，以天干透出格局为羽翼，两者叠加形成命局的整体格局气质。身状态{sq_level}（{sq_score}分）与格局的匹配度决定了命主的事业方向和发力方式。')
     lines.append('')
 
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1195,9 +1222,11 @@ def _gen_section3(basic: dict, analysis: dict) -> list:
         lines.append(f"简单来说，你的命局能量挺足的（{sq_score}分），就像一辆马力十足的越野车，能在各种路况下驰骋。身强的人天生有股「我来」的劲儿，适合做决策者、开拓者。不过能量太足也容易「过火」——做决定时多听听身边人的意见，别让自己的主见变成固执。")
     elif sq_level == "身弱":
         lines.append(f"简单来说，你的命局能量偏弱（{sq_score}分），好比一台精密的仪器，不需要大功率运转也能发挥独特价值。身弱不是缺点——你更懂得借力、更善解人意，在团队中是很好的协调者和智囊。记住：你的贵人运往往比你的个人能力更重要。")
+    elif sq_level == "偏弱":
+        lines.append(f"简单来说，你的命局能量略有不足（{sq_score}分），好比一辆精致的轿车，性能出色但在重载时需要更加注意。偏弱的人不是没有能力，而是能量需要合理分配——把精力集中在最重要的事情上效果最好。你的优势在于懂得借力，善于利用印比（贵人/团队）来补足自身能量。")
     elif "从" in sq_level:
         lines.append(f"简单来说，你的命局为从弱格（{sq_score}分），这是一种特殊的格局——日主极弱但格局清奇。好比一片轻舟顺流而下，最忌逆水行舟。从弱者的最大优势是灵活善变、顺势而为、不固执己见。但逆运时容易失去主心骨，需保持内心定力。从弱格的核心策略是「顺」——顺官杀得事业，顺食伤得才华，顺财星得财富。")
-    else:
+    elif sq_level == "中和":
         lines.append(f"简单来说，你的命局能量非常平衡（{sq_score}分），就像一辆自动驾驶的汽车，既不会太激进也不会太保守。这种状态让你有很强的适应性，在不同环境中都能找到自己的节奏。中和之命最大的优势就是「不偏科」——无论做什么都能做得不错。")
     lines.append("")
 
@@ -1231,7 +1260,9 @@ def _gen_section3(basic: dict, analysis: dict) -> list:
         lines.append(f"从评分明细可以看出，你的命局能量主要来自{main_source}的支持，各维度加起来总分{sq_score}。身强的人好比「自带干粮上路」，不依赖外界也能独立前行。在人群中你往往是那个拿主意的人，有天然的号召力和执行力。")
     elif sq_level == "身弱":
         lines.append(f"从评分明细可以看出，你的命局在{main_source}方面获得了一定支持，但整体能量还需借助外力。身弱的人好比「轻装上阵的探险家」，虽然负重不大却能灵活应变。你的核心竞争力不在于硬拼，而在于借力打力——善于用人际关系和资源整合来弥补自身力量的不足。")
-    else:
+    elif sq_level == "偏弱":
+        lines.append(f"从评分明细可以看出，你的命局在{main_source}方面获得了一定支持。偏弱的人好比「精打细算的理财师」——资源有限但善于配置，懂得把好钢用在刀刃上。在团队中你适合做技术骨干或策略制定者，用专业能力说话，而非靠蛮力硬拼。")
+    elif sq_level == "中和":
         lines.append(f"从评分明细可以看出，你的命局能量分布均衡，{main_source}提供了稳定的基础支撑。中和之命的人就像「变色龙」，能适应各种环境，既不会锋芒毕露也不会过于隐忍。这种特质让你在团队中既适合做骨干也适合做润滑剂。")
     lines.append("")
 
@@ -1244,7 +1275,9 @@ def _gen_section3(basic: dict, analysis: dict) -> list:
         conclusion = f"身强（{sq_score}分）：命主自身能量充足，能够承载财官，但需防比劫过旺导致固执"
     elif sq_level == "身弱":
         conclusion = f"身弱（{sq_score}分）：您身虽弱，但格局清奇，宜借印比之力补益，不宜独当一面"
-    else:
+    elif sq_level == "偏弱":
+        conclusion = f"偏弱（{sq_score}分）：命主自身能量略有不足，需借助印比生扶补足，不宜独担大任"
+    elif sq_level == "中和":
         conclusion = f"中和（{sq_score}分）：命主自身能量平衡，灵活性强，能适应各种环境"
     lines.append(f"**{conclusion}**")
     lines.append("")
@@ -1268,7 +1301,12 @@ def _gen_section3(basic: dict, analysis: dict) -> list:
         lines.append(f"身弱之人需要借助外部力量来成就事业，贵人运和人脉的重要性大于个人能力。")
         lines.append(f"身弱不一定是坏事，身弱的人往往更善于整合资源，人际关系更加圆融。")
         lines.append(f"大运中遇到印/比劫运是最佳窗口，届时能量得到补充，可以做出更大的事业成绩。")
-    else:
+    elif sq_level == "偏弱":
+        lines.append(f"偏弱（{sq_score}分）判定依据：日主在原局中根气有限但非全无，月令无直接生扶但地支有一定支撑。")
+        lines.append(f"偏弱之人需借助外部力量来成就事业，印星（学习/贵人）和比劫（团队/朋友）是补能的关键。")
+        lines.append(f"偏弱并非劣势——懂得借力的人往往比自我硬撑的人走得更远。")
+        lines.append(f"大运中遇到印/比劫运是最佳窗口，届时能量得到补充，可以做出更大的事业成绩。")
+    elif sq_level == "中和":
         lines.append(f"中和（{sq_score}分）判定依据：日主在原局中的能量既不太强也不太弱，"
                      f"处于一个平衡状态。这种状态使命主有较大的灵活性和适应性。")
         lines.append(f"中和之命的好處在于不偏不倚，能在各种环境中找到自己的位置。")
@@ -2842,7 +2880,7 @@ def _gen_section8(basic: dict, analysis: dict) -> list:
     # ─── 8.5 第五层：财库深度分析 ───
     lines.append("### 7.5 第五层：财库深度分析")
     lines.append("")
-    lines.append("【金鉴真人·§8·财库规则】辰(土/水库)戌(火库)丑(金库)未(木库)。有库蓄财，无库需补。")
+    lines.append("【金鉴真人·§8·财库规则】辰(土/水库)戌(火库)丑(金库)未(木库)。有库蓄财，无库需补。无库者宜通过职业方向（选择喜用神对应的行业）和理财规划（定期定额储蓄）来补足财库。")
     lines.append("")
     kp = ""
     for pk,pl in [("nian","年"),("yue","月"),("ri","日"),("shi","时")]:
@@ -2941,7 +2979,7 @@ def _gen_section8(basic: dict, analysis: dict) -> list:
             # 获取最佳窗口的起始年龄，判断是否为儿童/青少年期
             best_start_age = t3[0][3] if len(t3[0]) > 3 else 999
             is_child_window = best_start_age < 18
-            lines.append(f"🗣️ **白话解读**：您是{ri_gan}命（{ri_wx}·{'阳' if ri_gan in '甲丙戊庚壬' else '阴'}），{'身强' if sq_score>60 else '身弱' if sq_score<40 else '中和'}")
+            lines.append(f"🗣️ **白话解读**：您是{ri_gan}命（{ri_wx}·{'阳' if ri_gan in '甲丙戊庚壬' else '阴'}），{sq_level}（{sq_score}分）")
             lines.append(f" 喜用神为{'/'.join(xi_list)}，忌神为{'/'.join(ji_list)}。")
             lines.append(f" {best_gz}运（{find_age(best_gz)}）天干为{best_ss}，{best_jx}，")
             if best_ss in ("正财","偏财"):
@@ -3009,7 +3047,7 @@ def _gen_section8(basic: dict, analysis: dict) -> list:
         if "身弱" in sq_level.lower():
             sq_display = "身弱"
         elif "中和" in sq_level:
-            sq_display = "中和"
+            sq_display = sq_level
         elif "身强" in sq_level:
             sq_display = "身强"
         dg = any(TIAN_GAN_WU_XING.get(d.get('gan', d.get('gan_zhi','')[:1] or ''),'')==cai_wx for d in dy_list[:4])
