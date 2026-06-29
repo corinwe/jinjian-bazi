@@ -5483,7 +5483,7 @@ def _gen_section15(basic: dict, analysis: dict) -> list:
     elif rizhi_ss:
         lines.append(f"解读：日支十神{rizhi_ss}中性，配偶性格温和，夫妻关系平稳，婚姻质量中等。")
     else:
-        lines.append("解读：日支无十神信息，详见§12婚姻分析。")
+        lines.append("解读：日支无十神信息，详见§8婚姻分析。")
     # 六冲/合影响日支
     if chong_rs:
         lines.append("⚠️ 日支与时柱六冲（配偶宫与子女宫相冲），婚姻与子女之间存在矛盾张力，"
@@ -5493,7 +5493,7 @@ def _gen_section15(basic: dict, analysis: dict) -> list:
     if chong_yr:
         lines.append("⚠️ 年柱与日支六冲（祖上宫与配偶宫相冲），配偶与祖上关系不睦，"
                      "或婚姻因家族事务产生矛盾。")
-    lines.append("> 详细婚姻分析请参见 §12 婚姻感情分析。")
+    lines.append("> 详细婚姻分析请参见 §8 婚姻感情分析。")
     lines.append("")
 
     # ═══════════════════════════════════════════
