@@ -1,5 +1,6 @@
 """引擎输出 → 报告生成器 数据适配层"""
 import logging
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -92,8 +93,8 @@ def adapt_engine_to_report(bazi_result: dict, name: str, gender: str) -> dict:
             "gan_zhi": yun.get("gan_zhi", ""),
             "start_age": int(sa),
             "end_age": int(ea),
-            "start_year": 2024 - int((sa + ea) / 2),
-            "end_year": 2024 + int((ea - sa) / 2),
+            "start_year": datetime.now().year - int((sa + ea) / 2),
+            "end_year": datetime.now().year + int((ea - sa) / 2),
             "score": 5,
             "gan_ss": "",
         })
