@@ -123,6 +123,11 @@ def compute_da_yun_scores(bazi: BaZi, da_yun_list: list[DaYun]) -> list[tuple[in
     """
     评估每步大运的吉凶评分
 
+    ⚠️ 审计标记 (2026-06-29): 评分公式为自创，九龙道长原始素材无此数值体系
+       - 基准分5.0: 无原始依据
+       - 主喜用+2.0/次喜用+1.5/主忌神-2.0/次忌神-1.5: 无原始依据
+       - 建议: 待修改为基于原始素材的定性判断，或标注为实验性评分
+
     返回: [(index, score), ...]  score越高越好
     评分逻辑: 大运干支为喜用则加分，为忌神则减分
     """
@@ -135,32 +140,32 @@ def compute_da_yun_scores(bazi: BaZi, da_yun_list: list[DaYun]) -> list[tuple[in
         # 大运天干五行 + 地支五行
         gan_wx = TIAN_GAN_WU_XING[dy.gan]
         zhi_wx = DI_ZHI_WU_XING[dy.zhi]
-        score = 5.0  # 基准分
+        # ⚠️ 以下数值(5.0/2.0/1.5)均为自创，无九龙道长原始素材支撑
+        score = 5.0  # 基准分 (自创数值)
 
-        # 天干独立计分（不合并到集合，避免同五行去重丢失）
-        # 例：己丑运·己土(忌)+丑土(忌) → 应减2次，不能因五行相同合并为1次
+        # 天干独立计分
         if gan_wx in xi_yong:
             if gan_wx == xi_yong[0]:
-                score += 2.0
+                score += 2.0  # 自创
             else:
-                score += 1.5
+                score += 1.5  # 自创
         if gan_wx in ji_shen:
             if gan_wx == ji_shen[0]:
-                score -= 2.0
+                score -= 2.0  # 自创
             else:
-                score -= 1.5
+                score -= 1.5  # 自创
 
         # 地支独立计分
         if zhi_wx in xi_yong:
             if zhi_wx == xi_yong[0]:
-                score += 2.0
+                score += 2.0  # 自创
             else:
-                score += 1.5
+                score += 1.5  # 自创
         if zhi_wx in ji_shen:
             if zhi_wx == ji_shen[0]:
-                score -= 2.0
+                score -= 2.0  # 自创
             else:
-                score -= 1.5
+                score -= 1.5  # 自创
 
         score = max(0, min(10, score))
         results.append((i, round(score, 1)))

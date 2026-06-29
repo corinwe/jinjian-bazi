@@ -15,7 +15,7 @@ from __future__ import annotations
 from constants import DI_ZHI_CANG_GAN, DI_ZHI_WU_XING, TIAN_GAN_WU_XING, WU_XING_KE
 from shi_shen import get_shi_shen_for_cang_gan, get_shi_shen_for_gan
 
-# ── 五级定量 ──
+# ── 五级定量 (⚠️ 审计标记 2026-06-29: 以下阈值均为自创，九龙道长原始素材无此数值分段) ──
 WEALTH_LEVELS = [
     {"level": "👑 巨富", "range": "几十亿~上百亿", "score_range": (50, 100)},
     {"level": "💰 大富", "range": "几个亿", "score_range": (40, 50)},
@@ -91,6 +91,7 @@ def _eval_wei_ke(all_zhis: list[str], ri_zhu: str, bazi_gans: list[str]) -> floa
         if WU_XING_KE.get(wx) == cai_wx:  # 这个五行克财星五行
             ke_count += 1
 
+    # ⚠️ 审计标记: 折扣率0.3/0.6/1.0为自创数值，无九龙道长原始素材支撑
     if ke_count >= 4:
         return 0.3  # 30%兑现
     elif ke_count >= 2:
@@ -159,7 +160,7 @@ def analyze_wealth_full(
                 {"da_yun": dy.get("gan_zhi", str(dy)), "window": "印比帮身大运，身弱能担财", "score": score}
             )
 
-    # 综合评级
+    # 综合评级 (⚠️ 审计标记 2026-06-29: effective_score阈值50/40/30/15均为自创，无九龙道长原始素材支撑)
     effective_score = cai_total * discount
     if status == "从弱格":
         level = "💰 大富~巨富（特殊格局）"
