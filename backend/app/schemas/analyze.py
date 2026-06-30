@@ -32,6 +32,7 @@ class AnalyzeResponse(BaseModel):
     basic: dict = {}
     analysis: dict = {}
     report_md: str = ""
+    report_sections: list = []  # pre-rendered HTML sections: [{icon, title, content_html}]
     line_count: int = 0
     pdf_url: str = ""
 

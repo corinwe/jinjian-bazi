@@ -8,6 +8,7 @@ from app.schemas.analyze import AnalyzeRequest, AnalyzeResponse
 from app.services.bazi_engine import calculate_bazi
 from app.services.report_generator_simple import generate_report
 from app.services.pdf_service import generate_pdf
+from app.services.md_renderer import render_sections
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["analyze"])
@@ -60,6 +61,7 @@ async def analyze_bazi(req: AnalyzeRequest):
             "is_lunar": req.is_lunar,
             "birthplace": req.birthplace or "",
             "report_md": report["content_md"],
+            "report_sections": report.get("sections", []),
             "line_count": report["line_count"],
             "basic": bazi_result.get("basic", {}),
             "analysis": bazi_result.get("analysis", {}),
@@ -81,6 +83,7 @@ async def analyze_bazi(req: AnalyzeRequest):
             basic=bazi_result.get("basic", {}),
             analysis=bazi_result.get("analysis", {}),
             report_md=report["content_md"],
+            report_sections=report.get("sections", []),
             line_count=report["line_count"],
             pdf_url=f"/api/v1/analyses/{analysis_id}/pdf",
         )
@@ -111,6 +114,7 @@ async def get_analysis(analysis_id: int):
         basic=a.get("basic", {}),
         analysis=a.get("analysis", {}),
         report_md=a["report_md"],
+        report_sections=a.get("report_sections", []),
         line_count=a["line_count"],
         pdf_url=f"/api/v1/analyses/{analysis_id}/pdf",
     )
