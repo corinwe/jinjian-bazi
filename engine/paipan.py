@@ -157,7 +157,7 @@ def get_month_gan_zhi(year_gan: str, month: int, day: int) -> tuple[str, str]:
 def get_day_gan_zhi(target_date: date) -> tuple[str, str]:
     """
     获取日柱天干地支（使用标准算法-基准日法）
-    基准：2000年1月1日 = 甲午日（干支序号30，0-based）
+    基准：2000年1月1日 = 戊午日（干支序号54，0-based）
     """
     from datetime import date as dt_date
 

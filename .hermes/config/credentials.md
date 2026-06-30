@@ -31,6 +31,32 @@
 - 启动命令: cd /root/bazi-platform && python3 -m uvicorn api.main:app --host 0.0.0.0 --port 8000 --log-level warning
 - 一键启动: cd /root/bazi-platform && ./run.sh
 
+## 知识库（人物档案存放）
+
+```yaml
+知识库路径: /root/weiwuji-knowledge-base
+人物档案目录: 07-国学哲学/八字命格/02-人物档案/
+编码规则: {序号}-{姓名}/（序号为当前目录最大号+1）
+GitHub: git@github.com:corinwe/weiwuji-knowledge-base.git
+```
+
+## 铁律（物理强制规则）
+
+```yaml
+🔥 铁律① — 排盘必须跑引擎，禁止手算
+  理由: 2026-06-29梦的日柱算错(壬戌→癸亥)教训
+  强制: 任何八字分析前，必须先运行 paipan.py 或 pipeline_v5.py
+  验证: 排盘输出必须与 engine/paipan.py 计算结果一致
+  
+🔥 铁律② — 知识库路径不依赖记忆
+  理由: 错误提交到 bazi-platform/reports/ 的教训
+  强制: 人物报告必须放到 weiwuji-knowledge-base/02-人物档案/
+  
+🔥 铁律③ — 所有规则不能依赖LLM记忆
+  理由: 金鉴真人核心原则
+  强制: 规则写在脚本/SKILL.md/config文件中，每次分析前加载
+```
+
 ## 项目结构
 
 ```
