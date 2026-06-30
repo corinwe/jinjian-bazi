@@ -55,6 +55,12 @@ GitHub: git@github.com:corinwe/weiwuji-knowledge-base.git
 🔥 铁律③ — 所有规则不能依赖LLM记忆
   理由: 金鉴真人核心原则
   强制: 规则写在脚本/SKILL.md/config文件中，每次分析前加载
+
+🔥 铁律④ — 报告必须按标准格式输出
+  理由: bazi-report-template v5.2 定义了21§标准格式
+  强制: 每次出报告前，必须先 skill_view('bazi-report-template')
+        逐条对照模板格式，禁止自创格式
+        21§板块必须齐全，深度≥1,500行
 ```
 
 ## 项目结构
