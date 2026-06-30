@@ -3186,8 +3186,18 @@ def calc_xue_ye(ri_gan: str, nian_gan: str, yue_gan: str, shi_gan: str,
         # 月令非印 — 无印星基础分
         yue_yin_detail = f"月令本气{yue_ben}={yue_ben_ss or '无'} ❌ 无月令印"
         
-        # 但文昌可补救
-        pass
+        # 非月令印星有根补偿（年支/日支/时支藏干印星）
+        # 月令无印时，年支有印为强学业基因
+        for pos, zhi in [("年支", nian_zhi), ("日支", ri_zhi), ("时支", shi_zhi)]:
+            for cg, wt in DI_ZHI_CANG_GAN.get(zhi, []):
+                if shi_shen(ri_gan, cg) in ("正印", "偏印"):
+                    if wt >= 60:
+                        yue_yin_score += 1.0
+                        yue_yin_detail += f"，{pos}藏{cg}{shi_shen(ri_gan, cg)}({wt}%) +1.0"
+                    elif wt >= 30:
+                        yue_yin_score += 0.5
+                        yue_yin_detail += f"，{pos}藏{cg}{shi_shen(ri_gan, cg)}({wt}%) +0.5"
+                    break  # 每支只取第一个印星
     
     # 从弱格特殊：月令印为假从真用
     if is_cong_ruo and yue_ben_ss in ("正印", "偏印"):
@@ -3229,37 +3239,75 @@ def calc_xue_ye(ri_gan: str, nian_gan: str, yue_gan: str, shi_gan: str,
         wc_detail_parts.append("原局无文昌")
     
     details.append(f"③文昌贵人: {'、'.join(wc_detail_parts) if wc_detail_parts else '无'}")
-    
-    # ── 维度④：大运窗口（18岁前有无印运/文昌运） ──
+
+    # ── 维度⑤：正官/七杀自律加分 ──
+    # 天干透官杀为自律型，学业有毅力加成
+    guan_score = 0.0
+    guan_detail_parts = []
+    for pos, gan in [("月干", yue_gan), ("时干", shi_gan), ("年干", nian_gan)]:
+        g_ss = shi_shen(ri_gan, gan)
+        if g_ss in ("正官", "七杀"):
+            if guan_score < 1.0:
+                add = min(0.5, 1.0 - guan_score)
+                guan_score += add
+                guan_detail_parts.append(f"{pos}透{gan}({g_ss}) +{add}")
+    raw_score += guan_score
+    if guan_detail_parts:
+        details.append(f"⑤官星自律: {'、'.join(guan_detail_parts)} (合计+{guan_score:.1f})")
+
+    # ── 维度④：大运窗口（前两大运有无印运/文昌运） ──
     dy_bonus = 0.0
     dy_detail_parts = []
     if da_yun_list and len(da_yun_list) > 0:
-        first_dy = da_yun_list[0]
-        first_dy_gan_ss = shi_shen(ri_gan, first_dy["gan_zhi"][0])
-        first_dy_zhi = first_dy["gan_zhi"][1]
-        
-        # 大运天干为印
-        if first_dy_gan_ss in ("正印", "偏印"):
-            dy_bonus += 0.5
-            dy_detail_parts.append(f"首运天干为{first_dy_gan_ss} +0.5")
-        
-        # 大运地支为文昌
-        if first_dy_zhi == wc_zhi or first_dy_zhi == wc_zhi_nian:
-            dy_bonus += 0.5
-            dy_detail_parts.append(f"首运地支文昌({first_dy_zhi}) +0.5")
-        
-        # 大运喜忌
-        if first_dy_gan_ss in ("正印", "偏印", "比肩", "劫财") and shen_score < 40:
-            dy_bonus += 0.5
-            dy_detail_parts.append(f"身弱遇印比运 +0.5")
-        elif first_dy_gan_ss in ("食神", "伤官", "正财", "偏财") and shen_score >= 60:
-            dy_bonus += 0.5
-            dy_detail_parts.append(f"身强遇食财运 +0.5")
-        elif shen_score >= 40 and shen_score < 60:
-            # 中和：印比运为佳
-            if first_dy_gan_ss in ("正印", "偏印", "比肩", "劫财"):
-                dy_bonus += 0.3
-                dy_detail_parts.append(f"中和遇印比运 +0.3")
+        # 检查前两个大运（首运+次运）
+        check_count = min(2, len(da_yun_list))
+        for i in range(check_count):
+            dy = da_yun_list[i]
+            dy_label = "首运" if i == 0 else "次运"
+            dy_gan = dy["gan_zhi"][0]
+            dy_zhi = dy["gan_zhi"][1]
+            dy_gan_ss = shi_shen(ri_gan, dy_gan)
+
+            # 大运天干为印
+            if dy_gan_ss in ("正印", "偏印"):
+                dy_bonus += 0.5
+                dy_detail_parts.append(f"{dy_label}天干{dy_gan}={dy_gan_ss} +0.5")
+
+            # 大运地支为印（新增：地支五行生助日干为印，或藏干有印≥60%）
+            dy_zhi_wx = DI_ZHI_WU_XING.get(dy_zhi, "")
+            ri_wx = TIAN_GAN_WU_XING.get(ri_gan, "")
+            dy_is_yin = False
+            # 方式一：地支五行生我者为印（如卯=木生火=印）
+            if dy_zhi_wx and ri_wx and WX_SHENG.get(ri_wx) == dy_zhi_wx:
+                dy_is_yin = True
+            # 方式二：地支藏干本气为印（如辰藏乙木60%正印）
+            if not dy_is_yin:
+                dy_zhi_cang = DI_ZHI_CANG_GAN.get(dy_zhi, [])
+                for cg, wt in dy_zhi_cang:
+                    if shi_shen(ri_gan, cg) in ("正印", "偏印") and wt >= 60:
+                        dy_is_yin = True
+                        break
+            if dy_is_yin:
+                dy_bonus += 0.5
+                dy_detail_parts.append(f"{dy_label}地支{dy_zhi}为印 +0.5")
+
+            # 大运地支为文昌
+            if dy_zhi == wc_zhi or dy_zhi == wc_zhi_nian:
+                dy_bonus += 0.5
+                dy_detail_parts.append(f"{dy_label}地支文昌({dy_zhi}) +0.5")
+
+            # 大运喜忌（仅对首运应用）
+            if i == 0:
+                if dy_gan_ss in ("正印", "偏印", "比肩", "劫财") and shen_score < 40:
+                    dy_bonus += 0.5
+                    dy_detail_parts.append(f"身弱遇印比运 +0.5")
+                elif dy_gan_ss in ("食神", "伤官", "正财", "偏财") and shen_score >= 60:
+                    dy_bonus += 0.5
+                    dy_detail_parts.append(f"身强遇食财运 +0.5")
+                elif shen_score >= 40 and shen_score < 60:
+                    if dy_gan_ss in ("正印", "偏印", "比肩", "劫财"):
+                        dy_bonus += 0.3
+                        dy_detail_parts.append(f"中和遇印比运 +0.3")
     
     dy_bonus = min(dy_bonus, 3.0)  # cap at 3.0
     raw_score += dy_bonus
@@ -3287,7 +3335,7 @@ def calc_xue_ye(ri_gan: str, nian_gan: str, yue_gan: str, shi_gan: str,
         raw_score += ss_bonus
         cap_base = 5.5
     else:
-        cap_base = 7.0
+        cap_base = 8.0
     
     # ── 最终分 ──
     raw_score = min(raw_score, cap_base)  # 原局基础 cap
@@ -3317,10 +3365,10 @@ def calc_xue_ye(ri_gan: str, nian_gan: str, yue_gan: str, shi_gan: str,
     else:
         if score_100 >= 70:
             level = "高学历"
-        elif score_100 >= 50:
-            level = "中等学历"
+        elif score_100 >= 45:
+            level = "本科以上"
         elif score_100 >= 30:
-            level = "基础学历"
+            level = "中等学历"
         else:
             level = "基础教育"
     

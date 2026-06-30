@@ -8227,7 +8227,7 @@ def generate_report(bazi_result: dict, name: str, gender: str,
     lines.append(f"4. **大运走势**：{dy_list[0].get('gan_zhi','')}大运起势，{dy_list[3].get('gan_zhi','') if len(dy_list) > 3 else '中年'}大运为关键发展期。")
     lines.append(f"5. **财富层次**：{wealth_level}，财星评分{cai_score}分，{'有' if cx.get('has_ku') else '无'}财库。")
 
-    # 事业总结
+    # 事业总结（独立段落 — 财富之后）
     shi_data = analysis.get("shi_ye", {})
     shi_level = shi_data.get("level", "") if shi_data else ""
     shi_score = shi_data.get("score", 0) if shi_data else 0
@@ -8239,10 +8239,58 @@ def generate_report(bazi_result: dict, name: str, gender: str,
         "比肩": "自主经营", "劫财": "社交、合作",
     }
     direction = career_dir.get(ge_ju_str, "多元化发展")
+
+    lines.append("")
+    lines.append("### 事业总结")
+    lines.append("")
     if shi_level and shi_score > 0:
-        lines.append(f"6. **事业层级**：{shi_level}，事业评分{shi_score}分，适合{direction}领域。")
+        lines.append(f"事业综合评分 **{shi_score}分**，属于 **「{shi_level}」** 级别。")
+
+        # 格局驱动的事业特质
+        ge_ju_traits = {
+            "正官格": "格局清正，适合体制内稳步晋升",
+            "七杀格": "魄力过人，宜在竞争性领域闯荡",
+            "食神制杀格": "以才御权，适合技术管理双线发展",
+            "杀印相生格": "印化杀为权，决策型领导者",
+            "伤官配印格": "才华出众，适合创意+学术复合路线",
+            "五行流通格": "五行流转顺畅，适合多元化跨界发展",
+            "从弱格": "顺势而为，宜借力平台合作发展",
+            "从强格": "气势专一，宜聚焦单一领域深耕",
+        }
+        trait = ge_ju_traits.get(ge_ju_str, f"{ge_ju_str}主导，宜发挥格局优势")
+
+        # 喜用神行业建议
+        xi_wx_industries = {
+            "金": "金融、法律、精密制造、五金机械",
+            "木": "教育、文化、出版、环保",
+            "水": "贸易、物流、传媒、旅游",
+            "火": "能源、科技、互联网、餐饮",
+            "土": "地产、建筑、农业、矿产",
+        }
+        xi_wx_cn = {wx: ind for wx, ind in xi_wx_industries.items() if wx in xi_list}
+        xi_industries = [f"{wx}({ind})" for wx, ind in xi_wx_cn.items()]
+
+        # 最佳大运窗口
+        best_dy = max(
+            [d for d in dy_list if d.get("score_first5", 0) > 0 or d.get("score", 0) > 0],
+            key=lambda d: d.get("score_first5", d.get("score", 0)), default={}
+        )
+
+        lines.append(f"**事业特质**：{trait}。")
+        if xi_industries:
+            lines.append(f"**推荐行业**：{'、'.join(xi_industries)}。")
+        if shi_score >= 70:
+            lines.append("**事业前景**：格局清正+评分优秀，具备中高层管理潜力，适合在推荐行业内做长远规划。")
+        elif shi_score >= 50:
+            lines.append("**事业前景**：事业根基扎实，稳扎稳打，中年后有较大发展空间。")
+        else:
+            lines.append("**事业前景**：一步一个脚印，选择喜用神对应的行业方向，可逐步积累事业基础。")
+        if best_dy:
+            dy_name = best_dy.get("gan_zhi", "")
+            dy_score = best_dy.get("score_first5", best_dy.get("score", 0))
+            lines.append(f"**关键窗口**：**{dy_name}**大运（事业评分{dy_score:.1f}分）是最佳事业突破期，届时宜把握机遇、乘势而上。")
     else:
-        lines.append(f"6. **事业方向**：{ge_ju_str}格主导，适合{direction}。")
+        lines.append(f"**事业方向**：{ge_ju_str}格主导，适合{direction}。建议选择{'/'.join(xi_list)}相关行业深耕发展。")
     lines.append("")
     lines.append("### 三要三忌")
     lines.append("")

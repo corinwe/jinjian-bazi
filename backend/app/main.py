@@ -72,3 +72,4 @@ async def root():
 
 # ─── 注册路由 ──────────────────────────────────────────
 app.include_router(analyze.router)
+# hook trigger Tue Jun 30 02:12:42 PM CST 2026
