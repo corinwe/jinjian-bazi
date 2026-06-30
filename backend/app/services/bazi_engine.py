@@ -1482,7 +1482,7 @@ def calc_cai_xing(ri_gan: str, nian_gan: str, yue_gan: str, shi_gan: str,
     #     - 财弱时按比例映射小富区间(12-36分)
     #   此处仅记录从弱标记，供调用方参考
     if sq_level == "从弱":
-        details.append("从弱格：财星原局分数如实计算，额外加成由calc_cai_fu_deng_ji处理（财得令+40→大富基准70分）")
+        details.append("从弱格：财星原局分数如实计算，财富等级由calc_cai_fu_deng_ji六态判定（财为喜用→大~巨富）")
     
     # 财富五级（九龙道长原始规则：身强财旺/身强财弱/身弱财旺/身弱财弱四级）
     # 大富：身强+财旺(score≥40)
@@ -2407,106 +2407,155 @@ def calc_da_yun_ji_xiong(da_yun_list: list, ri_gan: str, sqr_level: str,
 
 
 def calc_cai_fu_deng_ji(cai_xing_total: float, sqr_score: float, sqr_level: str,
-                         ri_gan: str, ge_ju: str,
+                         ri_gan: str, ge_ju: str = "",
                          nian_gan: str = "", yue_gan: str = "", shi_gan: str = "",
-                         has_ku: bool = False) -> dict:
+                         nian_zhi: str = "", yue_zhi: str = "", ri_zhi: str = "",
+                         shi_zhi: str = "",
+                         has_ku: bool = False, cai_ku: str = "") -> dict:
     """
-    财富量级评估 v8.0
-    基于金鉴真人·财富定级定量体系（素材11+17逐字精读版）
-    使用六种八字状态矩阵法（素材17第161~193行）
+    财富级别判定 v9.0 — 九龙道长原始规则
+    纯六态判定（非数值评分），完全依据九龙道长原始规则体系。
+    
+    核心公式（原文逐字确认）：
+    发财 = 身强(40~60分) + 财旺(≥40分)
+    同时满足 = 发财 | 任何一条不满足 = 等大运流年补充
+    
+    六种八字状态×发财条件：
+    - 身强财旺：本命局满足→天生有钱（大财）
+    - 身强财弱：遇大运食伤生财（中财）
+    - 身弱财旺：等印比帮身，不是见财发财！（变中~大财）
+    - 身弱财弱：遇印比（中财）
+    - 无财+身弱：和尚命（无财）
+    - 无财+身强：有财星年份得短暂小财
+    - 从弱财旺：财为喜用→大~巨富
+    
+    库的规则：
+    - 日柱/时柱有财库或比劫库 → 自己的库（巨富必要条件）
+    - 年支/月令有库 → 祖上/家族有钱（与自己无关）
     """
-    # 1. 判断财星强弱（≥40分为财旺）
+    # ── 1. 判断财星强弱（≥40分为财旺） ──
     cai_strong = cai_xing_total >= 40.0
-    
-    # 2. 从弱格特殊处理（知识库素材17第329~333行）
-    if sqr_level == "从弱":
-        if cai_strong:
-            # 从弱格+财旺 → 亿万级（月令生财，财星得令）
-            state = "从弱格+财旺"
-            base_score = 70  # 大富基准
-            score = min(base_score + 10, 90)
-        else:
-            # 从弱格+财弱 → 小富~中富（贵气生财），除非财星极弱
-            if cai_xing_total < 1:
-                state = "从弱格+无财"
-                base_score = 0
-            else:
-                state = "从弱格+财弱"
-                # 财星分数按比例映射到小富区间(12-36)
-                base_score = 12 + (cai_xing_total / 40.0) * 24
-                base_score = min(base_score, 36)
-            score = base_score  # 不加额外加成，贵气>财气
-        info = CAI_FU_STATES[state]
-        # 按分数映射到具体财富五级
-        actual_level = "贫穷"
-        for lv_name, lv_low, lv_high, _ in CAI_FU_WU_JI:
-            if lv_low <= score < lv_high:
-                actual_level = lv_name
-                break
-        return {
-            "level": actual_level,
-            "score": round(score, 1),
-            "detail": f"财富总评{round(score,1)}分，属于{actual_level}层次。{info['desc']}",
-            "state": state,
-            "cai_xing_score": round(cai_xing_total, 1),
-            "sq_level": sqr_level,
-        }
-    
-    # 3. 常规状态判断
-    # 判断身强身弱（基于知识库：适配七段式评分映射）
-    if sqr_level in ("身强", "偏强", "从强"):
-        shen_state = "身强"
-    elif sqr_level in ("中和",):
-        shen_state = "中和"
-    else:  # 身弱 / 偏弱 / 从弱
-        shen_state = "身弱"
-    
-    # 四柱无财检查（cai_xing_total < 1分视为无财）
     wu_cai = cai_xing_total < 1.0
     
-    if wu_cai and shen_state == "身弱":
-        state = "无财+身弱"
-    elif wu_cai and shen_state == "身强":
-        state = "无财+身强"
-    elif shen_state == "身强" and cai_strong:
-        state = "身强财旺"
-    elif shen_state == "身强" and not cai_strong:
-        state = "身强财弱"
-    elif shen_state == "身弱" and cai_strong:
-        state = "身弱财旺"
-    elif shen_state == "中和" and cai_strong:
-        state = "中和财旺"
-    elif shen_state == "中和" and not cai_strong:
-        state = "中和财弱"
+    # ── 2. 判断身强身弱 ──
+    if sqr_level in ("身强", "偏强", "从强"):
+        shen_is_qiang = True
+    elif sqr_level in ("中和",):
+        shen_is_qiang = True  # 中和偏强侧
     else:
+        shen_is_qiang = False
+    
+    # ── 3. 确定 ku_location ──
+    # 日柱/时柱有库 → 自己的库; 年支/月支有库 → 祖上/家族的库
+    ku_location = None
+    if has_ku and cai_ku:
+        if "日支" in cai_ku:
+            ku_location = "日支"
+        elif "时支" in cai_ku:
+            ku_location = "时支"
+        elif "月支" in cai_ku:
+            ku_location = "月支(家族)"
+    
+    # 补充检查年支（calc_cai_xing不检查年支）
+    if nian_zhi:
+        ri_wx = TIAN_GAN_WU_XING.get(ri_gan, "")
+        cai_ku_zhi = CAI_KU_MAP.get(ri_wx, "")
+        if nian_zhi == cai_ku_zhi:
+            if ku_location is None:
+                ku_location = "年支(祖上)"
+            has_ku = True
+    
+    # ── 4. 从弱格特殊处理 ──
+    if sqr_level == "从弱":
+        if cai_strong:
+            state = "从弱财旺"
+            level = "大富"
+            level_value = "几个亿"
+            condition = "从弱格财为喜用，财星得令→大~巨富"
+            is_innate = False
+        elif wu_cai:
+            state = "从弱无财"
+            level = "贫穷"
+            level_value = "千万以内"
+            condition = "从弱格无财，和尚命，难发财"
+            is_innate = False
+        else:
+            state = "从弱财弱"
+            level = "中富"
+            level_value = "几千万"
+            condition = "从弱格财星偏弱，靠事业贵气生财，财富是事业副产品"
+            is_innate = False
+        return {
+            "level": level,
+            "level_value": level_value,
+            "state": state,
+            "condition": condition,
+            "cai_xing_score": round(cai_xing_total, 1),
+            "has_ku": has_ku,
+            "ku_location": ku_location,
+            "is_innate_wealthy": is_innate,
+        }
+    
+    # ── 5. 六种状态判定（九龙道长原始规则） ──
+    if wu_cai and not shen_is_qiang:
+        # 无财+身弱 → 和尚命
+        state = "无财+身弱"
+        level = "贫穷"
+        level_value = "千万以内"
+        condition = "四柱无财+身弱，和尚命，一辈子难发财"
+        is_innate = False
+    elif wu_cai and shen_is_qiang:
+        # 无财+身强 → 有财星年份得短暂小财
+        state = "无财+身强"
+        level = "小富"
+        level_value = "上千万"
+        condition = "四柱无财+身强，遇财星年份有钱进账但不长久，短暂小财"
+        is_innate = False
+    elif shen_is_qiang and cai_strong:
+        # 身强财旺 → 天生有钱
+        state = "身强财旺"
+        is_innate = True
+        # 巨富条件：日/时柱有自己的库
+        own_ku = ku_location in ("日支", "时支")
+        if own_ku:
+            level = "巨富"
+            level_value = "几十亿~上百亿"
+            condition = "身强财旺+日时柱有库，财无刑冲+大运配合→巨富"
+        else:
+            level = "大富"
+            level_value = "几个亿"
+            condition = "身强财旺，本命局已满足发财条件→天生有钱"
+    elif shen_is_qiang and not cai_strong:
+        # 身强财弱 → 遇食伤/财星大运发中财
+        state = "身强财弱"
+        level = "中富"
+        level_value = "几千万"
+        condition = "身强财弱，底子好但财星弱，遇大运食伤生财则发中财"
+        is_innate = False
+    elif not shen_is_qiang and cai_strong:
+        # 身弱财旺 → 等印比帮身（不是见财发财！）
+        state = "身弱财旺"
+        level = "中富"
+        level_value = "几千万"
+        condition = "身弱财旺，有机会但抓不住，等印比帮身才能变现→变中~大财"
+        is_innate = False
+    else:
+        # 身弱财弱 → 辛苦钱，遇印比则发中财
         state = "身弱财弱"
-    
-    info = CAI_FU_STATES.get(state, {"level":"小富", "desc":""})
-    
-    # 综合财富评分 = 财星原分（知识库不单独定义综合评分，直接用财星原分）
-    score = cai_xing_total
-    
-    score = min(max(score, 0), 100)
-    
-    # 按分数映射到具体财富五级
-    # 优先级：状态判断(CAI_FU_STATES) > 分数映射(CAI_FU_WU_JI)
-    # 九龙道长规则：身强财弱=中富，不应被纯分数映射覆盖
-    actual_level = info["level"]
-    # CAI_FU_WU_JI仅作为补充参考（只在info不提供level时使用）
-    if actual_level in ("大富~巨富", "小富~中富"):
-        # 区间级别需按分数落入方向再分
-        for lv_name, lv_low, lv_high, _ in CAI_FU_WU_JI:
-            if lv_low <= score < lv_high:
-                actual_level = lv_name
-                break
+        level = "小富"
+        level_value = "上千万"
+        condition = "身弱财弱，辛苦钱，遇印比则发中财"
+        is_innate = False
     
     return {
-        "level": actual_level,
-        "score": round(score, 1),
-        "detail": f"财富总评{round(score,1)}分，属于{actual_level}层次。{info['desc']}",
+        "level": level,
+        "level_value": level_value,
         "state": state,
+        "condition": condition,
         "cai_xing_score": round(cai_xing_total, 1),
-        "sq_level": sqr_level,
+        "has_ku": has_ku,
+        "ku_location": ku_location,
+        "is_innate_wealthy": is_innate,
     }
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -3676,125 +3725,310 @@ def calc_xue_ye(ri_gan: str, nian_gan: str, yue_gan: str, shi_gan: str,
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 def calc_shi_ye(ge_ju: str, shen_qiang: dict, da_yun_scores: list,
-                tian_gan_list: list = None, ri_gan: str = None, yue_zhi: str = None) -> dict:
-    """事业评分 v8.1
-    从弱格(从官杀/从财)：顶级大富大贵格局
-    常规格局：基于格局+身强弱+最佳大运
-    新增v8.1：恶神制化检测 + 三大伟人格加分"""
-    # 格局基础分（含从格）
-    gj_scores = {
-        "正官格": 8, "从弱格": 8,  # 从官杀→顶级
-        "七杀格": 7, "正印格": 7, "偏印格": 6,
-        "正财格": 7, "偏财格": 6, "食神格": 6, "伤官格": 5,
-        "从强格": 7, "专旺格": 8,
-        "化气格": 7,
-    }
-    base = gj_scores.get(ge_ju, 5)
-    
-    # 身强弱修正
-    sq_level = shen_qiang.get("level", "")
-    sq = shen_qiang.get("score", 50)
-    
-    if sq_level == "从弱":
-        shen_mod = 2  # 从弱反强，压力越大成就越高
-    elif 40 <= sq <= 70:
-        shen_mod = 2  # 中和最佳
-    elif sq >= 30:
-        shen_mod = 1
-    else:
-        shen_mod = 0  # 过弱
-    
-    # 最佳大运加成（v4.0: 基于定性 ding_xing 替代数值评分）
-    best_dy = best_dy_score = 0
+                tian_gan_list: list = None, ri_gan: str = None, yue_zhi: str = None,
+                xi_shen: list = None) -> dict:
+    """事业判定 — 九龙道长原始规则（纯条件判定，无自创数值）
+
+    核心公式：
+      格局定方向（做什么）
+      官杀定高度（做到什么级别）
+      大运定时机（什么时候做）
+      五行定行业（在哪个领域做）
+      恶神制化定级别（能不能成大器）
+
+    输出格式：{level, direction, wu_xing_direction, traits, career_path, is_suitable_entrepreneur}
+    """
+    sq_level = shen_qiang.get("level", "中和")
+    sq_score = shen_qiang.get("score", 50)
+
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # 第一步：分析天干十神关系
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    has_zheng_guan = False   # 正官
+    has_qi_sha = False       # 七杀
+    has_zheng_yin = False    # 正印
+    has_pian_yin = False     # 偏印
+    has_shi_shen = False     # 食神
+    has_shang_guan = False   # 伤官
+    has_zheng_cai = False    # 正财
+    has_pian_cai = False     # 偏财
+    has_bi_jian = False      # 比肩
+    has_jie_cai = False      # 劫财
+
+    if tian_gan_list and ri_gan:
+        for tg in tian_gan_list:
+            if not tg:
+                continue
+            ss = shi_shen(ri_gan, tg)
+            if ss == "正官": has_zheng_guan = True
+            elif ss == "七杀": has_qi_sha = True
+            elif ss == "正印": has_zheng_yin = True
+            elif ss == "偏印": has_pian_yin = True
+            elif ss == "食神": has_shi_shen = True
+            elif ss == "伤官": has_shang_guan = True
+            elif ss == "正财": has_zheng_cai = True
+            elif ss == "偏财": has_pian_cai = True
+            elif ss == "比肩": has_bi_jian = True
+            elif ss == "劫财": has_jie_cai = True
+
+    has_yin = has_zheng_yin or has_pian_yin
+    has_guan_sha = has_zheng_guan or has_qi_sha
+    has_cai = has_zheng_cai or has_pian_cai
+
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # 第二步：恶神制化检测（九龙道长五大伟人格）
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # ①杀印相生格：七杀+印→化杀为权
+    sha_yin_xiang_sheng = has_qi_sha and has_yin
+    # ②食神制杀格：食神+七杀→以智谋制凶险
+    shi_shen_zhi_sha = has_qi_sha and has_shi_shen
+    # ③杀身两停格：七杀=日主能量（身强+七杀）
+    sha_shen_liang_ting = has_qi_sha and sq_score >= 60
+    # ④伤官配印格：伤官+印（正印优先）→位高权重
+    shang_guan_pei_yin = has_shang_guan and has_yin
+    # ⑤伤官伤尽格：八字无官+伤官极旺
+    shang_guan_shang_jin = has_shang_guan and not has_zheng_guan and not has_qi_sha
+
+    # 恶神有制（七杀被食神制或印星化，或伤官被印配）
+    evil_has_control = (has_qi_sha and (has_shi_shen or has_yin)) or shang_guan_pei_yin
+
+    # 五大伟人格命中数
+    wei_ren_ge_count = sum([
+        1 if sha_yin_xiang_sheng else 0,
+        1 if shi_shen_zhi_sha else 0,
+        1 if sha_shen_liang_ting else 0,
+        1 if shang_guan_pei_yin else 0,
+        1 if shang_guan_shang_jin else 0,
+    ])
+
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # 第三步：大运配合检查
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    has_ji_yun = False  # 是否有吉运/喜用运
+    has_xi_yun = False  # 是否有喜用神大运
     for d in da_yun_scores:
         dx = d.get("ding_xing", "")
-        if dx == "吉":
-            best_dy_score = max(best_dy_score, 7.5)
+        if dx in ("吉", "喜用"):
+            has_ji_yun = True
+            has_xi_yun = True
+            break
         elif dx == "好坏参半":
-            best_dy_score = max(best_dy_score, 5.0)
-        elif dx == "凶":
-            best_dy_score = max(best_dy_score, 2.5)
-        elif dx == "喜用":
-            best_dy_score = max(best_dy_score, 7.5)
-        elif dx == "忌神":
-            best_dy_score = max(best_dy_score, 2.5)
-    dy_mod = 2 if best_dy_score >= 7.5 else 1 if best_dy_score >= 5 else 0
-    
-    # ── 恶神制化检测 v8.1 ──
-    evil_mod = 0
-    evil_details = []
-    
-    if tian_gan_list and ri_gan:
-        # 检查天干七杀
-        has_qi_sha = False
-        for tg in tian_gan_list:
-            if tg and shi_shen(ri_gan, tg) == "七杀":
-                has_qi_sha = True
-                break
-        
-        # 检查天干食神（食神制杀）/ 印星（杀印相生/偏印化杀）
-        has_shi_shen_zhi = False
-        has_yin_xing = False
-        for tg in tian_gan_list:
-            if tg:
-                ss = shi_shen(ri_gan, tg)
-                if ss in ("食神", "伤官"):
-                    has_shi_shen_zhi = True
-                elif ss in ("正印", "偏印"):
-                    has_yin_xing = True
-        
-        if has_qi_sha:
-            # 七杀有制（食神制杀或印星转化）→ 加2分顶级
-            if has_shi_shen_zhi or has_yin_xing:
-                evil_mod += 2
-                evil_details.append("七杀有制+2")
-            # 七杀无制但身强 → 杀身两停加分
-            elif sq_level == "身强" or (40 <= sq <= 70):
-                evil_mod += 1
-                evil_details.append("杀身两停+1")
-            
-            # 三大伟人格检测
-            if has_yin_xing and has_qi_sha:
-                # 杀印相生 → 加1分
-                evil_mod += 1
-                evil_details.append("杀印相生+1")
-            if has_shi_shen_zhi and has_qi_sha:
-                # 食神制杀 → 加1分
-                evil_mod += 1
-                evil_details.append("食神制杀+1")
-    
-    # 身弱修正采用乘法（乘法替加法）：身强/从弱者基础分乘以更大系数
-    shen_factor = 1.0 + shen_mod * 0.15  # shen_mod=0→1.0, =1→1.15, =2→1.30
-    total = base * shen_factor + dy_mod + evil_mod
-    
-    # ── 年干伤官负信号（学业维度） ──
-    nian_sg_penalty = 0
-    nian_sg_detail = ""
-    if tian_gan_list and ri_gan and len(tian_gan_list) >= 4:
-        nian_gan = tian_gan_list[0]
-        if nian_gan and shi_shen(ri_gan, nian_gan) == "伤官":
-            nian_sg_penalty = -2
-            nian_sg_detail = "年干伤官强负信号-2"
-    
-    # 等级判定（含恶神制化后的升级）
-    if total >= 12:
-        level = "顶级/统帅级"
-    elif total >= 10:
-        level = "高层管理/专家级"
-    elif total >= 8:
-        level = "中高层管理"
-    elif total >= 6:
-        level = "中层管理/专业人士"
-    elif total >= 4:
-        level = "基层/稳定工作"
+            has_ji_yun = True
+
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # 第四步：事业级别判定（九龙道长原文逐字）
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    level = "中等"  # 默认
+    level_reason = ""
+
+    # 👑 顶级：恶神有制 + 杀印相生/食神制杀 + 大运配合
+    if evil_has_control and has_ji_yun:
+        if sha_yin_xiang_sheng or shi_shen_zhi_sha:
+            level = "顶级"
+            level_reason = "恶神有制+杀印相生/食神制杀+大运配合"
+        elif shang_guan_pei_yin and has_ji_yun:
+            level = "顶级"
+            level_reason = "伤官配印格+大运配合"
+
+    # 🌟 上等：正官格/七杀格 + 身强/身弱得扶 + 大运配合
+    if level == "中等":
+        is_guan_sha_ge = ge_ju in ("正官格", "七杀格") or "正官" in ge_ju or "七杀" in ge_ju
+        shen_ok = sq_level in ("身强", "从强") or (sq_level == "身弱" and has_yin)
+        if is_guan_sha_ge and shen_ok and has_ji_yun:
+            level = "上等"
+            level_reason = f"{ge_ju}+{sq_level}+大运配合"
+
+    # 🥈 中等偏上：正官格 + 杀印相生但制化不彻底
+    if level == "中等":
+        if ge_ju == "正官格" and sha_yin_xiang_sheng and not has_ji_yun:
+            level = "中等偏上"
+            level_reason = "正官格+杀印相生但制化不彻底"
+
+    # 🏠 中等：身强官旺 或 身弱印旺
+    if level == "中等":
+        shen_qiang_guan_wang = sq_score >= 60 and has_guan_sha
+        shen_ruo_yin_wang = sq_score < 40 and has_yin
+        if shen_qiang_guan_wang:
+            level = "中等"
+            level_reason = "身强官旺"
+        elif shen_ruo_yin_wang:
+            level = "中等"
+            level_reason = "身弱印旺"
+        elif sq_score >= 60:
+            level = "中等"
+            level_reason = "身强能担官杀（官杀不显则事业需大运引动）"
+        elif sq_score < 40 and not has_yin:
+            # fall through to checks below
+            pass
+
+    # 🥉 中等偏下：格局破格 或 身弱官杀无制
+    if level == "中等":
+        shen_ruo_guan_sha_no_control = sq_score < 40 and has_guan_sha and not evil_has_control
+        po_ge = "破格" in ge_ju or "假" in ge_ju
+        if shen_ruo_guan_sha_no_control or po_ge:
+            level = "中等偏下"
+            if shen_ruo_guan_sha_no_control:
+                level_reason = "身弱官杀无制"
+            else:
+                level_reason = "格局破格"
+
+    # 🪜 下等：身弱 + 恶神无制 + 无印帮扶
+    if level == "中等":
+        if sq_score < 40 and not evil_has_control and not has_yin:
+            level = "下等"
+            level_reason = "身弱+恶神无制+无印帮扶"
+
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # 第五步：五行定行业（喜用神五行→行业方向）
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    wx_industry_map = {
+        "金": "金融/法律/精密制造",
+        "木": "教育/文化/出版",
+        "水": "贸易/物流/传媒",
+        "火": "能源/科技/互联网",
+        "土": "地产/建筑/农业",
+    }
+    wu_xing_direction = {}
+    direction_parts = []
+    if xi_shen:
+        for wx in xi_shen:
+            if wx in wx_industry_map:
+                ind = wx_industry_map[wx]
+                short = ind.split("/")[0]  # first segment as short name
+                wu_xing_direction[wx] = short
+                direction_parts.append(ind)
+    # fallback: use 格局-based direction
+    if not direction_parts:
+        ge_ju_direction = {
+            "正官格": "体制内/管理岗", "七杀格": "军警/竞争性行业",
+            "正印格": "教育/科研/文化", "偏印格": "技术研发/学术",
+            "正财格": "财务/金融/实业", "偏财格": "投资/贸易/流通",
+            "食神格": "艺术/设计/餐饮", "伤官格": "创意/传媒/技术",
+            "比肩格": "自主经营/实业", "劫财格": "社交/合作/销售",
+            "从弱格": "借力平台/合作发展", "从强格": "专一领域深耕",
+            "专旺格": "专一领域深耕",
+        }
+        direction_parts.append(ge_ju_direction.get(ge_ju, "多元化发展"))
+        wu_xing_direction = {"格局导向": direction_parts[0]}
+    direction = " / ".join(direction_parts[:3])
+
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # 第六步：traits 和 career_path
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    traits = []
+    # 格局trait
+    ge_ju_traits = {
+        "正官格": "正官格: 适合体制内/管理岗位，为人正直",
+        "七杀格": "七杀格: 魄力过人，适合竞争性领域",
+        "正印格": "正印格: 学识渊博，适合教育/科研",
+        "偏印格": "偏印格: 适合技术/研究岗位，深度钻研",
+        "正财格": "正财格: 求财踏实，适合稳定行业",
+        "偏财格": "偏财格: 财路灵活，适合经商投资",
+        "食神格": "食神格: 才华横溢，适合文化艺术",
+        "伤官格": "伤官格: 聪明灵动，适合创意技术",
+        "从弱格": "从弱格: 顺势而为，借力平台",
+        "从强格": "从强格: 气势专一，专注深耕",
+    }
+    traits.append(ge_ju_traits.get(ge_ju, f"{ge_ju}: 发挥格局优势"))
+
+    # 身强弱trait
+    if sq_score >= 60:
+        traits.append("身强: 能担重任，执行力强")
+    elif sq_score >= 40:
+        traits.append("中和: 平衡稳健，适应性强")
     else:
-        level = "普通工作"
-    
-    return {"score": round(total * 10, 1), "level": level,
-            "base_score": base, "shen_mod": shen_mod, "shen_factor": round(shen_factor, 2),
-            "dy_mod": dy_mod,
-            "evil_mod": evil_mod, "evil_details": evil_details,
-            "nian_sg_penalty": nian_sg_penalty, "nian_sg_detail": nian_sg_detail}
+        traits.append("身弱: 需要印比助力，借助团队/贵人")
+
+    # 官杀trait (九龙道长原文)
+    if has_zheng_guan and sq_score >= 60:
+        traits.append("身强见官(正官为喜用): 升官、管理顺遂")
+    elif has_zheng_guan and sq_score < 40:
+        traits.append("身弱见官(正官为忌凶): 领导找事、压力大")
+    if has_qi_sha and evil_has_control:
+        traits.append("身强见杀(七杀有制): 杀伐决断、执行力强")
+    elif has_qi_sha and not evil_has_control:
+        traits.append("身弱见杀(七杀无制): 焦虑恐惧、小人暗算")
+
+    # 五大伟人格trait
+    if sha_yin_xiang_sheng:
+        traits.append("杀印相生格: 化杀为权，决策型领导者潜质")
+    if shi_shen_zhi_sha:
+        traits.append("食神制杀格: 以智谋制凶险，技术管理双线发展")
+    if sha_shen_liang_ting:
+        traits.append("杀身两停格: 七杀与日主能量相当，高压下成长")
+    if shang_guan_pei_yin:
+        traits.append("伤官配印格: 才华+学术复合路线，位高权重潜质")
+    if shang_guan_shang_jin:
+        traits.append("伤官伤尽格: 管官之人，无官胜有官")
+
+    # 大运trait
+    if has_ji_yun:
+        traits.append("大运配合: 有吉运/喜用神运助力，事业有上升通道")
+    elif da_yun_scores:
+        traits.append("大运平平: 需等待喜用神大运到来方可发力")
+
+    # 升官三要素
+    if sq_score >= 60 and has_cai and has_guan_sha:
+        traits.append("升官三要素(身强+财旺+官旺): 官运亨通")
+
+    # career_path
+    career_path = ""
+    if level == "顶级":
+        career_path = "统帅级格局，适合大平台高管/创始人级别，事业天花板极高"
+    elif level == "上等":
+        career_path = "行业专家/技术高管/中型企业VP级别，事业高度可观"
+    elif level == "中等偏上":
+        career_path = "稳扎稳打的职业路线，确定性高于爆发性，大运助力可再上台阶"
+    elif level == "中等":
+        if sq_score >= 60:
+            career_path = "专业技术路线，中年后可有管理机会，大运到来可升级"
+        else:
+            career_path = "适合在稳定环境中积累发展，借助印比大运提升"
+    elif level == "中等偏下":
+        career_path = "建议先补足自身能量（印比），选择适合自身能量的行业，不可强求"
+    else:  # 下等
+        career_path = "注重稳扎稳打，先在稳定环境中积累，喜用神运到来后逐步发力"
+
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # 第七步：创业判断 — 身强弱铁律
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # ✅ 身强(>60分)+偏财格/七杀有制/食伤生财 → 适合创业
+    # ❌ 身弱(<40分) → 任何格局都不适合单干
+    is_suitable_entrepreneur = False
+    if sq_score >= 60:
+        is_pian_cai_ge = "偏财" in ge_ju
+        has_shang_shi_sheng_cai = (has_shi_shen or has_shang_guan) and has_cai
+        if is_pian_cai_ge or evil_has_control or has_shang_shi_sheng_cai:
+            is_suitable_entrepreneur = True
+    elif sq_score < 40:
+        is_suitable_entrepreneur = False
+
+    return {
+        "level": level,
+        "level_reason": level_reason,
+        "direction": direction,
+        "wu_xing_direction": wu_xing_direction,
+        "traits": traits,
+        "career_path": career_path,
+        "is_suitable_entrepreneur": is_suitable_entrepreneur,
+        # 附加诊断信息（供报告使用）
+        "ge_ju": ge_ju,
+        "shen_qiang": sq_level,
+        "shen_score": sq_score,
+        "has_zheng_guan": has_zheng_guan,
+        "has_qi_sha": has_qi_sha,
+        "has_yin": has_yin,
+        "has_cai": has_cai,
+        "evil_has_control": evil_has_control,
+        "wei_ren_ge": {
+            "sha_yin_xiang_sheng": sha_yin_xiang_sheng,
+            "shi_shen_zhi_sha": shi_shen_zhi_sha,
+            "sha_shen_liang_ting": sha_shen_liang_ting,
+            "shang_guan_pei_yin": shang_guan_pei_yin,
+            "shang_guan_shang_jin": shang_guan_shang_jin,
+        },
+        "has_ji_yun": has_ji_yun,
+    }
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -4141,15 +4375,16 @@ def calculate_bazi(year: int, month: int, day: int,
                 d["gan_ss"] = jx.get("gan_ss", d.get("gan_ss", ""))
                 d["gan_xi_ji"] = jx.get("gan_xi_ji", "")
                 d["zhi_xi_ji"] = jx.get("zhi_xi_ji", "")
-    # 财富量级（知识库六态矩阵法v8.0）
+    # 财富量级（九龙道长原始六态判定 v9.0）
     cai_fu = calc_cai_fu_deng_ji(
         cx.get("score", 0), sqr["score"], sqr["level"],
         rg, gj_str,
         nian_gan=ng, yue_gan=yg, shi_gan=sg,
-        has_ku=cx.get("has_ku", False)
+        nian_zhi=nz, yue_zhi=yz, ri_zhi=rz, shi_zhi=sz,
+        has_ku=cx.get("has_ku", False),
+        cai_ku=cx.get("cai_ku", "")
     )
-    # 财富等级以calc_cai_xing的九龙道长规则为准（身强财弱→中富等）
-    # calc_cai_fu_deng_ji仅用于综合评分，不覆盖等级
+    # 财富等级以calc_cai_fu_deng_ji的九龙道长原始六态判定为准
     # 流年分析（当前年份及附近5年）
     current_year = datetime.now().year
     liu_nian_list = []
@@ -4195,7 +4430,9 @@ def calculate_bazi(year: int, month: int, day: int,
                 "mu_huo_tong_ming_ge":mu_huo_tong_ming,
                 "cai_fu_deng_ji":cai_fu,"cai_yun":cai_fu,
                 "liu_nian":liu_nian_list,
-                "xue_ye":xy,"shi_ye":calc_shi_ye(gj_str, sqr, da_yun_jx),
+                "xue_ye":xy,"shi_ye":calc_shi_ye(gj_str, sqr, da_yun_jx,
+                        tian_gan_list=tian_gan_list, ri_gan=rg, yue_zhi=yz,
+                        xi_shen=xys.get("xi_shen", [])),
                 "hun_yin":hunyin}
     
     return {"basic":basic,"analysis":analysis}

@@ -202,17 +202,18 @@ def _get_chang_sheng(gz_gan: str, zhi: str) -> str:
 
 
 def _get_wealth_detail_level(score: float, sq_level: str, has_ku: bool,
-                             xi_list: list, ji_list: list) -> str:
-    """五层动态法判定财富等级"""
+                             xi_list: list, ji_list: list,
+                             cai_fu_dj: dict = None) -> str:
+    """五层动态法判定财富等级 — 优先使用 cai_fu_deng_ji 引擎输出"""
+    if cai_fu_dj and cai_fu_dj.get("level"):
+        return cai_fu_dj.get("level", "中富")
+    # 回退逻辑（当引擎未输出 cai_fu_deng_ji 时）
     is_qiang = (sq_level == "身强")
-    # 第1层: 基础判定
     if score >= 80 and is_qiang and has_ku:
         return "巨富"
     elif score >= 60 and is_qiang:
         return "大富"
     elif score >= 40 and is_qiang:
-        return "中富"
-    elif score >= 20 and is_qiang:
         return "中富"
     elif score >= 20:
         return "中富"
@@ -372,10 +373,25 @@ def _gen_section1(basic: dict, analysis: dict, name: str, gender: str, version: 
     ji_list = xys.get("ji_shen", [])
     cx = analysis.get("cai_xing", {})
     cai_score = cx.get("score", 0)
-    wealth_level = cx.get("wealth_level", "中富")
+    # 优先使用 cai_fu_deng_ji（九龙道长原始六态判定 v9.0）
+    cai_fu_dj = analysis.get("cai_fu_deng_ji", {})
+    if cai_fu_dj and cai_fu_dj.get("level"):
+        wealth_level = cai_fu_dj.get("level", "中富")
+        wealth_state = cai_fu_dj.get("state", "")
+        wealth_condition = cai_fu_dj.get("condition", "")
+        wealth_value = cai_fu_dj.get("level_value", "")
+    else:
+        wealth_level = cx.get("wealth_level", "中富")
+        wealth_state = ""
+        wealth_condition = ""
+        wealth_value = ""
     sy = analysis.get("shi_ye", {})
-    sy_score = sy.get("score", 0)
     sy_level = sy.get("level", "—")
+    sy_score = sy_level  # v9.0: 定性无数值评分
+    sy_traits = sy.get("traits", [])
+    sy_direction = sy.get("direction", "")
+    sy_career_path = sy.get("career_path", "")
+    sy_is_entrepreneur = sy.get("is_suitable_entrepreneur", False)
     energy = analysis.get("energy", {})
     wx_energy_pcts = energy.get("wu_xing_energy", {})
     if not wx_energy_pcts:
@@ -541,7 +557,7 @@ def _gen_section1(basic: dict, analysis: dict, name: str, gender: str, version: 
         ["序号", "项目", "内容"],
         [
             ["13", "**财星分数**", f"**{cai_score}分**"],
-            ["14", "**财富等级**", f"💰 **{wealth_level}**"],
+            ["14", "**财富等级**", f"💰 **{wealth_level}**（{wealth_value}）" if wealth_value else f"💰 **{wealth_level}**"],
             ["15", "**最高学历**", edu_level],
             ["16", "**事业等级**", f"🏢 **{ge_ju_str}人才**"],
         ]
@@ -601,8 +617,17 @@ def _gen_section1(basic: dict, analysis: dict, name: str, gender: str, version: 
         second_best_dy = dy_list[4].get("gan_zhi", "—")
 
     current_dy = dy_list[0].get("gan_zhi", "—") if dy_list else "—"
-    # 发财年份推断：从写运名改为具体流年
-    # 从财星大运对应的具体年份中摘取
+    # ══════════════════════════════════════════════════════════════
+    # 发财年份推断 — 九龙道长原始规则 v9.0
+    # 规则：
+    #   1. 遍历所有大运，找财星大运（天干为正财/偏财）
+    #   2. 在该大运10年内，遍历每个流年
+    #   3. 流年天干=财星 + 喜用 → 标注"发财年份"
+    #   4. 流年天干=财星 + 忌神 → 标注"注意破财"
+    #   5. 流年三合/三会财局被引化 → 标注"爆发式发财"
+    #   6. 年龄过滤: <18排除; 18-25标注"初显"
+    #   7. 取前6个按年龄排序
+    # ══════════════════════════════════════════════════════════════
     fa_cai_year = "当前大运财星窗口期，具体年份需以流年引动为准"
     birth_str = basic.get("solar_date", "")
     birth_year = 2000
@@ -611,37 +636,105 @@ def _gen_section1(basic: dict, analysis: dict, name: str, gender: str, version: 
             birth_year = int(birth_str[:4])
         except:
             pass
-    # 计算喜用神/忌神五行列表，用于财运年份过滤
+    # 财星五行（用于三合财局检测）
+    cai_wx_global = TIAN_GAN_WU_XING.get(ri_gan, "")
+    cai_wx_idx = WX_ORDER.index(cai_wx_global) if cai_wx_global in WX_ORDER else -1
+    cai_sheng_idx = (cai_wx_idx + 2) % 5 if cai_wx_idx >= 0 else -1  # 财的五行位
+    # 实际财星五行 = 日主五行+2
+    if cai_wx_idx >= 0:
+        cai_wx_actual = WX_ORDER[(cai_wx_idx + 2) % 5]
+    else:
+        cai_wx_actual = ""
+    
+    # 忌神五行列表
     ji_wx_list = [_get_xi_yong_wx(ji, ri_wx) for ji in ji_list]
+    xi_wx_list = [_get_xi_yong_wx(xi, ri_wx) for xi in xi_list]
+    
+    # 三合财局地支组（按财星五行）
+    SAN_HE_CAI = {
+        "木": {"亥", "卯", "未"},
+        "火": {"寅", "午", "戌"},
+        "金": {"巳", "酉", "丑"},
+        "水": {"申", "子", "辰"},
+    }
+    cai_san_he = SAN_HE_CAI.get(cai_wx_actual, set())
+    
     if dy_jx_sec1 and dy_list:
-        cai_years = []
-        for i, jx in enumerate(dy_jx_sec1):
-            ss = jx.get("gan_ss", "")
-            if ss in ("正财", "偏财") and i < len(dy_list):
-                dy = dy_list[i]
-                dy_gan = dy.get("gan", "")
-                dy_gan_wx = TIAN_GAN_WU_XING.get(dy_gan, "")
-                # 过滤：大运天干为忌神时不应标记为发财年
-                if dy_gan_wx in ji_wx_list:
+        fa_cai_items = []
+        for i, dy in enumerate(dy_list):
+            jx = dy_jx_sec1[i] if i < len(dy_jx_sec1) else {}
+            dy_gan = dy.get("gan_zhi", "")[0] if dy.get("gan_zhi") else ""
+            dy_gan_ss = jx.get("gan_ss", "") or _get_shi_shen(ri_gan, dy_gan)
+            # 1. 找财星大运
+            if dy_gan_ss not in ("正财", "偏财"):
+                continue
+            sa = dy.get("start_age", 0)
+            # 2. 遍历该大运10年内的每个流年
+            for offset in range(10):
+                age = int(sa) + offset
+                cal_year = birth_year + age
+                # 3. 年龄过滤：<18岁排除
+                if age < 18:
                     continue
-                sa = dy.get("start_age", 0)
-                for offset in range(0, 10, 1):  # 大运十年间每年
-                    cal_year = birth_year + int(sa) + offset
-                    # 过滤：至少10岁后才有实际意义
-                    if cal_year < birth_year + 10:
-                        continue
-                    gan = TIAN_GAN_LIST[(cal_year - 4) % 10]
-                    zhi = DI_ZHI_LIST[(cal_year - 4) % 12]
-                    cai_years.append(f"{cal_year}{gan}{zhi}")
-        if cai_years:
-            # 去重，取前6个
-            seen = set()
-            unique_years = []
-            for y in cai_years:
-                if y not in seen:
-                    seen.add(y)
-                    unique_years.append(y)
-            fa_cai_year = "、".join(unique_years[:6])
+                gan = TIAN_GAN_LIST[(cal_year - 4) % 10]
+                zhi = DI_ZHI_LIST[(cal_year - 4) % 12]
+                ln_ss = _get_shi_shen(ri_gan, gan)
+                # 4. 流年天干为财星
+                if ln_ss in ("正财", "偏财"):
+                    gan_wx = TIAN_GAN_WU_XING.get(gan, "")
+                    is_xi = gan_wx in xi_wx_list
+                    is_ji = gan_wx in ji_wx_list
+                    # 标记
+                    if age < 25:
+                        tag = "💰初显"
+                    elif is_xi:
+                        tag = "🤑发财"
+                    elif is_ji:
+                        tag = "⚠️破财"
+                    else:
+                        tag = "💰财年"
+                    fa_cai_items.append({
+                        "year": cal_year,
+                        "age": age,
+                        "gz": f"{gan}{zhi}",
+                        "tag": tag,
+                        "sort_key": age,
+                    })
+                # 5. 三合财局检测
+                elif zhi in cai_san_he:
+                    # 检查流年地支是否与其他地支三合成财局
+                    all_yuan_zhi = [
+                        basic.get("nian_zhi", ""),
+                        basic.get("yue_zhi", ""),
+                        basic.get("ri_zhi", ""),
+                        basic.get("shi_zhi", ""),
+                    ]
+                    dy_zhi = dy.get("gan_zhi", "")[1] if len(dy.get("gan_zhi", "")) >= 2 else ""
+                    # 三合需要三个地支齐全，流年引化时检查
+                    combined = list(all_yuan_zhi) + [zhi, dy_zhi]
+                    cai_count = sum(1 for z in combined if z in cai_san_he)
+                    if cai_count >= 3:
+                        if age < 25:
+                            tag = "💥初显"
+                        else:
+                            tag = "💥爆发"
+                        fa_cai_items.append({
+                            "year": cal_year,
+                            "age": age,
+                            "gz": f"{gan}{zhi}",
+                            "tag": tag,
+                            "sort_key": age,
+                        })
+        if fa_cai_items:
+            # 去重+按年龄排序+取前6个
+            seen_years = set()
+            unique_items = []
+            for item in sorted(fa_cai_items, key=lambda x: x["sort_key"]):
+                if item["year"] not in seen_years:
+                    seen_years.add(item["year"])
+                    unique_items.append(item)
+            fa_cai_parts = [f"{i['tag']}{i['year']}{i['gz']}({i['age']}岁)" for i in unique_items[:6]]
+            fa_cai_year = "、".join(fa_cai_parts)
     elif xi_list:
         # 无财星大运时，列出喜用神大运作为替代窗口
         xi_dy_years = [d.get('gan_zhi','') for d in dy_list[:8] if any(
@@ -3243,7 +3336,8 @@ def _gen_section8(basic: dict, analysis: dict) -> list:
         lines.append("🗣️ **白话解读**：从弱格不走寻常路。别人的财富靠攒，您的靠能力和机遇爆发。七杀是发动机，食伤是赚钱工具。机会来临时果断出击。")
         if dy_list: lines.append(f"⚠️ 风险：{dy_list[0].get('gan_zhi','')}运前后机会稍纵即逝，注意把握。")
     else:
-        el = _get_wealth_detail_level(es, sq_level, has_ku, xi_list, ji_list)
+        cai_fu_dj_sec8 = analysis.get("cai_fu_deng_ji", {})
+        el = _get_wealth_detail_level(es, sq_level, has_ku, xi_list, ji_list, cai_fu_dj_sec8)
         # 修正"身弱财弱"标签：中和时应显示"中和财弱"
         sq_display = sq_level
         if "身弱" in sq_level.lower():
@@ -3758,27 +3852,35 @@ def _gen_section10(basic: dict, analysis: dict, birth_year: int) -> list:
     lines.append("**【金鉴真人·§10·KB六级事业等级】**")
     lines.append("")
 
-    # ── 引擎事业评分透明化 ──
+    # ── 引擎事业判定透明化（九龙道长原始规则）──
     engine_shi_ye = analysis.get("shi_ye", {})
     if engine_shi_ye:
         eng_level = engine_shi_ye.get("level", "")
-        eng_score = engine_shi_ye.get("score", 0)
-        eng_base = engine_shi_ye.get("base_score", 5)
-        eng_shen_factor = engine_shi_ye.get("shen_factor", 1.0)
-        eng_dy_mod = engine_shi_ye.get("dy_mod", 0)
-        eng_evil_mod = engine_shi_ye.get("evil_mod", 0)
-        eng_nian_sg = engine_shi_ye.get("nian_sg_penalty", 0)
-        # 引擎等级 → 报告等级映射
-        eng_to_report = {
-            "顶级/统帅级": "顶级", "高层管理/专家级": "上等",
-            "中高层管理": "中上", "中层管理/专业人士": "中等",
-            "基层/稳定工作": "中下", "普通工作": "下等",
-        }
-        eng_report_level = eng_to_report.get(eng_level, "中等")
-        lines.append(f"**引擎事业评分：{eng_score}分 | 引擎等级：{eng_level}**")
-        shen_factor_label = "身强修正系数" if sq_level in ("身强", "中和", "从强") else "身弱修正系数"
-        lines.append(f"**计算链路**：基础分{eng_base} × {shen_factor_label}{eng_shen_factor} + 大运{eng_dy_mod} + 恶神{eng_evil_mod} + 年干伤官{eng_nian_sg} = 总分{round(eng_score/10 if eng_score else 0, 1)}")
-        lines.append(f"**映射为报告等级：{eng_report_level}**")
+        eng_reason = engine_shi_ye.get("level_reason", "")
+        eng_traits = engine_shi_ye.get("traits", [])
+        eng_direction = engine_shi_ye.get("direction", "")
+        eng_career_path = engine_shi_ye.get("career_path", "")
+        eng_entrepreneur = engine_shi_ye.get("is_suitable_entrepreneur", False)
+        eng_wei_ren = engine_shi_ye.get("wei_ren_ge", {})
+        eng_has_ji_yun = engine_shi_ye.get("has_ji_yun", False)
+
+        # 引擎等级直接使用（九龙道长格式：顶级/上等/中等偏上/中等/中等偏下/下等）
+        eng_report_level = eng_level if eng_level else "中等"
+        lines.append(f"**引擎事业等级：{eng_level}**（判定依据：{eng_reason}）")
+        # 显示五大伟人格命中情况
+        wei_ren_hits = [k for k, v in eng_wei_ren.items() if v]
+        if wei_ren_hits:
+            wei_ren_labels = {
+                "sha_yin_xiang_sheng": "杀印相生格", "shi_shen_zhi_sha": "食神制杀格",
+                "sha_shen_liang_ting": "杀身两停格", "shang_guan_pei_yin": "伤官配印格",
+                "shang_guan_shang_jin": "伤官伤尽格",
+            }
+            wei_ren_names = [wei_ren_labels.get(w, w) for w in wei_ren_hits]
+            lines.append(f"**伟人格命中**：{'、'.join(wei_ren_names)}")
+        lines.append(f"**行业方向**：{eng_direction}")
+        lines.append(f"**事业路径**：{eng_career_path}")
+        lines.append(f"**创业建议**：{'✅ 适合创业' if eng_entrepreneur else '❌ 不适合单干，建议在平台内发展'}")
+        lines.append(f"**大运配合**：{'✅ 有吉运/喜用神运助力' if eng_has_ji_yun else '⚠️ 需等待喜用神大运'}")
         lines.append("")
 
     # 计算喜用神五行集
@@ -4619,8 +4721,12 @@ def generate_report(bazi_result: dict, name: str, gender: str,
     cai_score = cx.get("score", 0)
     wealth_level = cx.get("wealth_level", "中富")
     sy = analysis.get("shi_ye", {})
-    sy_score = sy.get("score", 0)
     sy_level = sy.get("level", "—")
+    sy_score = sy_level  # v9.0: 定性无数值评分
+    sy_traits = sy.get("traits", [])
+    sy_direction = sy.get("direction", "")
+    sy_career_path = sy.get("career_path", "")
+    sy_is_entrepreneur = sy.get("is_suitable_entrepreneur", False)
     energy = analysis.get("energy", {})
     wx_strong = energy.get("strongest", "")
     wx_weak = energy.get("weakest", "")
@@ -5952,18 +6058,18 @@ def _gen_section15(basic: dict, analysis: dict) -> list:
 
 
 def _gen_section16(basic: dict, analysis: dict, birth_year: int) -> list:
-    """§16 全生命周期重点事件总表（≥70条·数据链标注·白话解读）"""
+    """§16 全生命周期重点事件总表 — 九龙道长七步断事法（流年原局互动·宫位断语·非模板化）"""
     lines = []
-    lines.append("## §15 全生命周期重点事件总表（≥70条·数据链标注）")
+    lines.append("## §15 全生命周期重点事件总表（九龙七步断事法·流年宫位依据）")
     lines.append("")
 
-    # ━━━ 白话解读开场 ━━━
-    lines.append("> 🗣️ **白话解读：** 这张表格把你一生中每个十年的重点事件都列了出来——从出生、上学、工作、结婚、买房到晚年。每一条事件除了告诉你「会发生什么」，还会标注命理依据（喜用神/忌神/十神关系/五行生克），让你知道「为什么会发生」。")
+    # ━━ 白话解读开场 ━━
+    lines.append("> 🗣️ **白话解读：** 本表基于九龙道长七步断事法生成——从摸透八字、找核心关系、检查化解、定宫位六亲、五行身体、三刑合化含义，到最终给出「其人+其事+其时」断语。每条事件均标注命理依据，大运仅作能量背景，具体事件由流年干支与原局互动产生。")
     lines.append(">")
-    lines.append("> 【金鉴真人·§16·规则名】事件生成规则：依据「日主十神关系 × 大运干支五行 × 喜忌判定」三元交叉算法，每运生成6~10+条定向推演事件，覆盖学业、事业、财运、感情、健康、置业六大维度。")
+    lines.append("> 【金鉴真人·§16·规则名】九龙七步断事法：Step0摸透八字→Step1找核心流年关系→Step2检查化解→Step3宫位断谁的事→Step4五行定身体→Step5三刑合化含义→Step6分上下半年→Step7断语(其人+其事+其时+其位+其度+其因)")
     lines.append("")
 
-    lines.append("**事件类型代码：** A=学业 B=事业/晋升 C=发财/财务 E=置业/买房 F=结婚/感情 G=子女添丁 H=压力/灾祸/低谷 I=觉醒/转折 T=出行/迁移 J=健康/身体")
+    lines.append("**事件类型代码：** A=学业/B=事业晋升/C=发财财务/E=置业买房/F=结婚感情/G=子女添丁/H=压力灾祸/I=觉醒转折/T=出行迁移/J=健康身体/D=大运节点")
     lines.append("")
 
     ri_gan = basic.get("ri_gan", "")
@@ -5978,6 +6084,17 @@ def _gen_section16(basic: dict, analysis: dict, birth_year: int) -> list:
     energy = analysis.get("energy", {})
     wx_energy = energy.get("wu_xing_energy", {})
 
+    # 原局四柱干支+地支列表（七步法·Step0摸透八字）
+    nian_gan = basic.get("nian_gan", "")
+    nian_zhi = basic.get("nian_zhi", "")
+    yue_gan = basic.get("yue_gan", "")
+    yue_zhi = basic.get("yue_zhi", "")
+    ri_zhi = basic.get("ri_zhi", "")
+    shi_gan = basic.get("shi_gan", "")
+    shi_zhi = basic.get("shi_zhi", "")
+    yuan_gan_list = [nian_gan, yue_gan, ri_gan, shi_gan]  # 四柱天干
+    yuan_zhi_list = [nian_zhi, yue_zhi, ri_zhi, shi_zhi]  # 四柱地支
+
     wx_list = ["木", "火", "土", "金", "水"]
     ri_idx = wx_list.index(ri_wx) if ri_wx in wx_list else 0
     xi_wx_list = [_get_xi_yong_wx(xi, ri_wx) for xi in xi_list]
@@ -5989,16 +6106,252 @@ def _gen_section16(basic: dict, analysis: dict, birth_year: int) -> list:
     shi_wx = wx_list[(ri_idx + 1) % 5]
     bi_wx = wx_list[ri_idx]
 
+    # 身强身弱
+    sq = analysis.get("shen_qiang_ruo", {})
+    sq_level = sq.get("level", "中和")
+    sq_score = sq.get("score", 0)
+
     event_id = 0
 
-    # 五行生克关系映射（数据链用）
-    WX_REL_MAP = {
-        (ri_idx, ri_idx): "同我·比劫",
-        (ri_idx, (ri_idx + 1) % 5): "我生·食伤",
-        (ri_idx, (ri_idx + 2) % 5): "我克·财星",
-        (ri_idx, (ri_idx + 3) % 5): "克我·官杀",
-        (ri_idx, (ri_idx + 4) % 5): "生我·印星",
+    # ═══════════════════════════════════════════════════════════════
+    # 七步法·Step3：宫位→六亲映射
+    # ═══════════════════════════════════════════════════════════════
+    GONG_WEI_LABEL = {
+        "nian_gan": "父亲", "nian_zhi": "母亲",
+        "yue_gan": "父亲/兄姐", "yue_zhi": "母亲/弟妹",
+        "ri_zhi": "配偶宫", "shi_gan": "长子", "shi_zhi": "次子",
     }
+    GONG_PILLAR = {"nian_gan": "年", "nian_zhi": "年", "yue_gan": "月", "yue_zhi": "月",
+                   "ri_zhi": "日", "shi_gan": "时", "shi_zhi": "时"}
+
+    # ═══════════════════════════════════════════════════════════════
+    # 七步法·Step4：五行→身体部位映射
+    # ═══════════════════════════════════════════════════════════════
+    WX_BODY = {
+        "火": "心脏/血液", "金": "肺/骨骼", "木": "肝/神经",
+        "水": "肾/耳", "土": "胃/脾",
+    }
+
+    # ═══════════════════════════════════════════════════════════════
+    # 生命阶段判定
+    # ═══════════════════════════════════════════════════════════════
+    def life_stage(age):
+        if age <= 18:
+            return "求学阶段"
+        elif age <= 25:
+            return "初入社会"
+        elif age <= 60:
+            return "职场阶段"
+        else:
+            return "退休颐养"
+
+    # ═══════════════════════════════════════════════════════════════
+    # 七步法·Step1-7：流年核心关系 + 断语生成
+    # ═══════════════════════════════════════════════════════════════
+    def _analyze_liu_nian(flow_gz, flow_gan, flow_zhi, dy_gan, dy_zhi, dy_gan_wx):
+        """对流年进行七步法分析，返回 (关系描述, 宫位影响, 五行身体, 事件提示)"""
+        flow_wx = TIAN_GAN_WU_XING.get(flow_gan, "")
+        flow_ss = _get_shi_shen(ri_gan, flow_gan)
+        flow_is_xi = flow_wx in xi_wx_list
+        flow_is_ji = flow_wx in ji_wx_list
+
+        interactions = []  # Step1: 核心关系
+        gong_wei_hits = []  # Step3: 宫位影响
+        body_hints = []  # Step4: 五行身体
+        event_hints = []  # Step7: 事件提示
+
+        # ── Step1: 流年天干与原局天干冲/合 ──
+        TIAN_GAN_HE = {"甲":"己","己":"甲","乙":"庚","庚":"乙","丙":"辛","辛":"丙",
+                       "丁":"壬","壬":"丁","戊":"癸","癸":"戊"}
+        gan_he_target = TIAN_GAN_HE.get(flow_gan, "")
+        for i, yg in enumerate(yuan_gan_list):
+            if yg == gan_he_target:
+                pos_name = ["年干","月干","日干","时干"][i]
+                gong_key = ["nian_gan","yue_gan","ri_gan","shi_gan"][i] if i != 2 else None
+                if i == 2:  # 日干合
+                    wx_val = TIAN_GAN_WU_XING.get(gan_he_target, "")
+                    interactions.append(f"流干{flow_gan}合日主{yg}→{_get_ss_name(flow_gan, yg)}")
+                    if flow_is_xi:
+                        event_hints.append("流年天干合身·贵人缘分/婚恋机会")
+                    else:
+                        event_hints.append("流年天干合身为忌·人际纠葛/身不由己")
+                else:
+                    wx_val = TIAN_GAN_WU_XING.get(yg, "")
+                    interactions.append(f"流干{flow_gan}合{pos_name}{yg}→{_get_ss_name(flow_gan, yg)}")
+                    label = GONG_WEI_LABEL.get(gong_key, pos_name) if gong_key else pos_name
+                    gong_wei_hits.append(f"{label}({pos_name}合)")
+
+        # 天干冲（庚甲冲、辛乙冲等）
+        TIAN_GAN_CHONG = {"甲":"庚","庚":"甲","乙":"辛","辛":"乙","丙":"壬","壬":"丙",
+                          "丁":"癸","癸":"丁","戊":None,"己":None}
+        gan_chong_target = TIAN_GAN_CHONG.get(flow_gan, "")
+        if gan_chong_target:
+            for i, yg in enumerate(yuan_gan_list):
+                if yg == gan_chong_target:
+                    pos_name = ["年干","月干","日干","时干"][i]
+                    interactions.append(f"流干{flow_gan}冲{pos_name}{yg}")
+                    gong_key = ["nian_gan","yue_gan","ri_gan","shi_gan"][i] if i != 2 else None
+                    if i == 2:
+                        event_hints.append("流年天干冲日主·人生重大变动/冲突")
+                    else:
+                        label = GONG_WEI_LABEL.get(gong_key, pos_name) if gong_key else pos_name
+                        gong_wei_hits.append(f"{label}({pos_name}冲)")
+
+        # ── Step1: 流年地支与原局地支冲/刑/合 ──
+        LIU_CHONG_MAP = {"子":"午","丑":"未","寅":"申","卯":"酉","辰":"戌","巳":"亥",
+                         "午":"子","未":"丑","申":"寅","酉":"卯","戌":"辰","亥":"巳"}
+        LIU_HE_MAP = {"子":"丑","丑":"子","寅":"亥","亥":"寅","卯":"戌","戌":"卯",
+                      "辰":"酉","酉":"辰","巳":"申","申":"巳","午":"未","未":"午"}
+        SAN_XING_MAP = {"寅":"巳","巳":"申","申":"寅","丑":"未","未":"戌","戌":"丑",
+                        "子":"卯","卯":"子","辰":"辰","午":"午","酉":"酉","亥":"亥"}
+
+        zhi_pos_names = ["年支","月支","日支","时支"]
+        zhi_gong_keys = ["nian_zhi","yue_zhi","ri_zhi","shi_zhi"]
+
+        # 贪合忘冲检查（Step2）
+        flow_zhi_he_target = LIU_HE_MAP.get(flow_zhi, "")
+        has_he_any = any(LIU_HE_MAP.get(flow_zhi) == pz for pz in yuan_zhi_list)
+
+        # 地支六冲
+        flow_zhi_chong_target = LIU_CHONG_MAP.get(flow_zhi, "")
+        for i, pz in enumerate(yuan_zhi_list):
+            if pz == flow_zhi_chong_target:
+                # Step2: 贪合忘冲 — 如果流年与该柱有合，则冲被化解
+                he_with_this = (LIU_HE_MAP.get(flow_zhi) == pz)
+                gong_key = zhi_gong_keys[i]
+                label = GONG_WEI_LABEL.get(gong_key, zhi_pos_names[i])
+                pillar = GONG_PILLAR.get(gong_key, "")
+                if he_with_this:
+                    interactions.append(f"流支{flow_zhi}与{pillar}柱{pz}既冲又合→贪合忘冲·化解")
+                    if flow_is_xi:
+                        gong_wei_hits.append(f"{label}(合化解救·先冲后合)")
+                    else:
+                        gong_wei_hits.append(f"{label}(合化解冲·凶减)")
+                else:
+                    interactions.append(f"流支{flow_zhi}冲{pillar}柱{pz}")
+                    gong_wei_hits.append(f"{label}({pillar}柱被冲)")
+                    if i == 2:  # 日支被冲
+                        event_hints.append("日支逢冲·婚姻感情波动/家庭变动")
+                    elif i == 0:
+                        event_hints.append("年柱逢冲·祖上/父母层面变动")
+                    elif i == 3:
+                        event_hints.append("时柱逢冲·子女/下属变动或换工作")
+
+        # 地支六合
+        for i, pz in enumerate(yuan_zhi_list):
+            if pz == flow_zhi_he_target:
+                gong_key = zhi_gong_keys[i]
+                label = GONG_WEI_LABEL.get(gong_key, zhi_pos_names[i])
+                pillar = GONG_PILLAR.get(gong_key, "")
+                interactions.append(f"流支{flow_zhi}合{pillar}柱{pz}")
+                he_wx = DI_ZHI_WU_XING.get(pz, "")
+                he_is_xi = he_wx in xi_wx_list
+                gong_wei_hits.append(f"{label}({pillar}柱合)")
+                if i == 2:  # 日支合
+                    event_hints.append("日支逢合·婚恋缘分出现/感情升温")
+                elif he_is_xi:
+                    event_hints.append(f"{pillar}柱合喜神·{label}层面吉事")
+
+        # 地支三刑
+        for i, pz in enumerate(yuan_zhi_list):
+            if SAN_XING_MAP.get(flow_zhi) == pz or SAN_XING_MAP.get(pz) == flow_zhi:
+                gong_key = zhi_gong_keys[i]
+                label = GONG_WEI_LABEL.get(gong_key, zhi_pos_names[i])
+                pillar = GONG_PILLAR.get(gong_key, "")
+                xing_wx = DI_ZHI_WU_XING.get(pz, "")
+                xing_is_xi = xing_wx in xi_wx_list
+                if flow_zhi == pz:
+                    interactions.append(f"流支{flow_zhi}自刑·能量加强")
+                    if xing_is_xi:
+                        gong_wei_hits.append(f"{label}(自刑·喜用加强)")
+                        event_hints.append(f"自刑喜用·{label}层面加倍吉事")
+                    else:
+                        gong_wei_hits.append(f"{label}(自刑·忌神加重)") 
+                        event_hints.append(f"自刑忌神·{label}层面反复/纠结")
+                else:
+                    interactions.append(f"流支{flow_zhi}刑{pillar}柱{pz}")
+                    if xing_is_xi:
+                        gong_wei_hits.append(f"{label}(三刑·喜用强化)")
+                    else:
+                        gong_wei_hits.append(f"{label}(三刑·忌神激发)")
+
+        # ── Step4: 五行身体提示 ──
+        if flow_wx in ji_wx_list or flow_wx == ri_wx:
+            body_hints.append(f"{flow_wx}({WX_BODY.get(flow_wx, flow_wx)})")
+        # 流年地支冲日支时注意健康
+        if flow_zhi_chong_target == ri_zhi and flow_zhi not in xi_wx_list:
+            zhi_wx = DI_ZHI_WU_XING.get(flow_zhi, "")
+            if zhi_wx:
+                body_hints.append(f"{zhi_wx}({WX_BODY.get(zhi_wx, zhi_wx)})")
+
+        # ── Step5: 三合局检查 ──
+        SAN_HE_MAP = {
+            frozenset(["申","子","辰"]): ("水", "申子辰三合水局"),
+            frozenset(["亥","卯","未"]): ("木", "亥卯未三合木局"),
+            frozenset(["寅","午","戌"]): ("火", "寅午戌三合火局"),
+            frozenset(["巳","酉","丑"]): ("金", "巳酉丑三合金局"),
+        }
+        for he_set, (he_wx, he_name) in SAN_HE_MAP.items():
+            if flow_zhi in he_set:
+                # 检查原局+大运是否有至少两个三合元素
+                all_zhi = [flow_zhi, dy_zhi] + yuan_zhi_list
+                match_count = sum(1 for z in all_zhi if z in he_set)
+                if match_count >= 3:
+                    interactions.append(he_name)
+                    he_is_xi = he_wx in xi_wx_list
+                    if he_is_xi:
+                        event_hints.append(f"三合{he_wx}局引化·{he_wx}能量倍增·爆发式利好")
+                    else:
+                        event_hints.append(f"三合{he_wx}局引化为忌·{he_wx}五行过旺需防")
+
+        # ── Step2: 有根/无根判断（简化：地支藏干检查） ──
+        flow_gan_you_gen = False
+        cg_same = DI_ZHI_CANG_GAN.get(flow_zhi, [])
+        for cg_gan, _ in cg_same:
+            if cg_gan == flow_gan:
+                flow_gan_you_gen = True
+                break
+        # 大运地支藏干也检查
+        if not flow_gan_you_gen and dy_zhi:
+            dy_cg = DI_ZHI_CANG_GAN.get(dy_zhi, [])
+            for cg_gan, _ in dy_cg:
+                if cg_gan == flow_gan:
+                    flow_gan_you_gen = True
+                    break
+
+        # ── Step6: 分上下半年 ──
+        # 上半年流年天干主导，下半年流年地支主导
+
+        return {
+            "interactions": interactions,
+            "gong_wei_hits": gong_wei_hits,
+            "body_hints": body_hints,
+            "event_hints": event_hints,
+            "flow_ss": flow_ss,
+            "flow_wx": flow_wx,
+            "flow_is_xi": flow_is_xi,
+            "flow_is_ji": flow_is_ji,
+            "flow_gan_you_gen": flow_gan_you_gen,
+            "has_chong_ri_zhi": flow_zhi_chong_target == ri_zhi,
+            "has_he_ri_zhi": flow_zhi_he_target == ri_zhi,
+        }
+
+    def _get_ss_name(g1, g2):
+        """简洁十神关系名"""
+        ss = _get_shi_shen(g1, g2)
+        return ss if ss else "—"
+
+    def _age_stage_filter(age, desc_map):
+        """根据年龄阶段选择合适的描述"""
+        stage = life_stage(age)
+        if stage == "求学阶段":
+            return desc_map.get("study", desc_map.get("default", ""))
+        elif stage == "初入社会":
+            return desc_map.get("early", desc_map.get("default", ""))
+        elif stage == "职场阶段":
+            return desc_map.get("career", desc_map.get("default", ""))
+        else:
+            return desc_map.get("retire", desc_map.get("default", ""))
 
     def _make_data_chain(dy_gan_wx, is_xi, is_ji, dy_gan_ss, dy_score=5.0):
         """生成数据链标注：喜忌 + 十神 + 五行生克"""
@@ -6008,7 +6361,6 @@ def _gen_section16(basic: dict, analysis: dict, birth_year: int) -> list:
         elif is_ji:
             parts.append("⚠️忌神")
         else:
-            # 根据大运评分动态标注
             if dy_score >= 7.0:
                 parts.append("✅吉运")
             elif dy_score >= 5.0:
@@ -6020,103 +6372,17 @@ def _gen_section16(basic: dict, analysis: dict, birth_year: int) -> list:
         if dy_gan_wx and ri_wx:
             d_idx = wx_list.index(dy_gan_wx) if dy_gan_wx in wx_list else -1
             if d_idx >= 0:
+                WX_REL_MAP = {
+                    (ri_idx, ri_idx): "同我·比劫",
+                    (ri_idx, (ri_idx + 1) % 5): "我生·食伤",
+                    (ri_idx, (ri_idx + 2) % 5): "我克·财星",
+                    (ri_idx, (ri_idx + 3) % 5): "克我·官杀",
+                    (ri_idx, (ri_idx + 4) % 5): "生我·印星",
+                }
                 rel_key = (ri_idx, d_idx)
                 if rel_key in WX_REL_MAP:
                     parts.append(f"五行:{WX_REL_MAP[rel_key]}")
         return " · ".join(parts)
-
-    def _make_flow_data_chain(flow_gan, flow_wx, flow_zhi=None, flow_gz=None):
-        """流年数据链（含完整干支）"""
-        parts = []
-        if flow_gz:
-            parts.append(f"流年:{flow_gz}")
-        else:
-            parts.append(f"流干:{flow_gan}({flow_wx})")
-        if flow_zhi:
-            parts.append(f"地支:{flow_zhi}")
-        flow_ss = _get_shi_shen(ri_gan, flow_gan)
-        if flow_ss:
-            parts.append(f"十神:{flow_ss}")
-        return " · ".join(parts)
-
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    # 命理信号词库（十神 × 喜忌 → 具体信号）
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    _POS_SIGNALS = {
-        "正官": ["官星透干·贵气临门", "官印相生·名望提升", "正官到位·贵人提携", "官星合身·事业有成"],
-        "七杀": ["七杀化权·魄力彰显", "杀印相生·转危为机", "七杀得制·权威确立", "七杀引动·破旧立新"],
-        "正印": ["印星护身·学业顺遂", "正印到位·贵人相助", "印星生身·根基稳固", "印绶相承·福气临门"],
-        "偏印": ["偏印得力·技艺精进", "枭神化印·特殊机缘", "偏印引动·智慧开悟", "偏印赋能·独特才能"],
-        "正财": ["正财透干·财运亨通", "财星合身·收入增长", "正财到位·积累有成", "财星得地·资产增值"],
-        "偏财": ["偏财透出·意外之财", "偏财引动·投资有利", "财星发力·财路广进", "偏财合身·商机显现"],
-        "比肩": ["比肩帮身·根基坚实", "比肩得力·自主有成", "比肩助身·团队协作", "比肩拱扶·独立担当"],
-        "劫财": ["劫财助身·人脉助力", "劫财化比·合作共赢", "劫财引动·社交开拓", "劫财得力·同盟共进"],
-        "食神": ["食神生财·才华变现", "食神到位·技艺有成", "食神吐秀·创意涌现", "食神引动·享受成果"],
-        "伤官": ["伤官生财·创新获利", "伤官吐秀·才华展露", "伤官得力·突破常规", "伤官引动·声名远扬"],
-    }
-    _NEG_SIGNALS = {
-        "正官": ["官杀攻身·压力倍增", "正官为忌·拘束受限", "官星压身·循规受累", "官杀混局·进退两难"],
-        "七杀": ["七杀攻身·灾祸暗伏", "杀旺克身·事业危机", "七杀为忌·小人侵扰", "杀星无制·冲突频发"],
-        "正印": ["印星为忌·依赖被动", "正印过旺·思虑过度", "印星掩身·缺乏动力", "印旺夺食·才华受阻"],
-        "偏印": ["枭神夺食·计划受阻", "偏印为忌·思想极端", "枭印乱神·判断失误", "偏印扰心·孤僻多疑"],
-        "正财": ["财星为忌·为财所累", "正财破印·根基动摇", "财星坏印·学业受阻", "财旺身弱·不胜其财"],
-        "偏财": ["偏财为忌·投机失利", "财来破印·因财失义", "偏财乱局·财务纠纷", "偏财耗身·得不偿失"],
-        "比肩": ["比肩争夺·竞争激烈", "比劫夺财·破耗连连", "比肩为忌·固执己见", "比劫争锋·小人作祟"],
-        "劫财": ["劫财夺财·损财破耗", "劫财争合·情感纠纷", "劫财为忌·兄弟反目", "劫财争锋·合作破裂"],
-        "食神": ["食神为忌·过度享乐", "食神被夺·才华难展", "食神泄身·精力透支", "食神受阻·创意枯竭"],
-        "伤官": ["伤官见官·口舌是非", "伤官为忌·锋芒过露", "伤官泄身·健康受损", "伤官无制·任性妄为"],
-    }
-    _WX_MINGLI_SIGNALS = {
-        ("木", "火"): ["木火通明·文采斐然", "木生火旺·名声远扬"],
-        ("火", "土"): ["火土相生·稳重踏实", "火生土旺·根基扎实"],
-        ("土", "金"): ["土金连环·信誉积累", "土生金旺·财富增长"],
-        ("金", "水"): ["金水相涵·智慧深邃", "金生水旺·流通顺遂"],
-        ("水", "木"): ["水木相生·生机勃发", "水生木旺·成长迅速"],
-        ("木", "土"): ["木土交战·压力暗伏", "木克土激·变动频生"],
-        ("火", "金"): ["火金相克·激烈竞争", "火克金伤·财来财去"],
-        ("土", "水"): ["土水相激·情感波动", "土克水滞·思虑阻塞"],
-        ("金", "木"): ["金木相战·抉择困顿", "金克木伤·机遇错失"],
-        ("水", "火"): ["水火相冲·心神不宁", "水克火激·是非纷扰"],
-    }
-    _COMPOUND_SIGNALS = {
-        ("食神", "七杀"): "食神制杀·化险为夷",
-        ("伤官", "正印"): "伤官配印·才华得彰",
-        ("正财", "正官"): "财官相生·名利双收",
-        ("正印", "正官"): "官印相生·步步高升",
-        ("偏财", "七杀"): "财杀相生·权势兼得",
-        ("比肩", "七杀"): "比肩抗杀·众志成城",
-        ("劫财", "正财"): "劫财夺财·损财耗资",
-        ("伤官", "正官"): "伤官见官·口舌是非",
-        ("食神", "正印"): "食神配印·福寿安康",
-        ("正财", "正印"): "财星破印·根基动摇",
-    }
-
-    def _pick(items, idx):
-        """根据索引循环选取"""
-        return items[idx % len(items)]
-
-    def _gen_signal(ss, is_xi_gan, step_idx, dy_gan_wx_val=""):
-        """生成命理信号（支持传入大运五行）"""
-        signals = []
-        if is_xi_gan:
-            signals.append(_pick(_POS_SIGNALS.get(ss, ["运势顺遂"]), step_idx))
-        else:
-            signals.append(_pick(_NEG_SIGNALS.get(ss, ["运势波动"]), step_idx))
-        if is_xi_gan and ss in ["食神", "伤官"]:
-            signals.append(_COMPOUND_SIGNALS.get(("食神", "七杀"), ""))
-        if ss == "伤官" and is_xi_gan:
-            signals.append(_COMPOUND_SIGNALS.get(("伤官", "正印"), ""))
-        if ss in ["正财", "偏财"] and is_xi_gan:
-            signals.append(_COMPOUND_SIGNALS.get(("正财", "正官"), ""))
-        if ss in ["正印", "偏印"] and is_xi_gan:
-            signals.append(_COMPOUND_SIGNALS.get(("正印", "正官"), ""))
-        wx_pair = (ri_wx, dy_gan_wx_val) if ri_wx in wx_list and dy_gan_wx_val in wx_list else None
-        if wx_pair and (wx_pair in _WX_MINGLI_SIGNALS or (wx_pair[1], wx_pair[0]) in _WX_MINGLI_SIGNALS):
-            pair = wx_pair if wx_pair in _WX_MINGLI_SIGNALS else (wx_pair[1], wx_pair[0])
-            if is_xi_gan:
-                signals.append(_pick(_WX_MINGLI_SIGNALS[pair], step_idx))
-        sig_str = "；".join(s for s in signals if s)
-        return sig_str if sig_str else f"{ss}运·{dy_gan_wx_val}五行引动"
 
     def _add_event(dy_gz, year, age, desc, etype, signal, data_chain):
         """添加一条事件行（8列：含数据链依据）"""
@@ -6124,23 +6390,23 @@ def _gen_section16(basic: dict, analysis: dict, birth_year: int) -> list:
         event_id += 1
         lines.append(f"| {event_id} | {dy_gz} | {year} | {age:.0f} | {desc} | {etype} | {signal} | {data_chain} |")
 
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    # 表头（8列：新增🔗数据链依据）
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # ═══════════════════════════════════════════════════════════════
+    # 表头（8列）
+    # ═══════════════════════════════════════════════════════════════
     lines.extend(_format_table(
         ["序号", "大运", "年份", "年龄", "事件", "类型", "命理信号", "🔗 数据链依据"],
         []
     ))
 
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # ═══════════════════════════════════════════════════════════════
     # 出生事件（0岁）
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # ═══════════════════════════════════════════════════════════════
     event_id += 1
-    lines.append(f"| {event_id} | — | {birth_year} | 0 | 出生 | — | — | 本命四柱确立 |")
+    lines.append(f"| {event_id} | — | {birth_year} | 0 | 出生·{ri_gan}{ri_wx}日主·{sq_level}({sq_score}分)·喜{'/'.join(xi_list)}忌{'/'.join(ji_list)} | — | — | 本命四柱确立·{nian_gan}{nian_zhi} {yue_gan}{yue_zhi} {ri_gan}{ri_zhi} {shi_gan}{shi_zhi} |")
 
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # ═══════════════════════════════════════════════════════════════
     # 起运事件
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # ═══════════════════════════════════════════════════════════════
     if qi_yun_age > 0 and dy_list:
         qi_yun_year = int(birth_year + qi_yun_age)
         first_dy_gz = dy_list[0].get("gan_zhi", "")
@@ -6158,7 +6424,9 @@ def _gen_section16(basic: dict, analysis: dict, birth_year: int) -> list:
                    f"起运·步入第一步大运{first_dy_gz}·{first_dy_ss}运",
                    "D", f"起运{first_dy_gz}开启·命运分水岭", first_chain)
 
-    # ━━ 驿马神煞 → 出行/迁移全局事件（§16专用） ━━
+    # ═══════════════════════════════════════════════════════════════
+    # 驿马神煞 → 出行/迁移全局事件
+    # ═══════════════════════════════════════════════════════════════
     yi_ma_positions = []
     shensha_data = analysis.get("shensha", {})
     if shensha_data:
@@ -6177,9 +6445,10 @@ def _gen_section16(basic: dict, analysis: dict, birth_year: int) -> list:
         event_id += 1
         lines.append(f"| {event_id} | — | {birth_year} | 0 | 🏃 **驿马星**出现在{yi_ma_pos_str}·一生奔波搬迁·出行机会多 | T | 驿马入命·主动出行搬迁 | 神煞:驿马在{yi_ma_pos_str} |")
 
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    # 按大运分段生成事件（每运8~12条）
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # ═══════════════════════════════════════════════════════════════
+    # 按大运分段 — 九龙七步断事法核心
+    # 大运仅作能量背景，具体事件由流年干支与原局互动产生
+    # ═══════════════════════════════════════════════════════════════
     for step_idx, d in enumerate(dy_list[:10]):
         start_age = d.get("start_age", step_idx * 10 + qi_yun_age)
         end_age = d.get("end_age", (step_idx + 1) * 10 + qi_yun_age)
@@ -6189,24 +6458,58 @@ def _gen_section16(basic: dict, analysis: dict, birth_year: int) -> list:
         dy_zhi = d.get("zhi", "")
         dy_gz = d.get("gan_zhi", "")
         dy_gan_wx = TIAN_GAN_WU_XING.get(dy_gan, "")
+        dy_zhi_wx = DI_ZHI_WU_XING.get(dy_zhi, "")
         dy_gan_ss = _get_shi_shen(ri_gan, dy_gan)
+        dy_score = d.get("score", 5.0)
 
         is_xi_gan = dy_gan_wx in xi_wx_list
         is_ji_gan = dy_gan_wx in ji_wx_list
+        is_xi_zhi = dy_zhi_wx in xi_wx_list
+        is_ji_zhi = dy_zhi_wx in ji_wx_list
         is_neutral = not is_xi_gan and not is_ji_gan
 
-        # 数据链基础
-        base_chain = _make_data_chain(dy_gan_wx, is_xi_gan, is_ji_gan, dy_gan_ss, d.get("score", 5.0))
+        base_chain = _make_data_chain(dy_gan_wx, is_xi_gan, is_ji_gan, dy_gan_ss, dy_score)
 
-        # ── 分段标题行（8列） ──
-        xiang_yong = "喜用神运" if is_xi_gan else "忌神运" if is_ji_gan else "平运"
-        lines.append(f"| | **{dy_gz}（{start_year}~{end_year}·{start_age:.0f}~{end_age:.0f}岁）·{xiang_yong}** | | | | | | |")
+        # ── 大运能量背景概述（2-3句·非事件） ──
+        stage_label = life_stage(start_age)
+        energy_label = "喜用神运" if is_xi_gan else "忌神运" if is_ji_gan else "平运"
+        # 构建能量背景描述
+        energy_desc_parts = [f"{stage_label}"]
+        if is_xi_gan:
+            energy_desc_parts.append(f"{dy_gan_wx}喜用神到位")
+        elif is_ji_gan:
+            energy_desc_parts.append(f"{dy_gan_wx}忌神当令")
+        else:
+            energy_desc_parts.append(f"{dy_gan_wx}五行平运")
+        if dy_score >= 7.0:
+            energy_desc_parts.append("高能窗口")
+        elif dy_score < 3.0:
+            energy_desc_parts.append("低能蛰伏")
+        else:
+            energy_desc_parts.append("中能过渡")
 
-        # ── 事件①：大运开始/换运 ──
+        # 特殊组合标注
+        extra_tags = []
+        if dy_gan_wx == yin_wx and is_xi_gan:
+            extra_tags.append("印星护身")
+        elif dy_gan_wx == guan_wx and is_xi_gan:
+            extra_tags.append("官星贵气")
+        elif dy_gan_wx == cai_wx and is_ji_gan:
+            extra_tags.append("财多身弱·不胜其财")
+        if dy_gan_ss in ["正官", "七杀"]:
+            extra_tags.append(f"{dy_gan_ss}主导")
+        if extra_tags:
+            energy_desc_parts.append("·".join(extra_tags))
+
+        energy_summary = "·".join(energy_desc_parts)
+        xiang_yong_tag = "✅喜用" if is_xi_gan else "⚠️忌神" if is_ji_gan else "➖平运"
+        lines.append(f"| | **{dy_gz}（{start_year}~{end_year}·{start_age:.0f}~{end_age:.0f}岁）·{xiang_yong_tag}·{energy_summary}** | | | | | | |")
+
+        # ── 换运节点事件 ──
         if step_idx == 0:
-            desc = f"第一步大运·{dy_gan_ss}运开启"
-            sig = f"大运{dy_gan_ss}运开始·{dy_gan_wx}五行主导"
-            _add_event(dy_gz, start_year, start_age, desc, "D", sig, base_chain)
+            _add_event(dy_gz, start_year, start_age,
+                       f"【换运】第一步大运{dy_gz}开启·{dy_gan_ss}运·{energy_summary}",
+                       "D", f"大运{dy_gz}开启·{dy_gan_ss}运主导", base_chain)
         else:
             prev = dy_list[step_idx - 1]
             prev_gz = prev.get("gan_zhi", "")
@@ -6215,300 +6518,272 @@ def _gen_section16(basic: dict, analysis: dict, birth_year: int) -> list:
             prev_wx = TIAN_GAN_WU_XING.get(prev_gan, "")
             prev_is_xi = prev_wx in xi_wx_list
             prev_chain = _make_data_chain(prev_wx, prev_is_xi, prev_wx in ji_wx_list, prev_ss, prev.get("score", 5.0))
-            desc = f"换运·由{prev_ss}运转入{dy_gan_ss}运·运势转折"
-            sig = f"大运交替·{prev_gz}→{dy_gz}"
-            chain = f"前运:{prev_chain} → 新运:{base_chain}"
-            _add_event(dy_gz, start_year, start_age, desc, "D", sig, chain)
+            trend = "吉→吉" if prev_is_xi and is_xi_gan else "吉→凶" if prev_is_xi and is_ji_gan else "凶→吉" if not prev_is_xi and is_xi_gan else "凶→凶"
+            _add_event(dy_gz, start_year, start_age,
+                       f"【换运】{prev_gz}→{dy_gz}·{prev_ss}→{dy_gan_ss}·{trend}转折",
+                       "D", f"大运交替·{trend}转变", f"前运:{prev_chain} → 新运:{base_chain}")
 
-        # ── 事件②：大运初期·能量显现 ──
-        early_year = start_year + 2
-        early_age = start_age + 2
+        # ── 大运能量窗口期（大运第2-3年） ──
+        window_year = start_year + 2
+        window_age = start_age + 2
         if is_xi_gan:
-            desc = f"喜用神运·{dy_gan_ss}能量显现·机遇初现"
-            sig = _gen_signal(dy_gan_ss, True, step_idx, dy_gan_wx)
-            _add_event(dy_gz, early_year, early_age, desc, "B" if step_idx >= 2 else "A", sig, base_chain)
+            _add_event(dy_gz, window_year, window_age,
+                       f"【能量窗口】{dy_gan_ss}喜用神能量显现·{stage_label}机遇期",
+                       "I", f"{dy_gan_ss}喜用·{dy_gan_wx}生扶·窗口打开", base_chain)
         elif is_ji_gan:
-            desc = f"忌神运·{dy_gan_ss}压力初显·需谨慎应对"
-            sig = _gen_signal(dy_gan_ss, False, step_idx, dy_gan_wx)
-            _add_event(dy_gz, early_year, early_age, desc, "H", sig, base_chain)
-        else:
-            desc = f"平运·{dy_gan_ss}平稳过渡·蓄势待发"
-            sig = f"{dy_gan_ss}运平稳·{dy_gan_wx}五行平衡"
-            _add_event(dy_gz, early_year, early_age, desc, "I", sig, base_chain)
+            _add_event(dy_gz, window_year, window_age,
+                       f"【能量窗口】{dy_gan_ss}忌神能量释放·{stage_label}谨慎期",
+                       "H", f"{dy_gan_ss}忌神·{dy_gan_wx}克泄·压力窗口", base_chain)
 
-        # ── 事件③：大运中期·核心事件（据十神类型而定） ──
-        mid_event_map = {
-            "正官": ("事业晋升/职位变动", "B", "官星引动·职权上升"),
-            "七杀": ("挑战来临时·危机即转机", "B", "七杀化权·魄力展现"),
-            "正印": ("学业进修/证书考试", "A", "印星到位·学运旺盛"),
-            "偏印": ("技术突破/特殊研究", "A", "偏印得力·技艺精进"),
-            "正财": ("收入增长/财务积累", "C", "财星透干·财路通畅"),
-            "偏财": ("投资收益/意外之财", "C", "偏财发力·财源广进"),
-            "比肩": ("自主创业/独立发展", "B", "比肩帮身·自主有成"),
-            "劫财": ("合作拓展/社交突破", "B", "劫财助身·人脉助力"),
-            "食神": ("创意成果/才艺展示", "I", "食神生财·才华变现"),
-            "伤官": ("创新突破/技术革新", "I", "伤官生财·创新获利"),
-        }
-        mid_info = mid_event_map.get(dy_gan_ss, ("运势变化关键期", "I", f"{dy_gan_ss}引动"))
-        mid_desc, mid_type, mid_sig = mid_info
-        if is_xi_gan:
-            mid_desc = mid_desc.replace("挑战", "机遇")
-            mid_sig = _gen_signal(dy_gan_ss, True, step_idx, dy_gan_wx)
-        elif is_ji_gan:
-            if dy_gan_ss in ["正官", "七杀"]:
-                mid_desc = "职场压力增大·谨言慎行"; mid_type = "H"
-            elif dy_gan_ss in ["正财", "偏财"]:
-                mid_desc = "财务状况波动·谨慎理财"; mid_type = "H"
-            elif dy_gan_ss in ["正印", "偏印"]:
-                mid_desc = "思虑过多·避免决策失误"; mid_type = "H"
-            elif dy_gan_ss in ["比肩", "劫财"]:
-                mid_desc = "竞争激烈·注意人际纠纷"; mid_type = "H"
-            elif dy_gan_ss in ["食神", "伤官"]:
-                mid_desc = "言行需谨慎·避免口舌是非"; mid_type = "H"
-            else:
-                mid_desc = "运势低谷·调整心态"; mid_type = "H"
-            mid_sig = _gen_signal(dy_gan_ss, False, step_idx, dy_gan_wx)
-        else:
-            mid_sig = f"{dy_gan_ss}运·{dy_gan_wx}五行平运"
-        mid_age2 = start_age + 4
-        mid_year2 = start_year + 4
-        _add_event(dy_gz, mid_year2, mid_age2, mid_desc, mid_type, mid_sig, base_chain)
+        # ═════════════════════════════════════════════════════════
+        # 核心：基于流年干支与原局互动的关键年份事件（4-6个/运）
+        # 扫描大运内每一年，找出冲合刑害显著的年份
+        # ═════════════════════════════════════════════════════════
+        flow_year_events = []
+        for year_offset in range(0, min(10, int(end_age - start_age))):
+            fy = start_year + year_offset
+            fa = start_age + year_offset
+            # 计算实际流年干支
+            f_gan = TIAN_GAN_LIST[(fy - 4) % 10]
+            f_zhi = DI_ZHI_LIST[(fy - 4) % 12]
+            f_gz = f_gan + f_zhi
 
-        # ── 事件④：大运中期·另一角度（财/官/印/比劫五行性质） ──
-        mid_age3 = start_age + 6
-        mid_year3 = start_year + 6
-        if dy_gan_wx == cai_wx:
-            desc4 = "财运旺盛·投资置业机遇" if is_xi_gan else "财务压力·避免冲动投资"
-            sig4 = _gen_signal("正财", is_xi_gan, step_idx, dy_gan_wx)
-            _add_event(dy_gz, mid_year3, mid_age3, desc4, "C" if is_xi_gan else "H", sig4,
-                       f"✅喜用·财星五行·{cai_wx}" if is_xi_gan else f"⚠️忌神·财星五行·{cai_wx}")
-        elif dy_gan_wx == guan_wx:
-            desc4 = "事业上升·名声提升" if is_xi_gan else "事业受阻·谨防小人"
-            sig4 = _gen_signal("正官", is_xi_gan, step_idx, dy_gan_wx)
-            _add_event(dy_gz, mid_year3, mid_age3, desc4, "B" if is_xi_gan else "H", sig4,
-                       f"✅喜用·官杀五行·{guan_wx}" if is_xi_gan else f"⚠️忌神·官杀五行·{guan_wx}")
-        elif dy_gan_wx == yin_wx:
-            desc4 = "学习提升·贵人相助" if is_xi_gan else "过度依赖·失去自主性"
-            sig4 = _gen_signal("正印", is_xi_gan, step_idx, dy_gan_wx)
-            _add_event(dy_gz, mid_year3, mid_age3, desc4, "A" if is_xi_gan else "H", sig4,
-                       f"✅喜用·印星五行·{yin_wx}" if is_xi_gan else f"⚠️忌神·印星五行·{yin_wx}")
-        elif dy_gan_wx == shi_wx:
-            desc4 = "才华展示·创意输出" if is_xi_gan else "锋芒过露·口舌是非"
-            sig4 = _gen_signal("食神", is_xi_gan, step_idx, dy_gan_wx)
-            _add_event(dy_gz, mid_year3, mid_age3, desc4, "I" if is_xi_gan else "H", sig4,
-                       f"✅喜用·食伤五行·{shi_wx}" if is_xi_gan else f"⚠️忌神·食伤五行·{shi_wx}")
-        elif dy_gan_wx == bi_wx:
-            desc4 = "自主意识强·独立发展" if is_xi_gan else "固执己见·竞争加剧"
-            sig4 = _gen_signal("比肩", is_xi_gan, step_idx, dy_gan_wx)
-            _add_event(dy_gz, mid_year3, mid_age3, desc4, "B" if is_xi_gan else "H", sig4,
-                       f"✅喜用·比劫五行·{bi_wx}" if is_xi_gan else f"⚠️忌神·比劫五行·{bi_wx}")
-        else:
-            desc4 = f"{dy_gan_ss}运中期·{dy_gan_wx}五行能量显现"
-            sig4 = f"{dy_gan_ss}运·{dy_gan_wx}引动"
-            _add_event(dy_gz, mid_year3, mid_age3, desc4, "I", sig4, base_chain)
+            # 七步法分析
+            result = _analyze_liu_nian(f_gz, f_gan, f_zhi, dy_gan, dy_zhi, dy_gan_wx)
+            
+            # 判断是否为关键年份
+            is_key = False
+            key_reasons = []
+            
+            # 有冲合刑害 = 关键年
+            if result["interactions"]:
+                is_key = True
+                key_reasons.extend(result["interactions"][:2])
+            
+            # 流年喜用神到 = 关键年
+            if result["flow_is_xi"]:
+                is_key = True
+                key_reasons.append(f"{f_gan}{result['flow_ss']}喜用到位")
+            elif result["flow_is_ji"]:
+                is_key = True
+                key_reasons.append(f"{f_gan}{result['flow_ss']}忌神当值")
+            
+            # 流年天干合日主 = 必关键年
+            TIAN_GAN_HE = {"甲":"己","己":"甲","乙":"庚","庚":"乙","丙":"辛","辛":"丙",
+                           "丁":"壬","壬":"丁","戊":"癸","癸":"戊"}
+            if TIAN_GAN_HE.get(f_gan) == ri_gan:
+                is_key = True
+                key_reasons.append(f"流年天干合日主·{f_gan}合{ri_gan}")
 
-        # ── 事件⑤：大运后期·收尾/成果事件 ──
-        late_age1 = start_age + 8
-        late_year1 = start_year + 8
-        if is_xi_gan:
-            desc5 = f"喜用神运收尾·成果落地·收获期"
-            sig5 = f"{dy_gan_ss}喜用神·收获成果·把握收官"
-            _add_event(dy_gz, late_year1, late_age1, desc5, "B" if step_idx >= 2 else "A", sig5, base_chain)
-        elif is_ji_gan:
-            desc5 = f"忌神运后期·破而后立·积累经验"
-            sig5 = f"{dy_gan_ss}忌神·磨砺心志·为换运铺垫"
-            _add_event(dy_gz, late_year1, late_age1, desc5, "I", sig5, base_chain)
-        else:
-            desc5 = "平运收尾·平稳过渡"
-            sig5 = f"{dy_gan_ss}运平稳收官"
-            _add_event(dy_gz, late_year1, late_age1, desc5, "I", sig5, base_chain)
+            if is_key:
+                flow_year_events.append({
+                    "year": fy, "age": fa, "gz": f_gz,
+                    "result": result, "reasons": key_reasons,
+                    "offset": year_offset,
+                })
 
-        # ── 事件⑥：大运末期·为换运做准备 ──
-        late_age2 = start_age + 9
-        late_year2 = start_year + 9
-        next_step = step_idx + 1
-        if next_step < len(dy_list):
-            next_d = dy_list[next_step]
-            next_gan = next_d.get("gan", "")
-            next_ss = _get_shi_shen(ri_gan, next_gan)
-            next_wx = TIAN_GAN_WU_XING.get(next_gan, "")
-            next_is_xi = next_wx in xi_wx_list
-            trend = "上升" if next_is_xi else "波动" if next_wx in ji_wx_list else "平稳"
-            desc6 = f"换运前夕·向{next_ss}运过渡·运势趋势{trend}"
-            sig6 = f"{dy_gan_ss}→{next_ss}·大运交接·提前布局"
-            next_chain = _make_data_chain(next_wx, next_is_xi, next_wx in ji_wx_list, next_ss, next_d.get("score", 5.0))
-            _add_event(dy_gz, late_year2, late_age2, desc6, "I", sig6,
-                       f"当前:{base_chain} → 下一运:{next_chain}")
-        else:
-            _add_event(dy_gz, late_year2, late_age2, "此大运最后一程·规划晚年", "I",
-                       f"{dy_gan_ss}运收尾·安享成果", base_chain)
+        # 从关键年份中选取4-6个最有代表性的事件
+        # 优先级：冲日支 > 合日支 > 冲刑其他柱 > 喜忌到位 > 天干合日主
+        def event_priority(ev):
+            r = ev["result"]
+            score = 0
+            if r["has_chong_ri_zhi"]: score += 100
+            if r["has_he_ri_zhi"]: score += 80
+            if r["gong_wei_hits"]: score += 50
+            if r["interactions"]: score += len(r["interactions"]) * 10
+            if r["flow_gan_you_gen"]: score += 20
+            if r["flow_is_xi"]: score += 15
+            if r["flow_is_ji"]: score += 10
+            return score
 
-        # ── 事件⑦：流年互动事件①（大运第3年） ──
-        flow_year_3 = start_year + 3
-        flow_age_3 = start_age + 3
-        # 使用标准公式计算实际流年干支（与bazi_engine.calc_liu_nian一致）
-        flow_gan = TIAN_GAN_LIST[(flow_year_3 - 4) % 10]
-        flow_zhi = DI_ZHI_LIST[(flow_year_3 - 4) % 12]
-        flow_gz = flow_gan + flow_zhi
-        flow_wx = TIAN_GAN_WU_XING.get(flow_gan, "")
-        flow_ss = _get_shi_shen(ri_gan, flow_gan)
-        flow_is_xi = flow_wx in xi_wx_list
-        flow_chain = _make_flow_data_chain(flow_gan, flow_wx, flow_zhi, flow_gz)
-        if flow_is_xi:
-            flow_desc = f"流年{flow_gz}({flow_ss})·利好{dy_gan_ss}运发展"
-            flow_sig = f"流年{flow_gz}助力·{flow_ss}为喜用神"
-            _add_event(dy_gz, flow_year_3, flow_age_3, flow_desc, "I", flow_sig, flow_chain)
-        elif flow_wx in ji_wx_list:
-            flow_desc = f"流年{flow_gz}({flow_ss})·谨慎应对·避免冒进"
-            flow_sig = f"流年{flow_gz}阻滞·{flow_ss}为忌神"
-            _add_event(dy_gz, flow_year_3, flow_age_3, flow_desc, "H", flow_sig, flow_chain)
-        else:
-            flow_desc = f"流年{flow_gz}({flow_ss})·平顺过渡"
-            flow_sig = f"流年{flow_gz}中性·平稳过渡"
-            _add_event(dy_gz, flow_year_3, flow_age_3, flow_desc, "I", flow_sig, flow_chain)
+        flow_year_events.sort(key=event_priority, reverse=True)
+        selected_events = flow_year_events[:6]  # 最多6个
 
-        # ── 事件⑧：流年互动事件②（大运第7年） ──
-        flow_year_7 = start_year + 7
-        flow_age_7 = start_age + 7
-        # 使用标准公式计算实际流年干支（与bazi_engine.calc_liu_nian一致）
-        flow_gan2 = TIAN_GAN_LIST[(flow_year_7 - 4) % 10]
-        flow_zhi2 = DI_ZHI_LIST[(flow_year_7 - 4) % 12]
-        flow_gz2 = flow_gan2 + flow_zhi2
-        flow_wx2 = TIAN_GAN_WU_XING.get(flow_gan2, "")
-        flow_ss2 = _get_shi_shen(ri_gan, flow_gan2)
-        flow_is_xi2 = flow_wx2 in xi_wx_list
-        flow_chain2 = _make_flow_data_chain(flow_gan2, flow_wx2, flow_zhi2, flow_gz2)
-        if flow_is_xi2:
-            flow_desc2 = f"流年{flow_gz2}({flow_ss2})·喜神到位·把握机遇"
-            flow_sig2 = f"流年{flow_gz2}引动喜用神·{flow_ss2}得力"
-            _add_event(dy_gz, flow_year_7, flow_age_7, flow_desc2, "I", flow_sig2, flow_chain2)
-        elif flow_wx2 in ji_wx_list:
-            flow_desc2 = f"流年{flow_gz2}({flow_ss2})·忌神发力·谨言慎行"
-            flow_sig2 = f"流年{flow_gz2}触发忌神·{flow_ss2}为凶"
-            _add_event(dy_gz, flow_year_7, flow_age_7, flow_desc2, "H", flow_sig2, flow_chain2)
-        else:
-            flow_desc2 = f"流年{flow_gz2}({flow_ss2})·平稳发展"
-            flow_sig2 = f"流年{flow_gz2}中性·运势平稳"
-            _add_event(dy_gz, flow_year_7, flow_age_7, flow_desc2, "I", flow_sig2, flow_chain2)
+        for ev in selected_events:
+            r = ev["result"]
+            f_gz = ev["gz"]
+            f_gan = f_gz[0]
+            f_zhi = f_gz[1]
 
-        # ── 事件⑨：社交/出行事件（大运第1年） ──
-        soc_year = start_year + 1
-        soc_age = start_age + 1
-        if step_idx % 2 == 0 and not (dy_gan_wx == cai_wx or dy_gan_ss in ["正财", "偏财"]):
-            if is_xi_gan and dy_gan_ss in ["劫财", "比肩", "食神", "伤官"]:
-                soc_desc = "社交圈扩展·人脉建设机遇"
-                soc_sig = "比劫/食伤助运·人际拓展·贵人引荐"
-                soc_chain = f"✅喜用·{dy_gan_ss}助力社交"
-            elif is_ji_gan and dy_gan_ss in ["劫财", "比肩"]:
-                soc_desc = "注意人际纠纷·避免合作冲动"
-                soc_sig = "比劫为忌·竞争加剧·社交压力"
-                soc_chain = f"⚠️忌神·{dy_gan_ss}引发人际摩擦"
-            else:
-                soc_desc = "生活节奏变化·出行/搬迁可能"
-                soc_sig = f"{dy_gan_ss}运引动·环境变化"
-                soc_chain = f"➖{dy_gan_ss}运·环境变动信号"
-            _add_event(dy_gz, soc_year, soc_age, soc_desc, "T", soc_sig, soc_chain)
+            # 构建流年数据链
+            flow_chain_parts = [f"流年:{f_gz}"]
+            if r["flow_ss"]:
+                flow_chain_parts.append(f"十神:{r['flow_ss']}")
+            if r["interactions"]:
+                flow_chain_parts.append("互动:" + ",".join(r["interactions"][:2]))
+            flow_chain = " · ".join(flow_chain_parts)
 
-        # ── 事件⑩：健康/身体事件（大运第5年·根据地支冲合） ──
-        health_year = start_year + 5
-        health_age = start_age + 5
-        LIU_CHONG = {"子":"午","丑":"未","寅":"申","卯":"酉","辰":"戌","巳":"亥",
-                     "午":"子","未":"丑","申":"寅","酉":"卯","戌":"辰","亥":"巳"}
-        ri_zhi = basic.get("ri_zhi", "")
-        if dy_zhi and ri_zhi and LIU_CHONG.get(dy_zhi) == ri_zhi:
-            if is_xi_gan:
-                health_desc = "身体变化期·注意劳逸结合"
-                health_sig = "地支六冲·日支与大运地支相冲·能量释放"
-                health_chain = f"地支六冲:{dy_zhi}冲{ri_zhi}·能量激荡"
-            else:
-                health_desc = "健康警示·注意身体保养·避免透支"
-                health_sig = "地支相冲·日支受伤·健康波动"
-                health_chain = f"⚠️地支六冲:{dy_zhi}冲{ri_zhi}·需防范"
-            _add_event(dy_gz, health_year, health_age, health_desc, "J", health_sig, health_chain)
-        elif is_ji_gan:
-            _add_event(dy_gz, health_year, health_age,
-                       "身体能量偏低·注意调理作息", "J",
-                       "忌神运·五行失衡·健康预警",
-                       f"⚠️忌神运压制·{dy_gan_wx}五行过旺")
-        elif dy_gan_wx == yin_wx:
-            _add_event(dy_gz, health_year, health_age,
-                       "身心保养·适合养生调理", "J",
-                       "印星护体·根基稳固·健康平稳",
-                       f"✅印星五行·{yin_wx}生身·身体安康")
+            # ═════════════════════════════════════════════════════
+            # Step7: 生成断语 — 【其人】+【其事】+【其因】+【应期】
+            # ═════════════════════════════════════════════════════
+            desc_parts = []
+            etype = "I"  # 默认转折
+            sig_parts = []
 
-        # ── 特殊事件①：婚姻窗口（第2~5步大运） ──
-        if 1 <= step_idx <= 4:
-            pei_ou_ss = "正财" if gender == "男" else "正官"
-            pei_ss_list = [pei_ou_ss]
-            pei_ss_list.append("偏财" if gender == "男" else "七杀")
-            if dy_gan_ss in pei_ss_list:
-                mar_year = start_year + (3 if step_idx < 3 else 2)
-                mar_age = start_age + (3 if step_idx < 3 else 2)
-                desc_f = "婚姻缘分成熟·感情稳定发展" if is_xi_gan else "情感压力·注意沟通"
-                sig_f = "夫妻星引动·正缘显现" if is_xi_gan else "夫妻星为忌·情感波折"
-                chain_f = f"✅喜用·{dy_gan_ss}夫妻星到" if is_xi_gan else f"⚠️忌神·{dy_gan_ss}夫妻星压力"
-                _add_event(dy_gz, mar_year, mar_age, desc_f, "F", sig_f, chain_f)
+            # 宫位→断谁的事
+            if r["gong_wei_hits"]:
+                gong_str = "、".join(r["gong_wei_hits"][:2])
+                desc_parts.append(f"【宫位】{gong_str}")
 
-        # ── 特殊事件②：子女添丁窗口（第3~6步大运） ──
-        if 2 <= step_idx <= 5:
-            child_ss = ["正官", "七杀"] if gender == "男" else ["食神", "伤官"]
-            if dy_gan_ss in child_ss and is_xi_gan:
-                kid_year = start_year + (2 if step_idx < 4 else 3)
-                kid_age = start_age + (2 if step_idx < 4 else 3)
-                _add_event(dy_gz, kid_year, kid_age, "子女添丁·家庭新增成员", "G",
-                           "子女星到位·禄嗣临门",
-                           f"✅喜用·{dy_gan_ss}子女星引动")
+            # 核心关系→断什么事
+            age = ev["age"]
+            stage = life_stage(age)
 
-        # ── 特殊事件③：置业/买房窗口（第4~8步大运） ──
-        if 3 <= step_idx <= 7 and (is_xi_gan or is_neutral):
-            house_year = start_year + 5
-            house_age = start_age + 5
-            if dy_gan_wx == cai_wx or dy_gan_ss in ["正财", "偏财"]:
-                _add_event(dy_gz, house_year, house_age, "置业机遇·不动产购置", "E",
-                           "财星守位·置产纳福" if is_xi_gan else "财星透干·宜关注房产",
-                           f"✅财星五行·{cai_wx}置业信号" if is_xi_gan else f"➖财星透出·宜关注房产")
-            elif dy_gan_wx == yin_wx and is_xi_gan:
-                _add_event(dy_gz, house_year, house_age, "家居改善·居住环境提升", "E",
-                           "印星护宅·安居乐业",
-                           f"✅印星五行·{yin_wx}护宅安居")
+            if r["has_chong_ri_zhi"]:
+                if stage == "求学阶段":
+                    desc_parts.append("日支逢冲·家庭环境变动影响学业")
+                    etype = "H"
+                elif 20 <= age <= 35:
+                    desc_parts.append("日支逢冲·感情波动/婚姻变动")
+                    etype = "F"
+                elif age > 35:
+                    desc_parts.append("日支逢冲·夫妻宫动荡/家庭调整")
+                    etype = "H"
+                sig_parts.append(f"{f_zhi}冲日支")
 
-        # ── 特殊事件④：觉醒/转折事件（第5步大运之后） ──
-        if step_idx >= 4 and (is_xi_gan or is_neutral):
-            aw_year = start_year + 7
-            aw_age = start_age + 7
-            if dy_gan_ss in ["食神", "伤官"]:
-                _add_event(dy_gz, aw_year, aw_age, "人生转折·觉醒开悟", "I",
-                           "食伤吐秀·智慧开悟·人生新境界",
-                           f"✅喜用·{dy_gan_ss}吐秀开悟")
-            elif dy_gan_ss in ["正印", "偏印"]:
-                _add_event(dy_gz, aw_year, aw_age, "精神成长·内心觉醒", "I",
-                           "印星化神·慧根深种·格局升华",
-                           f"✅喜用·{dy_gan_ss}印星内省")
-            elif dy_gan_ss in ["正官", "七杀"] and is_xi_gan:
-                _add_event(dy_gz, aw_year, aw_age, "社会地位升华·影响力扩大", "I",
-                           "官星入运·名望积累·社会价值实现",
-                           f"✅喜用·{dy_gan_ss}官星赋能")
+            if r["has_he_ri_zhi"]:
+                if 20 <= age <= 40:
+                    desc_parts.append("日支逢合·婚恋缘分/感情升温")
+                    etype = "F"
+                elif age < 20:
+                    desc_parts.append("日支逢合·人际缘佳/家庭和睦")
+                    etype = "I"
+                else:
+                    desc_parts.append("日支逢合·感情稳定/合作缘分")
+                    etype = "F"
+                sig_parts.append(f"{f_zhi}合日支")
 
-        # ── 特殊事件⑤：灾祸/低谷事件（忌神运额外添加） ──
-        if is_ji_gan:
-            crisis_year = start_year + 3
-            crisis_age = start_age + 3
-            crisis_sigs = ["比劫夺财·损财耗资", "官杀攻身·压力倍增",
-                           "枭神夺食·计划受阻", "财星破印·根基动摇",
-                           "伤官见官·口舌是非"]
-            crisis_map = {0: "财务损失", 1: "职场压力", 2: "计划中断", 3: "决策失误", 4: "人际纠纷"}
-            sig_h = crisis_sigs[step_idx % len(crisis_sigs)]
-            _add_event(dy_gz, crisis_year, crisis_age,
-                       f"忌神运低谷期·注意{crisis_map[step_idx%5]}",
-                       "H", sig_h, f"⚠️忌神·{dy_gan_ss}凶性释放·{crisis_map[step_idx%5]}")
+            # 十神事件类型映射
+            ss_etype_map = {
+                "正印": ("A", "学业/文书"), "偏印": ("A", "技艺/进修"),
+                "正官": ("B", "升职/名望"), "七杀": ("B", "挑战/突破"),
+                "正财": ("C", "正财收入"), "偏财": ("C", "偏财/投资"),
+                "食神": ("I", "创意/才艺"), "伤官": ("I", "创新/变革"),
+                "比肩": ("B", "独立/竞争"), "劫财": ("B", "合作/社交"),
+            }
+
+            # 流年十神主导事件类型
+            ss_map = ss_etype_map.get(r["flow_ss"], ("I", "变动"))
+            flow_etype, flow_domain = ss_map
+
+            # 年龄过滤：求学阶段不标发财/升职
+            if stage == "求学阶段":
+                if flow_etype in ["C", "B"]:
+                    flow_etype = "A"
+                    flow_domain = "学业"
+                if r["flow_is_xi"] and r["flow_ss"] in ["正印", "偏印"]:
+                    desc_parts.append(f"印星喜用·考试顺利/学业提升")
+                elif r["flow_is_xi"] and r["flow_ss"] in ["食神", "伤官"]:
+                    desc_parts.append(f"食伤喜用·才艺展露/竞赛佳绩")
+                elif r["flow_is_ji"]:
+                    desc_parts.append(f"{r['flow_ss']}忌神·学业压力/注意力分散")
+
+            elif stage == "初入社会":
+                if r["flow_is_xi"]:
+                    if r["flow_ss"] in ["正官", "七杀"]:
+                        desc_parts.append("官星喜用·初入职场顺遂/贵人提携")
+                    elif r["flow_ss"] in ["正财", "偏财"]:
+                        desc_parts.append("财星喜用·经济独立/收入起步")
+                    elif r["flow_ss"] in ["正印", "偏印"]:
+                        desc_parts.append("印星喜用·进修深造/证书获取")
+                    else:
+                        desc_parts.append(f"{r['flow_ss']}喜用·{flow_domain}有利")
+                elif r["flow_is_ji"]:
+                    desc_parts.append(f"{r['flow_ss']}忌神·{flow_domain}受阻/需调整策略")
+
+            elif stage == "职场阶段":
+                if r["flow_is_xi"]:
+                    if r["flow_ss"] in ["正官", "七杀"]:
+                        desc_parts.append("官杀喜用·事业上升/权责增加")
+                        flow_etype = "B"
+                    elif r["flow_ss"] in ["正财", "偏财"]:
+                        desc_parts.append("财星喜用·财运亨通/收入提升")
+                        flow_etype = "C"
+                    elif r["flow_ss"] in ["正印", "偏印"]:
+                        desc_parts.append("印星喜用·贵人相助/职位稳固")
+                    elif r["flow_ss"] in ["食神", "伤官"]:
+                        desc_parts.append("食伤喜用·创意突破/才华变现")
+                        flow_etype = "I"
+                    else:
+                        desc_parts.append(f"{r['flow_ss']}喜用·{flow_domain}利好")
+                elif r["flow_is_ji"]:
+                    if r["flow_ss"] in ["正官", "七杀"]:
+                        desc_parts.append("官杀忌神·职场压力/小人侵扰")
+                        flow_etype = "H"
+                    elif r["flow_ss"] in ["正财", "偏财"]:
+                        desc_parts.append("财星忌神·破财/财务纠纷")
+                        flow_etype = "H"
+                    elif r["flow_ss"] in ["比肩", "劫财"]:
+                        desc_parts.append("比劫忌神·竞争激烈/合作破裂")
+                        flow_etype = "H"
+                    else:
+                        desc_parts.append(f"{r['flow_ss']}忌神·{flow_domain}压力/谨慎应对")
+                        flow_etype = "H"
+            else:  # 退休
+                if r["flow_is_xi"]:
+                    desc_parts.append(f"{r['flow_ss']}喜用·晚年安康/福气临门")
+                else:
+                    desc_parts.append(f"{r['flow_ss']}忌神·注意健康/保守理财")
+                    if r["body_hints"]:
+                        flow_etype = "J"
+
+            # 身体提示
+            if r["body_hints"] and not desc_parts:
+                body_str = "、".join(r["body_hints"])
+                desc_parts.append(f"注意{body_str}保养")
+                flow_etype = "J"
+
+            # 有根/无根判断
+            if r["has_chong_ri_zhi"]:
+                if r["flow_gan_you_gen"]:
+                    desc_parts.append("(有根·冲击较轻)")
+                else:
+                    desc_parts.append("(无根·冲击较重需防范)")
+
+            # 三合局特殊事件
+            for hint in r["event_hints"]:
+                if "三合" in hint and hint not in str(desc_parts):
+                    desc_parts.append(f"【{hint}】")
+
+            # 上下半年提示（Step6简化）
+            if r["has_chong_ri_zhi"] or r["has_he_ri_zhi"]:
+                sig_parts.append(f"天干主导上/地支主导下")
+
+            # 组装最终断语
+            if not desc_parts:
+                desc_parts.append(f"流年{f_gz}·{r['flow_ss']}当值·平顺过渡")
+
+            desc = "；".join(desc_parts) if desc_parts else f"{f_gz}流年·平顺"
+            etype = flow_etype if flow_etype != "I" or r["has_chong_ri_zhi"] or r["has_he_ri_zhi"] else etype
+
+            # 命理信号
+            signal = f"{f_gz}·{r['flow_ss']}"
+            if r["flow_is_xi"]:
+                signal += "·喜用"
+            elif r["flow_is_ji"]:
+                signal += "·忌神"
+            if r["interactions"]:
+                signal += "·" + r["interactions"][0][:20]
+            if r["gong_wei_hits"]:
+                signal += "·" + r["gong_wei_hits"][0][:15]
+
+            _add_event(dy_gz, ev["year"], ev["age"], desc, etype, signal, flow_chain)
+
+        # ── 如果该运没有关键流年事件（纯平稳运），生成1-2个基准事件 ──
+        if len(selected_events) == 0:
+            mid_year = start_year + 5
+            mid_age = start_age + 5
+            _add_event(dy_gz, mid_year, mid_age,
+                       f"【基准】{dy_gan_ss}运平稳期·{energy_summary}·少冲合刑害",
+                       "I", f"{dy_gan_ss}平稳·无显著流年互动", base_chain)
 
     lines.append("")
     lines.append("---")
     lines.append("")
 
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # ═══════════════════════════════════════════════════════════════
     # 事件类型统计
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # ═══════════════════════════════════════════════════════════════
     type_counts = {"A": 0, "B": 0, "C": 0, "E": 0, "F": 0, "G": 0,
                    "H": 0, "I": 0, "T": 0, "J": 0, "D": 0, "—": 0}
     for line in lines:
@@ -6538,7 +6813,7 @@ def _gen_section16(basic: dict, analysis: dict, birth_year: int) -> list:
         stats_rows
     ))
     lines.append("")
-    lines.append(f"> **事件总计：** {event_id} 条（共69条）")
+    lines.append(f"> **事件总计：** {event_id} 条")
     lines.append("")
 
     # 能量倍数标注（基于energy_engine数据）
@@ -6569,11 +6844,13 @@ def _gen_section16(basic: dict, analysis: dict, birth_year: int) -> list:
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     # 白话解读收尾
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    lines.append("> 🗣️ **白话解读：** 上表涵盖了从出生到晚年各个人生阶段的核心事件。每一条事件背后都有命理数据的支撑——「数据链依据」列标注了该事件是基于喜用神/忌神、十神关系、五行生克还是地支冲合得出的结论。这确保了你看到的每一句话都不是猜测，而是根据你的生辰八字一步步推算出来的确定性结论。")
+    lines.append("> 🗣️ **白话解读：** 上表基于九龙道长七步断事法生成——每条事件都有明确的宫位依据（冲合哪一柱、影响哪位六亲）和流年干支互动记录。大运仅标注能量背景，不产具体事件；具体何事、何时发生，由流年干支与原局四柱的冲合刑害关系决定。断语遵循「其人+其事+其时」格式，非模板化生成。")
     lines.append(">")
-    lines.append("> 【金鉴真人·§16·规则名】数据链追溯规则：每个事件标注「喜忌判定→十神定位→五行生克→信号生成」四级追溯链路，确保推演过程可解释、可验证、可追溯。")
+    lines.append("> 【金鉴真人·§16·规则名】九龙七步断事法：Step0摸透八字→Step1找核心流年关系(冲合刑害)→Step2检查化解(贪合忘冲/有根无根)→Step3宫位断谁的事→Step4五行定身体→Step5三刑合化含义→Step6分上下半年(天干主导/地支主导)→Step7断语(其人+其事+其时+其位+其度+其因)")
     lines.append(">")
-    lines.append("> 【金鉴真人·§16·规则名】事件密度控制：每运事件数控制在8~12条，兼顾信息密度与可读性；事件类型覆盖学业、事业、财运、感情、健康、置业六大维度，形成全方位生命轨迹扫描。")
+    lines.append("> 【金鉴真人·§16·规则名】大运不应事铁律：大运只是能量背景，不产具体事件。每步大运只标注能量特点+喜忌方向，不写「该运发财/升官」。具体事件只标注在流年级别。")
+    lines.append(">")
+    lines.append("> 【金鉴真人·§16·规则名】事件密度控制：每运4-6个关键流年事件（非机械生成），全表50-70条。年龄阶段过滤：求学阶段不标发财/升职，退休阶段重健康/家庭。")
     lines.append("")
 
     return lines
@@ -7922,8 +8199,12 @@ def generate_report(bazi_result: dict, name: str, gender: str,
     cai_score = cx.get("score", 0)
     wealth_level = cx.get("wealth_level", "中富")
     sy = analysis.get("shi_ye", {})
-    sy_score = sy.get("score", 0)
     sy_level = sy.get("level", "—")
+    sy_score = sy_level  # v9.0: 定性无数值评分
+    sy_traits = sy.get("traits", [])
+    sy_direction = sy.get("direction", "")
+    sy_career_path = sy.get("career_path", "")
+    sy_is_entrepreneur = sy.get("is_suitable_entrepreneur", False)
     energy = analysis.get("energy", {})
     wx_strong = energy.get("strongest", "")
     wx_weak = energy.get("weakest", "")
@@ -8242,67 +8523,36 @@ def generate_report(bazi_result: dict, name: str, gender: str,
     # 事业总结（独立段落 — 财富之后）
     shi_data = analysis.get("shi_ye", {})
     shi_level = shi_data.get("level", "") if shi_data else ""
-    shi_score = shi_data.get("score", 0) if shi_data else 0
-    career_dir = {
-        "正官": "体制内、管理岗", "七杀": "创业、军警",
-        "正印": "教育、科研", "偏印": "技术研发",
-        "正财": "财务、金融", "偏财": "投资、贸易",
-        "食神": "艺术、设计", "伤官": "创意、传媒",
-        "比肩": "自主经营", "劫财": "社交、合作",
-    }
-    direction = career_dir.get(ge_ju_str, "多元化发展")
+    shi_traits = shi_data.get("traits", []) if shi_data else []
+    shi_direction = shi_data.get("direction", "") if shi_data else ""
+    shi_career_path = shi_data.get("career_path", "") if shi_data else ""
+    shi_is_entrepreneur = shi_data.get("is_suitable_entrepreneur", False) if shi_data else False
 
     lines.append("")
     lines.append("### 事业总结")
     lines.append("")
-    if shi_level and shi_score > 0:
-        lines.append(f"事业综合评分 **{shi_score}分**，属于 **「{shi_level}」** 级别。")
+    if shi_level:
+        lines.append(f"事业等级 **「{shi_level}」** 级别。")
 
-        # 格局驱动的事业特质
-        ge_ju_traits = {
-            "正官格": "格局清正，适合体制内稳步晋升",
-            "七杀格": "魄力过人，宜在竞争性领域闯荡",
-            "食神制杀格": "以才御权，适合技术管理双线发展",
-            "杀印相生格": "印化杀为权，决策型领导者",
-            "伤官配印格": "才华出众，适合创意+学术复合路线",
-            "五行流通格": "五行流转顺畅，适合多元化跨界发展",
-            "从弱格": "顺势而为，宜借力平台合作发展",
-            "从强格": "气势专一，宜聚焦单一领域深耕",
-        }
-        trait = ge_ju_traits.get(ge_ju_str, f"{ge_ju_str}主导，宜发挥格局优势")
+        # 引擎 traits
+        if shi_traits:
+            lines.append("")
+            lines.append("**命理特质分析：**")
+            for t in shi_traits[:8]:  # 最多显示8条
+                lines.append(f"- {t}")
 
-        # 喜用神行业建议
-        xi_wx_industries = {
-            "金": "金融、法律、精密制造、五金机械",
-            "木": "教育、文化、出版、环保",
-            "水": "贸易、物流、传媒、旅游",
-            "火": "能源、科技、互联网、餐饮",
-            "土": "地产、建筑、农业、矿产",
-        }
-        xi_wx_cn = {wx: ind for wx, ind in xi_wx_industries.items() if wx in xi_list}
-        xi_industries = [f"{wx}({ind})" for wx, ind in xi_wx_cn.items()]
+        if shi_direction:
+            lines.append(f"**行业方向**：{shi_direction}。")
 
-        # 最佳大运窗口
-        best_dy = max(
-            [d for d in dy_list if d.get("score_first5", 0) > 0 or d.get("score", 0) > 0],
-            key=lambda d: d.get("score_first5", d.get("score", 0)), default={}
-        )
+        if shi_career_path:
+            lines.append(f"**事业路径**：{shi_career_path}。")
 
-        lines.append(f"**事业特质**：{trait}。")
-        if xi_industries:
-            lines.append(f"**推荐行业**：{'、'.join(xi_industries)}。")
-        if shi_score >= 70:
-            lines.append("**事业前景**：格局清正+评分优秀，具备中高层管理潜力，适合在推荐行业内做长远规划。")
-        elif shi_score >= 50:
-            lines.append("**事业前景**：事业根基扎实，稳扎稳打，中年后有较大发展空间。")
+        if shi_is_entrepreneur:
+            lines.append("**创业建议**：✅ 您的格局具备创业者潜质，适合独立发展。")
         else:
-            lines.append("**事业前景**：一步一个脚印，选择喜用神对应的行业方向，可逐步积累事业基础。")
-        if best_dy:
-            dy_name = best_dy.get("gan_zhi", "")
-            dy_score = best_dy.get("score_first5", best_dy.get("score", 0))
-            lines.append(f"**关键窗口**：**{dy_name}**大运（事业评分{dy_score:.1f}分）是最佳事业突破期，届时宜把握机遇、乘势而上。")
+            lines.append("**创业建议**：❌ 更适合在平台/体制内发展，借助团队力量。")
     else:
-        lines.append(f"**事业方向**：{ge_ju_str}格主导，适合{direction}。建议选择{'/'.join(xi_list)}相关行业深耕发展。")
+        lines.append(f"**事业方向**：详见引擎分析。")
     lines.append("")
     lines.append("### 三要三忌")
     lines.append("")

@@ -85,23 +85,20 @@ def audit_report(report_text, name, exp_score, exp_level):
         print(f"  ❌ 报告末尾缺少事业总结")
         ok = False
 
-    # 大运前后五年评分验证
-    dayun_split = re.findall(r'(前5年|后5年|score_first5|score_last5)', report_text)
-    if dayun_split or "70%" in report_text:
-        print(f"  ✅ 大运前后五年分治")
+    # 大运定性验证（替代旧版数值评分）
+    dayun_qualitative = re.findall(r'(ding_xing|吉|凶|好坏参半|first5_ding_xing|last5_ding_xing)', report_text)
+    if dayun_qualitative:
+        print(f"  ✅ 大运定性（吉/凶/好坏参半）")
     else:
-        print(f"  ❌ 大运缺少前后五年分治标记")
+        print(f"  ❌ 大运缺少定性标记")
         ok = False
 
-    # 新特性验证
+    # 流年新特性验证（报告文本）
     new_features = [
-        ("36岁分界线", r"36岁"),
-        ("墓库40分", r"入库|入墓"),
-        ("能量倍数", r"能量倍数"),
-        ("恶神×能量", r"恶神"),
-        ("流年上下半年", r"上半年.*天干主"),
-        ("大运70%配比", r"70%|30%"),
-        ("合化优先等级", r"合化优先等级"),
+        ("过三关 top3", r"过三关|top3|能量倍数"),
+        ("能量倍数排序", r"能量倍数"),
+        ("宫位应事断语", r"红鸾|隐忍|怀胎|心情郁闷|配偶|子女"),
+        ("干透干藏", r"干透|干藏"),
     ]
     for feat_name, pattern in new_features:
         if re.search(pattern, report_text):
@@ -133,12 +130,24 @@ async def verify_via_api(name, gender, y, m, d, h, lunar, exp_score, exp_level):
         result = json.loads(resp.read())
         report_md = result.get("report_md", "")
 
-        # 验证API返回的da_yun数据包含新字段
+        # 验证API返回的da_yun数据包含新字段（定性）
         da_yun_list = result.get("analysis", {}).get("da_yun", {}).get("da_yun", [])
         if da_yun_list:
-            has_f5 = "score_first5" in da_yun_list[0]
-            has_l5 = "score_last5" in da_yun_list[0]
-            print(f"  API dayun: score_first5={has_f5}, score_last5={has_l5}")
+            has_ding_xing = "ding_xing" in da_yun_list[0]
+            has_kong_wang = "kong_wang" in da_yun_list[0]
+            print(f"  API dayun: ding_xing={has_ding_xing}, kong_wang={has_kong_wang}")
+
+        # API层新特性验证（引擎JSON数据）
+        da_yun_jx = result.get("analysis", {}).get("da_yun_ji_xiong", [])
+        liu_nian_list = result.get("analysis", {}).get("liu_nian", [])
+        api_checks = {
+            "空亡检测": any(d.get("kong_wang") for d in da_yun_jx),
+            "断层认知": any("过程虽苦" in d.get("detail","") or "感受不痛苦" in d.get("detail","") for d in da_yun_jx),
+            "犯太岁定性": any(ln.get("fan_tai_sui") and "犯太岁" in str(ln["fan_tai_sui"]) for ln in liu_nian_list[:3]),
+            "流年top3": any(len(ln.get("top3_events",[])) > 0 for ln in liu_nian_list[:3]),
+        }
+        for feat, ok_flag in api_checks.items():
+            print(f"  API {feat}: {ok_flag}")
 
         # 2. 在前端页面渲染并截图
         await page.goto("http://localhost:3001")
