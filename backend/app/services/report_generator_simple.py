@@ -563,7 +563,9 @@ def _gen_section1(basic: dict, analysis: dict, name: str, gender: str, version: 
     dy_jx_sec1 = analysis.get("da_yun_ji_xiong", [])
     if dy_jx_sec1 and len(dy_jx_sec1) == len(dy_list):
         for i, jx in enumerate(dy_jx_sec1):
-            s = jx.get("score", 5.0)
+            s = jx.get("score", jx.get("ding_xing", "平"))
+            if isinstance(s, str):
+                s = {"吉": 7.5, "喜用": 7.5, "好坏参半": 5.0, "中性": 5.0, "凶": 2.5, "忌神": 2.5, "平": 5.0}.get(s, 5.0)
             gz = jx.get("gan_zhi", dy_list[i].get("gan_zhi","") if i < len(dy_list) else "")
             # 分数相同时选索引更大的（更靠后的大运 = 更佳）
             if s >= best_score:
@@ -584,7 +586,9 @@ def _gen_section1(basic: dict, analysis: dict, name: str, gender: str, version: 
     if dy_jx_sec1 and len(dy_jx_sec1) == len(dy_list):
         scored = []
         for i, jx in enumerate(dy_jx_sec1):
-            s = jx.get("score", 5.0)
+            s = jx.get("score", jx.get("ding_xing", "平"))
+            if isinstance(s, str):
+                s = {"吉": 7.5, "喜用": 7.5, "好坏参半": 5.0, "中性": 5.0, "凶": 2.5, "忌神": 2.5, "平": 5.0}.get(s, 5.0)
             gz = jx.get("gan_zhi", dy_list[i].get("gan_zhi","") if i < len(dy_list) else "")
             scored.append((s, i, gz))
         # 按(得分降序, 索引降序)排序，取第2名
@@ -1531,10 +1535,12 @@ def _gen_section4(basic: dict, analysis: dict) -> list:
             if xi_wx and TIAN_GAN_WU_XING.get(d_gan, "") == xi_wx:
                 bu_yi_ss.append(xi)
         bu_yi_str = "、".join(bu_yi_ss) if bu_yi_ss else "—"
-        # 用da_yun_ji_xiong评分判断效果
+        # 用da_yun_ji_xiong定性判断效果
         effect = "—"
         if i < len(dy_jx_4):
-            s = dy_jx_4[i].get("score", 0)
+            s = dy_jx_4[i].get("score", dy_jx_4[i].get("ding_xing", "平"))
+            if isinstance(s, str):
+                s = {"吉": 7.5, "喜用": 7.5, "好坏参半": 5.0, "中性": 5.0, "凶": 2.5, "忌神": 2.5, "平": 5.0}.get(s, 5.0)
             if bu_yi_ss:
                 effect = "强力补益" if s >= 7 else "温和补益"
             else:
@@ -3121,8 +3127,10 @@ def _gen_section8(basic: dict, analysis: dict) -> list:
         for d in dy_jx:
             gz = d.get("gan_zhi", "")
             ss = d.get("gan_ss", "")
-            jx = d.get("ji_xiong", "平")
+            jx = d.get("ji_xiong", d.get("ding_xing", "平"))
             base_score = d.get("score", 5.0)
+            if isinstance(base_score, str):
+                base_score = {"吉": 7.5, "喜用": 7.5, "好坏参半": 5.0, "中性": 5.0, "凶": 2.5, "忌神": 2.5, "平": 5.0}.get(base_score, 5.0)
             # 匹配年龄信息（用于排序和过期标注）
             _s_age = 999
             _e_age = 999
@@ -3169,7 +3177,7 @@ def _gen_section8(basic: dict, analysis: dict) -> list:
             ri_wx_desc = {"金":"刚毅果断","木":"仁慈宽厚","水":"智慧灵动","火":"热情开朗","土":"稳重诚信"}
             best_gz = t3[0][0].get('gan_zhi','')
             best_ss = t3[0][0].get('gan_ss','')
-            best_jx = t3[0][0].get('ji_xiong','')
+            best_jx = t3[0][0].get('ji_xiong', t3[0][0].get('ding_xing',''))
             # 获取最佳窗口的起始年龄，判断是否为儿童/青少年期
             best_start_age = t3[0][3] if len(t3[0]) > 3 else 999
             is_child_window = best_start_age < 18
@@ -6919,16 +6927,20 @@ def _gen_section17(basic: dict, analysis: dict, birth_year: int) -> list:
     # 引言 — 大运总规则
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    # 合并引擎da_yun_ji_xiong数据到dy_list（v8.3）
+    # 合并引擎da_yun_ji_xiong数据到dy_list（v4.0 定性版）
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     dy_jx = analysis.get("da_yun_ji_xiong", [])
     if dy_jx and len(dy_jx) == len(dy_list):
         for i, d in enumerate(dy_list):
             if i < len(dy_jx):
                 jx = dy_jx[i]
-                d["score"] = jx.get("score", d.get("score", 5.0))
-                d["ji_xiong_label"] = jx.get("ji_xiong", "平")
+                d["ding_xing"] = jx.get("ding_xing", jx.get("ji_xiong", "平"))
+                d["ji_xiong_label"] = jx.get("ding_xing", jx.get("ji_xiong", "平"))
+                d["detail"] = jx.get("detail", "")
+                d["kong_wang"] = jx.get("kong_wang", False)
                 d["gan_ss_engine"] = jx.get("gan_ss", d.get("gan_ss", ""))
+                d["gan_xi_ji"] = jx.get("gan_xi_ji", "")
+                d["zhi_xi_ji"] = jx.get("zhi_xi_ji", "")
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
     lines.append(f"【金鉴真人·§17·大运规则】大运是八字命局在时间维度上的动态展开，每十年一换，共十步至百岁。")

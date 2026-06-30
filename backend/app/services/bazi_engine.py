@@ -2261,15 +2261,14 @@ def calc_da_yun_ji_xiong(da_yun_list: list, ri_gan: str, sqr_level: str,
                           xi_shen: list = None, ji_shen: list = None,
                           nian_zhi: str = "", ri_zhi: str = "",
                           yue_zhi: str = "", shi_zhi: str = "") -> list:
-    """大运评分 v3.0 — 金鉴真人评分法（回归理论本源）
-    公式：总分 = 人生阶段基础(0-7) + 大运赋能(0-3)，满分10分
-    大运赋能 = 喜用神效应 + 十神交互效应 + 刑冲合害效应"""
+    """大运定性 v4.0 — 喜用神定性法 + 空亡 + 断层认知
+    九龙道长原始规则：不分阴阳，只看五行方向。
+    大运干支五行在喜用神→吉，在忌神→凶，一喜一忌→好坏参半。
+    前五年天干主导，后五年地支主导。"""
     WX_MAP = {"甲":"木","乙":"木","丙":"火","丁":"火","戊":"土","己":"土",
               "庚":"金","辛":"金","壬":"水","癸":"水"}
     xi = xi_shen or []
     ji = ji_shen or []
-    liu_chong = {"子":"午","丑":"未","寅":"申","卯":"酉","辰":"戌","巳":"亥",
-                 "午":"子","未":"丑","申":"寅","酉":"卯","戌":"辰","亥":"巳"}
     
     def zhi_wx(z):
         return {"子":"水","丑":"土","寅":"木","卯":"木","辰":"土",
@@ -2279,186 +2278,130 @@ def calc_da_yun_ji_xiong(da_yun_list: list, ri_gan: str, sqr_level: str,
     for yun in da_yun_list:
         gz = yun.get("gan_zhi", "")
         if len(gz) < 2:
-            result.append({**yun, "ji_xiong": "平", "score": 5.0, "gan_ss": "", "detail": "未知"})
+            result.append({
+                "gan_zhi": gz,
+                "gan_ss": "",
+                "gan_wx": "",
+                "gan_xi_ji": "未知",
+                "zhi_wx": "",
+                "zhi_xi_ji": "未知",
+                "ding_xing": "平",
+                "detail": "未知",
+                "kong_wang": False,
+                "start_age": yun.get("start_age", 0),
+                "end_age": yun.get("end_age", 0),
+            })
             continue
         gan, zhi = gz[0], gz[1]
         gan_wx = WX_MAP.get(gan, "")
         gan_ss = shi_shen(ri_gan, gan) if gan and ri_gan else ""
         zwx = zhi_wx(zhi)
-        start_age = yun.get("start_age", 50)
+        start_age = yun.get("start_age", 0)
+        end_age = yun.get("end_age", 0)
         
-        details = []
-        
-        # ═══════════════════════════════════════════════
-        # 第一步：人生阶段基础分 (0-7)
-        # 金鉴真人规则：每步大运有先天阶段基础值
-        # ═══════════════════════════════════════════════
-        age = (start_age + (start_age + 10)) / 2  # 运中年龄
-        if age < 20:
-            base = 4.5  # 少年期：学业打基础
-        elif age < 30:
-            base = 5.0  # 青年期：进入社会
-        elif age < 40:
-            base = 5.5  # 黄金期：职场上升
-        elif age < 50:
-            base = 4.5  # 中年早期：压力最大
-        elif age < 60:
-            base = 5.5  # 中年鼎盛：人生巅峰期
-        elif age < 70:
-            base = 3.5  # 晚年初期：退休过渡
-        elif age < 80:
-            base = 3.0  # 晚年中期
-        else:
-            base = 2.5  # 晚年后期
-        
-        # ═══════════════════════════════════════════════
-        # 第二步：大运赋能 (0-3)
-        # 九龙道长规则：前五年天干70%+地支30%，后五年地支70%+天干30%
-        # ═══════════════════════════════════════════════
-        bonus = 1.5  # 默认中性
-        
-        # 2a. 喜用神效应
+        # ── 喜忌判断 ──
         gan_is_xi = gan_wx in xi
         gan_is_ji = gan_wx in ji
         zhi_is_xi = zwx in xi
         zhi_is_ji = zwx in ji
         
-        # 分别计算天干和地支的赋能
-        gan_bonus = 0.0
-        zhi_bonus = 0.0
-        
+        # 天干喜忌定性
         if gan_is_xi:
-            gan_bonus += 0.5
-            zhi_bonus += 0.3  # 天干喜用也给地支轻微正向
-            details.append(f"天干{gan}=喜用→天干+0.5/地支+0.3")
+            gan_xi_ji = "喜用"
         elif gan_is_ji:
-            gan_bonus -= 0.3
-            zhi_bonus -= 0.2
-            details.append(f"天干{gan}=忌神→天干-0.3/地支-0.2")
+            gan_xi_ji = "忌神"
+        else:
+            gan_xi_ji = "中性"
+        
+        # 地支喜忌定性
+        if zhi_is_xi:
+            zhi_xi_ji = "喜用"
+        elif zhi_is_ji:
+            zhi_xi_ji = "忌神"
+        else:
+            zhi_xi_ji = "中性"
+        
+        # ── 综合定性（九龙道长唯一规则：干支喜忌合判）──
+        is_gan_good = gan_is_xi
+        is_zhi_good = zhi_is_xi
+        is_gan_bad = gan_is_ji
+        is_zhi_bad = zhi_is_ji
+        
+        if is_gan_good and is_zhi_good:
+            ding_xing = "吉"
+        elif is_gan_bad and is_zhi_bad:
+            ding_xing = "凶"
+        else:
+            ding_xing = "好坏参半"
+        
+        # ── 前五年/后五年定性（天干主导/地支主导）──
+        if gan_is_xi:
+            first5_ding_xing = "喜用"
+        elif gan_is_ji:
+            first5_ding_xing = "忌神"
+        else:
+            first5_ding_xing = "中性"
         
         if zhi_is_xi:
-            zhi_bonus += 0.3
-            details.append(f"地支{zhi}=喜用→地支+0.3")
+            last5_ding_xing = "喜用"
         elif zhi_is_ji:
-            zhi_bonus -= 0.2
-            details.append(f"地支{zhi}=忌神→地支-0.2")
-        
-        # 2b. 十神交互效应（金鉴真人核心规则）
-        # 伤官见官 → 减分
-        if gan_ss == "伤官":
-            if shi_shen(ri_gan, "癸") == "正官" or shi_shen(ri_gan, "壬") == "七杀":
-                gan_bonus -= 0.5; zhi_bonus -= 0.3
-                details.append("伤官见官→前五年-0.5/后五年-0.3")
-        
-        # 食神制杀 → 加分
-        if gan_ss == "七杀":
-            zhi_cang = DI_ZHI_CANG_GAN.get(zhi, [])
-            zhi_has_shi_shen = any(shi_shen(ri_gan, cg) in ("食神", "伤官") for cg, _ in zhi_cang)
-            if zhi_has_shi_shen:
-                zhi_bonus += 0.3
-                details.append(f"食神制杀→后五年+0.3")
-        
-        # 财星生官 → 加分
-        if gan_ss in ("正财", "偏财") and zhi_is_xi:
-            gan_bonus += 0.2; zhi_bonus += 0.2
-            details.append(f"财生官→前五年+0.2/后五年+0.2")
-        
-        # 2c. 刑冲合害效应
-        if nian_zhi and liu_chong.get(zhi) == nian_zhi:
-            gan_bonus -= 0.5; zhi_bonus -= 0.3
-            details.append(f"冲年柱{nian_zhi}→天干-0.5/地支-0.3")
-        
-        if ri_zhi and liu_chong.get(zhi) == ri_zhi:
-            gan_bonus -= 0.3; zhi_bonus -= 0.3
-            details.append(f"冲日柱{ri_zhi}→各-0.3")
-        
-        # 刑
-        liu_xing_pairs = [("丑","戌"),("戌","丑"),("寅","巳"),("巳","寅"),
-                          ("巳","申"),("申","巳"),("子","卯"),("卯","子"),
-                          ("丑","未"),("未","丑"),("戌","未"),("未","戌")]
-        for z1, z2 in liu_xing_pairs:
-            if zhi == z1 and (z2 in [nian_zhi, yue_zhi, ri_zhi, shi_zhi]):
-                gan_bonus -= 0.2; zhi_bonus -= 0.2
-                details.append(f"{z1}{z2}刑→各-0.2")
-                break
-        
-        # 伏吟
-        for pos_zhi in [nian_zhi, yue_zhi, ri_zhi, shi_zhi]:
-            if zhi == pos_zhi and gan == ri_gan:
-                gan_bonus -= 0.2; zhi_bonus -= 0.2
-                details.append(f"伏吟日柱→各-0.2")
-                break
-        
-        # cap赋能
-        gan_bonus = max(-3.0, min(3.0, gan_bonus))
-        zhi_bonus = max(-3.0, min(3.0, zhi_bonus))
-        
-        # ═══════════════════════════════════════════════
-        # 第三步：九龙70/30分治评分
-        # 前五年 = 天干70% + 地支30%；后五年 = 地支70% + 天干30%
-        # 总分 = max(前五年分, 后五年分)（取运势最好的半段为准）
-        # ═══════════════════════════════════════════════
-        bonus_first5 = gan_bonus * 0.7 + zhi_bonus * 0.3
-        bonus_last5  = zhi_bonus * 0.7 + gan_bonus * 0.3
-        
-        score_first5 = round(base + bonus_first5, 1)
-        score_last5  = round(base + bonus_last5, 1)
-        
-        # 总分取两段最高（代表该十年运势上限），但也要反映两段差异
-        score = round(max(score_first5, score_last5), 1)
-        score = max(1.0, min(10.0, score))
-        score_first5 = max(1.0, min(10.0, score_first5))
-        score_last5  = max(1.0, min(10.0, score_last5))
-        
-        # 吉凶标签
-        if score >= 7:
-            ji_xiong_label = "吉"
-        elif score >= 4.5:
-            ji_xiong_label = "平"
+            last5_ding_xing = "忌神"
         else:
-            ji_xiong_label = "凶"
+            last5_ding_xing = "中性"
         
-        # 双维度定性（能量层面 + 感受层面）
-        # 能量层面：基于十神+喜忌的事件描述
-        _ENERGY_DIM = {
-            "正官": {"吉": "事业晋升·地位提升·贵气临门", "平": "官星平运·按部就班", "凶": "官星为忌·压力束缚"},
-            "七杀": {"吉": "七杀化权·事业突破·掌权得势", "平": "杀运平过·压力可控", "凶": "七杀攻身·小人侵扰·冲突频发"},
-            "正印": {"吉": "印星护身·学业精进·贵人相助", "平": "稳中求进·积累阶段", "凶": "印星为忌·依赖被动"},
-            "偏印": {"吉": "偏印得力·技艺精进·特殊机缘", "平": "偏印平运·深度思考", "凶": "枭神夺食·计划受阻"},
-            "正财": {"吉": "财运亨通·收入增长·资产增值", "平": "财运平稳·积累有方", "凶": "财星为忌·为财所累"},
-            "偏财": {"吉": "偏财透出·意外之财·投资得利", "平": "偏财平运·小有进账", "凶": "偏财为忌·投机失利"},
-            "比肩": {"吉": "比肩帮身·根基坚实·自主有成", "平": "比肩平运·独立担当", "凶": "比肩争夺·竞争激烈"},
-            "劫财": {"吉": "劫财助身·人脉助力·合作共赢", "平": "劫财平运·社交活跃", "凶": "劫财夺财·破耗连连"},
-            "食神": {"吉": "食神生财·才华变现·技艺有成", "平": "食神平运·享受成果", "凶": "食神为忌·放纵享乐"},
-            "伤官": {"吉": "伤官生财·创新获利·才华展露", "平": "伤官平运·突破常规", "凶": "伤官见官·口舌是非"},
-        }
-        _FEELING_DIM = {
-            "正官": {"吉": "心情安稳·做事有底气·受人尊重", "平": "中规中矩·按部就班", "凶": "感到压抑·被管太严·束手束脚"},
-            "七杀": {"吉": "压力巨大但能驾驭·痛并成长着", "平": "压力适中·能应付", "凶": "身心俱疲·心力交瘁·四面楚歌"},
-            "正印": {"吉": "内心充实·学习愉悦·有安全感", "平": "心态平和·缺乏动力", "凶": "消极被动·过度依赖·缺乏主见"},
-            "偏印": {"吉": "精神富足·钻研有得·思维活跃", "平": "喜欢独处·思考人生", "凶": "孤僻多疑·思想极端·与社会脱节"},
-            "正财": {"吉": "财务自由带来的安全感·踏实满足", "平": "收支平衡·生活稳定", "凶": "为钱发愁·经济压力大"},
-            "偏财": {"吉": "赚钱轻松·花钱也痛快·社交愉悦", "平": "小有进账·生活滋润", "凶": "破财心疼·投资焦虑"},
-            "比肩": {"吉": "独立自信·有主见·有掌控感", "平": "自给自足·不依赖人", "凶": "感到孤立·无人相助·固执己见"},
-            "劫财": {"吉": "朋友帮助·合作愉快·有人撑腰", "平": "社交忙碌·应酬频繁", "凶": "被朋友所累·社交疲惫·经济纠纷"},
-            "食神": {"吉": "心情愉悦·才华被认可·生活享受", "平": "轻松自在·不紧张", "凶": "放纵后的空虚·才华受阻"},
-            "伤官": {"吉": "灵感迸发·创造满足·被欣赏", "平": "想法多·表达欲强", "凶": "被孤立·争执不断·心中有火"},
-        }
-
-        ji_xiong_key = ji_xiong_label  # "吉" / "平" / "凶"
-        energy_dim = _ENERGY_DIM.get(gan_ss, {}).get(ji_xiong_key, f"{gan_ss}运·{ji_xiong_key}")
-        feeling_dim = _FEELING_DIM.get(gan_ss, {}).get(ji_xiong_key, f"{gan_ss}运·感受{ji_xiong_key}")
-
+        # ── 空亡检测 ──
+        kw = kong_wang(ri_gan, ri_zhi)
+        is_kw = zhi in kw if kw else False
+        
+        # ── detail 构建 ──
+        detail_parts = []
+        
+        # 天干描述（含断层认知）
+        if gan_is_xi:
+            if gan_ss in ("七杀", "伤官"):
+                detail_parts.append(f"前五年天干{gan}{gan_wx}{gan_ss}为喜用·天干主导·过程虽苦但能成长")
+            else:
+                detail_parts.append(f"前五年天干{gan}{gan_wx}{gan_ss}为喜用·天干主导")
+        elif gan_is_ji:
+            if gan_ss in ("正印", "偏印"):
+                detail_parts.append(f"前五年天干{gan}{gan_wx}{gan_ss}为忌神·天干主导·但感受不痛苦")
+            else:
+                detail_parts.append(f"前五年天干{gan}{gan_wx}{gan_ss}为忌神·天干主导")
+        else:
+            detail_parts.append(f"前五年天干{gan}{gan_wx}{gan_ss}为中性")
+        
+        # 地支描述
+        if zhi_is_xi:
+            detail_parts.append(f"后五年地支{zhi}{zwx}为喜用·地支主导")
+        elif zhi_is_ji:
+            detail_parts.append(f"后五年地支{zhi}{zwx}为忌神·地支主导")
+        else:
+            detail_parts.append(f"后五年地支{zhi}{zwx}为中性")
+        
+        # 空亡标注
+        if is_kw:
+            detail_parts.append("大运地支空亡·能量减半")
+        
+        # 大运改变身强弱（有印星时标注）
+        if gan_ss in ("正印", "偏印"):
+            detail_parts.append("此运印星生身，实际身强弱有所增强")
+        
+        detail = "；".join(detail_parts)
+        
         result.append({
             "gan_zhi": gz,
-            "ji_xiong": f"{ji_xiong_label}（{gan_ss}）",
-            "score": score,
-            "score_first5": score_first5,  # 前五年：天干70%+地支30%
-            "score_last5": score_last5,    # 后五年：地支70%+天干30%
             "gan_ss": gan_ss,
-            "detail": f"前五年{score_first5}分(天干{gan_bonus:+.1f}×70%+地支{zhi_bonus:+.1f}×30%) → 后五年{score_last5}分(地支{zhi_bonus:+.1f}×70%+天干{gan_bonus:+.1f}×30%); " + "; ".join(details),
-            "energy_dim": energy_dim,    # 能量层面
-            "feeling_dim": feeling_dim,  # 感受层面
+            "gan_wx": gan_wx,
+            "gan_xi_ji": gan_xi_ji,
+            "zhi_wx": zwx,
+            "zhi_xi_ji": zhi_xi_ji,
+            "ding_xing": ding_xing,
+            "first5_ding_xing": first5_ding_xing,
+            "last5_ding_xing": last5_ding_xing,
+            "detail": detail,
+            "kong_wang": is_kw,
+            "start_age": start_age,
+            "end_age": end_age,
         })
     return result
 
@@ -2792,7 +2735,8 @@ def calc_liu_nian(year: int, ri_gan: str, da_yun_list: list,
                   nian_gan: str = "", nian_zhi: str = "",
                   yue_gan: str = "", yue_zhi: str = "",
                   ri_zhi: str = "",
-                  shi_gan: str = "", shi_zhi: str = "") -> dict:
+                  shi_gan: str = "", shi_zhi: str = "",
+                  shen_qiang_level: str = "", shen_qiang_score: float = 50.0) -> dict:
     """
     流年分析（含与原局四柱互动）。
     
@@ -2828,6 +2772,11 @@ def calc_liu_nian(year: int, ri_gan: str, da_yun_list: list,
             "yuan_ju_zhi_po": {"日": "子酉破"},        # 地支六破
             "yuan_ju_detail": "流年天干丙与年柱天干丙伏吟；流年地支午与日柱地支子六冲",
             "yuan_ju_analysis": "流年与原局冲克较多，运势多变动",
+            # 以下为P0新增字段
+            "energy_multiplier": {"total": 25, "details": [...]},
+            "top3_events": [{"rank":1, "type":"六冲", "multiplier":15, ...}],
+            "gan_tou_gan_cang": {"干透": [...], "干藏": [...]},
+            "fan_tai_sui": ["犯太岁·天干忌神"],
         }
     """
     # 流年干支
@@ -3002,6 +2951,340 @@ def calc_liu_nian(year: int, ri_gan: str, da_yun_list: list,
             yuan_ju_zhi_po[pos] = f"{nian_zhi}{pz}破"
             yuan_ju_detail_parts.append(f"流年地支{nian_zhi}与{pos}柱地支{pz}六破")
     
+    # ═══════════════════════════════════════════════════════════════════
+    # P0-B1: 能量倍数计算 + P0-B2: 过三关 + P0-B3: 宫位应事断语
+    # ═══════════════════════════════════════════════════════════════════
+    
+    # 九龙道长能量倍数表
+    ENERGY_MULTIPLIER = {
+        "三会": {"有引化": 20, "无引化": 10},
+        "三合": {"有引化": 15, "无引化": 7},
+        "半三合": {"有引化": 10, "无引化": 5},
+        "六合": {"有引化": 10, "无引化": 5},
+        "天干五合": {"有引化": 10, "无引化": 5},
+        "六冲": {"有引化": 0, "无引化": 5},
+        "六害": {"有引化": 0, "无引化": 5},
+        "六破": {"有引化": 0, "无引化": 5},
+        "三刑": {"有引化": 0, "无引化": 5},
+        "自刑": {"有引化": 0, "无引化": 5},
+        "伏吟": {"有引化": 0, "无引化": 3},
+        "天干相冲": {"有引化": 0, "无引化": 5},
+    }
+    
+    # 九龙道长·宫位应事规则
+    GONG_WEI_DUAN_YU = {
+        "年柱_冲": "隐忍莫与长辈争执；冲财库则祖产被连根拔起",
+        "年柱_合": "长辈身体欠安；年轻命主父母操心",
+        "年柱_害": "与长辈分开/移居他乡/父母病灾",
+        "月柱_冲": "动心起念做平日不敢做的事（投资/离婚/外遇）",
+        "月柱_合": "整年心情郁闷难解",
+        "月柱_害": "整年心情郁闷难解",
+        "日柱_冲": "未婚者红鸾星动·已婚者易吵架/配偶外遇",
+        "日柱_合": "未婚者有结婚之象·已婚者诸事不顺因配偶",
+        "日柱_害": "与配偶聚少离多",
+        "时柱_冲": "女子有怀胎之兆·有儿女者小心与子女关系",
+        "时柱_合": "婚后无子女者有怀胎之机·诸事不顺因子女或事业",
+        "时柱_害": "与子女分开/事业难有成就",
+        # 特殊情况
+        "冲库": "钱财留不住，以置产或买基金守住",
+        "冲驿马": "开车横冲直撞易有车祸",
+        "冲桃花": "情绪极不稳定，易有情感纠纷",
+    }
+    
+    # 六合化神映射
+    LIU_HE_HUA_SHEN = {
+        "子丑": "土", "寅亥": "木", "卯戌": "火",
+        "辰酉": "金", "巳申": "水", "午未": "土",
+    }
+    # 天干五合化神
+    GAN_HE_HUA_SHEN = {
+        "甲己": "土", "乙庚": "金", "丙辛": "水",
+        "丁壬": "木", "戊癸": "火",
+    }
+    # 三合局化神
+    SAN_HE_HUA_SHEN = {
+        "申子辰": "水", "亥卯未": "木", "寅午戌": "火", "巳酉丑": "金",
+    }
+    # 三会局化神
+    SAN_HUI_HUA_SHEN = {
+        "寅卯辰": "木", "巳午未": "火", "申酉戌": "金", "亥子丑": "水",
+    }
+    
+    # 辅助：判断化神五行是否出现在原局中
+    def _has_yin_hua(hua_wx: str) -> bool:
+        """化神五行出现在原局天干/地支本气/藏干中"""
+        for _, g in yuan_gan_list:
+            if g and TIAN_GAN_WU_XING.get(g) == hua_wx:
+                return True
+        for _, z in yuan_zhi_list:
+            if z:
+                if DI_ZHI_WU_XING.get(z) == hua_wx:
+                    return True
+                for cg, _ in DI_ZHI_CANG_GAN.get(z, []):
+                    if TIAN_GAN_WU_XING.get(cg) == hua_wx:
+                        return True
+        # 流年天干/地支也参与引化判断
+        if TIAN_GAN_WU_XING.get(nian_gan) == hua_wx:
+            return True
+        if DI_ZHI_WU_XING.get(nian_zhi) == hua_wx:
+            return True
+        for cg, _ in DI_ZHI_CANG_GAN.get(nian_zhi, []):
+            if TIAN_GAN_WU_XING.get(cg) == hua_wx:
+                return True
+        return False
+    
+    # 辅助：柱位映射
+    def _pillar_label(pos: str) -> str:
+        return {"年": "年柱", "月": "月柱", "日": "日柱", "时": "时柱"}.get(pos, pos)
+    
+    # 辅助：获取喜忌判断
+    def _get_xi_ji_wx() -> tuple:
+        """返回 (喜神五行列表, 忌神五行列表)"""
+        xi, ji = [], []
+        if shen_qiang_level:
+            xys = get_xi_yong_shen(ri_gan, shen_qiang_level, shen_qiang_score)
+            xi = xys.get("xi_shen", [])
+            ji = xys.get("ji_shen", [])
+        return xi, ji
+    
+    xi_wx_list, ji_wx_list = _get_xi_ji_wx()
+    
+    def _is_xi_shen(gan_or_zhi: str) -> bool:
+        """判断天干/地支是否为喜神"""
+        wx = TIAN_GAN_WU_XING.get(gan_or_zhi) or DI_ZHI_WU_XING.get(gan_or_zhi, "")
+        return wx in xi_wx_list
+    
+    def _is_ji_shen(gan_or_zhi: str) -> bool:
+        """判断天干/地支是否为忌神"""
+        wx = TIAN_GAN_WU_XING.get(gan_or_zhi) or DI_ZHI_WU_XING.get(gan_or_zhi, "")
+        return wx in ji_wx_list
+    
+    # 收集所有互动事件
+    all_events = []
+    
+    def _add_event(event_type: str, pos: str, gan_zhi_str: str, yin_hua_func=None, hua_key: str = ""):
+        """添加一个事件到 all_events"""
+        pillar = _pillar_label(pos)
+        # 判断引化
+        has_yin_hua = False
+        if yin_hua_func:
+            has_yin_hua = yin_hua_func(hua_key) if hua_key else yin_hua_func()
+        # 获取能量倍数
+        em = ENERGY_MULTIPLIER.get(event_type, {"有引化": 0, "无引化": 0})
+        mult = em["有引化"] if has_yin_hua else em["无引化"]
+        # 获取宫位应事断语
+        duanyu_key_map = {
+            "六冲": "冲", "六合": "合", "六害": "害", "六破": "冲",
+            "天干五合": "合", "天干相冲": "冲", "伏吟": "合",
+            "三刑": "冲", "自刑": "冲", "三合": "合", "三会": "合", "半三合": "合",
+        }
+        action = duanyu_key_map.get(event_type, "冲")
+        gong_wei_key = f"{pillar}_{action}"
+        gong_wei_duanyu = GONG_WEI_DUAN_YU.get(gong_wei_key, "")
+        # 喜忌定性
+        xi_ji = ""
+        if xi_wx_list or ji_wx_list:
+            if event_type in ("六冲", "天干相冲"):
+                # 冲：看被冲对象是喜是忌
+                if gan_zhi_str and len(gan_zhi_str) >= 2:
+                    target = gan_zhi_str[1]  # 被冲的地支或天干
+                    if _is_ji_shen(target):
+                        xi_ji = "冲走忌神→好事"
+                    elif _is_xi_shen(target):
+                        xi_ji = "冲走喜用→坏事"
+                    else:
+                        xi_ji = "冲中性→平常"
+            elif event_type in ("六合", "天干五合", "三合", "三会", "半三合"):
+                # 合：看合出化神是喜是忌
+                hua_wx = ""
+                if event_type == "六合" and hua_key in LIU_HE_HUA_SHEN:
+                    hua_wx = LIU_HE_HUA_SHEN[hua_key]
+                elif event_type == "天干五合" and hua_key in GAN_HE_HUA_SHEN:
+                    hua_wx = GAN_HE_HUA_SHEN[hua_key]
+                elif event_type in ("三合", "三会") and hua_key in SAN_HE_HUA_SHEN:
+                    hua_wx = SAN_HE_HUA_SHEN.get(hua_key, "")
+                elif event_type in ("三合", "三会") and hua_key in SAN_HUI_HUA_SHEN:
+                    hua_wx = SAN_HUI_HUA_SHEN.get(hua_key, "")
+                if hua_wx:
+                    if hua_wx in xi_wx_list:
+                        xi_ji = "合出喜用→大吉"
+                    elif hua_wx in ji_wx_list:
+                        xi_ji = "合出忌神→凶"
+                    else:
+                        xi_ji = "合中性→平常"
+                else:
+                    xi_ji = "合→待判"
+        all_events.append({
+            "type": event_type,
+            "multiplier": mult,
+            "gan_zhi": gan_zhi_str,
+            "pillar": pillar,
+            "xi_ji": xi_ji,
+            "gong_wei_duanyu": gong_wei_duanyu,
+            "has_yin_hua": has_yin_hua,
+        })
+    
+    # ── 收集天干互动 ──
+    for pos, pg in yuan_gan_list:
+        if not pg:
+            continue
+        # 天干五合
+        if GAN_WU_HE.get(nian_gan) == pg:
+            he_pair = nian_gan + pg if nian_gan < pg else pg + nian_gan
+            _add_event("天干五合", pos, f"{nian_gan}{pg}",
+                       yin_hua_func=lambda k=_has_yin_hua(GAN_HE_HUA_SHEN.get(he_pair, "")): k)
+        # 天干相冲
+        if gan_chong_pairs.get(nian_gan) == pg:
+            _add_event("天干相冲", pos, f"{nian_gan}{pg}")
+        # 伏吟
+        if nian_gan == pg:
+            _add_event("伏吟", pos, f"{nian_gan}{pg}")
+    
+    # ── 收集地支互动（含新增三合/三会/半三合检测） ──
+    # 收集所有出现的zhi用于判断三合vs半三合
+    all_zhi_set = {nian_zhi} | {pz for _, pz in yuan_zhi_list if pz}
+    for pos, pz in yuan_zhi_list:
+        if not pz:
+            continue
+        
+        # 六合
+        if LIU_HE.get(nian_zhi) == pz:
+            he_pair = nian_zhi + pz
+            # 规范化key用于查化神
+            he_key = next((k for k in LIU_HE_HUA_SHEN if set(k) == set(he_pair)), "")
+            _add_event("六合", pos, f"{nian_zhi}{pz}",
+                       yin_hua_func=lambda k=he_key: _has_yin_hua(LIU_HE_HUA_SHEN.get(k, "")) if k else False)
+        
+        # 六冲（贪合忘冲原则：流年与任何柱相合时，已合者跳过；未合但与他柱合者→有引化倍数0）
+        if LIU_CHONG.get(nian_zhi) == pz:
+            liu_he_with_this_pillar = (LIU_HE.get(nian_zhi) == pz)
+            if not liu_he_with_this_pillar:
+                # 贪合忘冲：流年与任何其他柱六合则此冲被引化（倍数=0）
+                any_he = any(
+                    LIU_HE.get(nian_zhi) == pz2
+                    for pos2, pz2 in yuan_zhi_list if pz2 and pos2 != pos
+                )
+                _add_event("六冲", pos, f"{nian_zhi}{pz}",
+                           yin_hua_func=(lambda: True) if any_he else None)
+        
+        # 三刑
+        xing_target = SAN_XING_MAP.get(nian_zhi)
+        if xing_target == pz and nian_zhi not in ZI_XING:
+            _add_event("三刑", pos, f"{nian_zhi}{pz}")
+        
+        # 自刑
+        if nian_zhi in ZI_XING and nian_zhi == pz:
+            _add_event("自刑", pos, f"{nian_zhi}{pz}")
+        
+        # 六害
+        if LIU_HAI.get(nian_zhi) == pz:
+            _add_event("六害", pos, f"{nian_zhi}{pz}")
+        
+        # 六破
+        if LIU_PO.get(nian_zhi) == pz:
+            _add_event("六破", pos, f"{nian_zhi}{pz}")
+        
+        # ── 新增：三合/半三合/三会检测 ──
+        for he_set in SAN_HE:
+            if nian_zhi not in he_set or pz not in he_set or pz == nian_zhi:
+                continue
+            he_set_sorted = "".join(sorted(he_set))
+            members_present = all_zhi_set & he_set
+            if len(members_present) == 3:
+                _add_event("三合", pos, f"{nian_zhi}{pz}",
+                           yin_hua_func=lambda k=he_set_sorted: _has_yin_hua(SAN_HE_HUA_SHEN.get(k, "")))
+            else:
+                _add_event("半三合", pos, f"{nian_zhi}{pz}",
+                           yin_hua_func=lambda k=he_set_sorted: _has_yin_hua(SAN_HE_HUA_SHEN.get(k, "")))
+            break
+        # 三会检测
+        for hui_set in SAN_HUI:
+            if nian_zhi in hui_set and pz in hui_set and pz != nian_zhi:
+                hui_key = "".join(sorted(hui_set))
+                _add_event("三会", pos, f"{nian_zhi}{pz}",
+                           yin_hua_func=lambda k=hui_key: _has_yin_hua(SAN_HUI_HUA_SHEN.get(k, "")))
+                break
+    
+    # ── 按能量倍数排序，取前3 ──
+    all_events.sort(key=lambda e: e["multiplier"], reverse=True)
+    top3_events = []
+    for i, ev in enumerate(all_events[:3]):
+        top3_events.append({
+            "rank": i + 1,
+            "type": ev["type"],
+            "multiplier": ev["multiplier"],
+            "gan_zhi": ev["gan_zhi"],
+            "pillar": ev["pillar"],
+            "xi_ji": ev["xi_ji"],
+            "gong_wei_duanyu": ev["gong_wei_duanyu"],
+        })
+    
+    # 能量倍数汇总
+    total_multiplier = sum(e["multiplier"] for e in all_events)
+    energy_multiplier = {
+        "total": total_multiplier,
+        "details": [{
+            "type": e["type"],
+            "multiplier": e["multiplier"],
+            "gan_zhi": e["gan_zhi"],
+            "pillar": e["pillar"],
+            "has_yin_hua": e["has_yin_hua"],
+        } for e in all_events],
+    }
+    
+    # ═══════════════════════════════════════════════════════════════════
+    # P1-B4: 干透与干藏（简化版）
+    # ═══════════════════════════════════════════════════════════════════
+    gan_tou = []  # 流年天干与原局天干相同
+    gan_cang = []  # 流年地支藏干与原局天干相同
+    
+    # 干透：流年天干 vs 原局四天干
+    for pos, pg in yuan_gan_list:
+        if pg and nian_gan == pg:
+            gan_tou.append({"pillar": _pillar_label(pos), "gan": nian_gan, "desc": f"干透·他人主动性（{pos}柱）"})
+    
+    # 干藏：流年地支藏干 vs 原局四天干
+    lian_zhi_cang = [cg for cg, _ in DI_ZHI_CANG_GAN.get(nian_zhi, [])]
+    for pos, pg in yuan_gan_list:
+        if pg and pg in lian_zhi_cang:
+            gan_cang.append({"pillar": _pillar_label(pos), "gan": pg, "desc": f"干藏·自己主动性（{pos}柱{pg}藏于流年{nian_zhi}）"})
+    
+    gan_tou_gan_cang = {
+        "干透": gan_tou,
+        "干藏": gan_cang,
+    }
+    
+    # ═══════════════════════════════════════════════════════════════════
+    # P1-B5: 犯太岁定性（不保留数值扣分）
+    # ═══════════════════════════════════════════════════════════════════
+    fan_tai_sui = []
+    
+    # 流年天干为忌神
+    if xi_wx_list or ji_wx_list:
+        if _is_ji_shen(nian_gan):
+            fan_tai_sui.append("犯太岁·天干忌神")
+    
+    # 流年地支冲原局任一柱
+    has_di_zhi_chong = any(
+        LIU_CHONG.get(nian_zhi) == pz
+        for _, pz in yuan_zhi_list if pz
+    )
+    if has_di_zhi_chong:
+        fan_tai_sui.append("犯太岁·地支冲")
+    
+    # 合出喜用/忌神
+    for ev in all_events:
+        if ev["type"] in ("六合", "天干五合", "三合", "三会", "半三合"):
+            if "合出喜用" in ev["xi_ji"]:
+                fan_tai_sui.append("吉·合出喜用")
+                break
+            elif "合出忌神" in ev["xi_ji"]:
+                fan_tai_sui.append("凶·合出忌神")
+                break
+    
+    if not fan_tai_sui:
+        fan_tai_sui.append("平·无犯太岁")
+
     yuan_ju_detail = "；".join(yuan_ju_detail_parts) if yuan_ju_detail_parts else "流年与原局无明显冲合刑害关系"
     
     # 大树理论分析：有根的天干受冲克影响小
@@ -3089,6 +3372,10 @@ def calc_liu_nian(year: int, ri_gan: str, da_yun_list: list,
         "conflict_detail": conflict_detail.strip("; "),
         "analysis": " ".join(analysis_parts),
         "zai_huo_indicators": zai_huo,
+        "energy_multiplier": energy_multiplier,
+        "top3_events": top3_events,
+        "gan_tou_gan_cang": gan_tou_gan_cang,
+        "fan_tai_sui": fan_tai_sui,
     }
     
     # 只有传入了原局数据时才添加原局互动字段
@@ -3417,9 +3704,21 @@ def calc_shi_ye(ge_ju: str, shen_qiang: dict, da_yun_scores: list,
     else:
         shen_mod = 0  # 过弱
     
-    # 最佳大运加成
-    best_dy = max((d.get("score", 0) for d in da_yun_scores), default=0)
-    dy_mod = 2 if best_dy >= 7.5 else 1 if best_dy >= 5 else 0
+    # 最佳大运加成（v4.0: 基于定性 ding_xing 替代数值评分）
+    best_dy = best_dy_score = 0
+    for d in da_yun_scores:
+        dx = d.get("ding_xing", "")
+        if dx == "吉":
+            best_dy_score = max(best_dy_score, 7.5)
+        elif dx == "好坏参半":
+            best_dy_score = max(best_dy_score, 5.0)
+        elif dx == "凶":
+            best_dy_score = max(best_dy_score, 2.5)
+        elif dx == "喜用":
+            best_dy_score = max(best_dy_score, 7.5)
+        elif dx == "忌神":
+            best_dy_score = max(best_dy_score, 2.5)
+    dy_mod = 2 if best_dy_score >= 7.5 else 1 if best_dy_score >= 5 else 0
     
     # ── 恶神制化检测 v8.1 ──
     evil_mod = 0
@@ -3822,23 +4121,26 @@ def calculate_bazi(year: int, month: int, day: int,
     wu_xing_liu_tong = check_wu_xing_liu_tong(rg, nz, yz, rz, sz, wx_pcts=wx_pcts)
     # P2新增：木火通明格检测
     mu_huo_tong_ming = check_mu_huo_tong_ming(rg, nz, yz, rz, sz, tian_gan_list=tian_gan_list)
-    # 大运吉凶 v2.0（喜用神驱动评分）
+    # 大运定性 v4.0（喜用神定性法）
     dy_list = dy.get("da_yun", [])
     da_yun_jx = calc_da_yun_ji_xiong(dy_list, rg, sqr["level"],
                                        xi_shen=xys.get("xi_shen", []),
                                        ji_shen=xys.get("ji_shen", []),
                                        nian_zhi=nz, ri_zhi=rz,
                                        yue_zhi=yz, shi_zhi=sz)
-    # 合并大运评分到 dy.da_yun（供前端 progress bar 使用）
+    # 合并大运定性到 dy.da_yun（供前端使用）
     if da_yun_jx and len(da_yun_jx) == len(dy_list):
         for i, d in enumerate(dy_list):
             if i < len(da_yun_jx):
                 jx = da_yun_jx[i]
-                d["score"] = jx.get("score", d.get("score", 5.0))
-                d["score_first5"] = jx.get("score_first5", d.get("score_first5"))
-                d["score_last5"] = jx.get("score_last5", d.get("score_last5"))
-                d["ji_xiong_label"] = jx.get("ji_xiong", "平")
+                d["ding_xing"] = jx.get("ding_xing", "平")
+                d["first5_ding_xing"] = jx.get("first5_ding_xing", "")
+                d["last5_ding_xing"] = jx.get("last5_ding_xing", "")
+                d["kong_wang"] = jx.get("kong_wang", False)
+                d["detail"] = jx.get("detail", "")
                 d["gan_ss"] = jx.get("gan_ss", d.get("gan_ss", ""))
+                d["gan_xi_ji"] = jx.get("gan_xi_ji", "")
+                d["zhi_xi_ji"] = jx.get("zhi_xi_ji", "")
     # 财富量级（知识库六态矩阵法v8.0）
     cai_fu = calc_cai_fu_deng_ji(
         cx.get("score", 0), sqr["score"], sqr["level"],
