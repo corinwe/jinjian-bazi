@@ -1,0 +1,24 @@
+{
+  "changelog": "/root/bazi-platform/scripts/_changelogs/wealth_20260702_000455.json",
+  "instructions": [
+    {
+      "type": "update_skill",
+      "skill": "bazi-wealth-analysis",
+      "new_rules_count": 2
+    },
+    {
+      "type": "update_reports",
+      "count": 4,
+      "targets": [
+        "家主",
+        "主母",
+        "子源",
+        "立"
+      ]
+    },
+    {
+      "type": "git_push",
+      "repo": "/root/weiwuji-knowledge-base"
+    }
+  ]
+}

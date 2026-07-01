@@ -1,6 +1,10 @@
 # 金鉴真人·八字排盘平台
 
 ## 🔥 物理铁律（每次进入项目自动加载）
+- 完整铁律列表保存于: `/root/bazi-platform/.hermes/config/credentials.md`
+- 包含铁律①排盘跑引擎 ②知识库路径 ③不依赖记忆 ④报告格式 ⑤财富规则 ⑥学习协议
+- 每次进入项目必须先加载: `skill_view('bazi-platform-harness','references/project-config.md')`
+- 收到老板新知识（文档/音频/视频/链接/图片）时，先加载: `skill_view('learning-protocol')`
 
 ### 铁律① — 排盘必须跑引擎（禁止手算）
 - 来源: 2026-06-29 梦的日柱算错教训（壬戌→癸亥）
