@@ -23,7 +23,8 @@ from character import analyze_character
 from comprehensive_v2 import run_comprehensive_engine
 from constants import TIAN_GAN_WU_XING, BaZi, Pillar
 from da_yun import compute_da_yun, compute_da_yun_scores
-from dimensions_v2 import DEFAULT_DIMENSIONS
+
+# dimensions_v2已删除（审计标记 2026-06-29: 自创评分体系），DEFAULT_DIMENSIONS不再使用
 from education_v2 import analyze_education
 from energy import compute_energy_profile
 from family import analyze_nian_yue
@@ -218,11 +219,8 @@ def run_v5(bazi: BaZi, birth_year=1980, birth_month_lunar=1, qi_yun_days=1.1, cu
     # 原生家庭（已有模块）
     fam = analyze_nian_yue(bazi.year.gan, bazi.year.zhi, bazi.month.gan, bazi.month.zhi, ri_zhu, sqr_label)
 
-    # 8大维度（v2.1 — 校准版 + 真实大运赋能）
-    dims = {
-        n: {"base": ds.base, "da_yun_bonus": ds.da_yun_bonus, "total": ds.total}
-        for n, ds in DEFAULT_DIMENSIONS(bazi, dy_list).items()
-    }
+    # 8大维度（dimensions_v2已删除，跳过维度评分）
+    dims = {}
 
     # 综合引擎（v2 — 事业/子女/健康/外貌/置业/三决断/建议）
     comprehensive = run_comprehensive_engine(
@@ -635,7 +633,7 @@ def run_pipeline(
         else ""
     )
 
-    dims_raw = DEFAULT_DIMENSIONS(bazi)
+    dims_raw = {}
 
     output = {
         "paipan": {

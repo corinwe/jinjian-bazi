@@ -16,8 +16,11 @@ from cai_xing import compute_cai_xing
 from ge_ju import determine_ge_ju, determine_xi_yong_shen
 from da_yun import compute_da_yun, compute_da_yun_scores
 from shi_shen import get_shi_shen_for_gan, get_shi_shen_all_dry
-from dimensions_v2 import DEFAULT_DIMENSIONS
 from pipeline_v5 import run_v5, run_pipeline, format_21_section_report
+from shen_sha import get_wen_chang, WEN_CHANG
+from wealth_v2 import analyze_wealth_full
+
+# dimensions_v2.DEFAULT_DIMENSIONS 已删除（自创评分体系），不再使用
 
 # ════════════════════════════════════════════
 # 测试数据：5个家族基准人物
@@ -271,13 +274,11 @@ def test_special_rules():
         dy_list, qy_age, qy_year = compute_da_yun(p, person["birth_year"], 1.1)
         assert_eq(len(dy_list), 8, f"{person['name']}大运8步")
 
-    # C5: 大运赋能>0（只要有喜用）
-    for person in FAMILY[:1]:  # 先测家主
+    # C5: 大运步数检查（DEFAULT_DIMENSIONS已删除，跳过维度评分验证）
+    for person in FAMILY:
         p = person["bazi"]
         dy_list, qy_age, qy_year = compute_da_yun(p, person["birth_year"], 1.1)
-        dims = DEFAULT_DIMENSIONS(p, dy_list)
-        for dname, ds in dims.items():
-            check(f"C5{person['name']}{dname}:da_yun_bonus={ds.da_yun_bonus}", ds.da_yun_bonus >= 0)
+        check(f"C5{person['name']}大运{len(dy_list)}步", len(dy_list) == 8)
 
     # C6: 日支财库检测
     for person in FAMILY:
@@ -348,7 +349,146 @@ def test_edge_cases():
             # Just check it doesn't crash
             check(f"E2干支{gan_zhi}", True)
 
-    print(f"\n→ {pass_count}/{pass_count + fail_count}")
+    print(f"\\n→ {pass_count}/{pass_count + fail_count}")
+
+
+# ════════════════════════════════════════════
+# §F: 文昌贵人验证（10日主全覆盖）
+# ════════════════════════════════════════════
+
+
+def test_wen_chang():
+    """测试10个日主文昌贵人查询是否正确"""
+    print("\\n" + "=" * 60)
+    print("§F 文昌贵人验证（10日主全覆盖）")
+    print("=" * 60)
+
+    # 文昌贵人标准表
+    EXPECTED = {
+        "甲": "巳",
+        "乙": "午",
+        "丙": "申",
+        "丁": "酉",
+        "戊": "申",
+        "己": "酉",
+        "庚": "亥",
+        "辛": "子",
+        "壬": "寅",
+        "癸": "卯",
+    }
+
+    # F1: get_wen_chang 函数检查（10个日主全部验证）
+    for gan, expected_zhi in EXPECTED.items():
+        actual = get_wen_chang(gan)
+        assert_eq(actual, expected_zhi, f"F1文昌{gan}→期望{expected_zhi}")
+
+    # F2: WEN_CHANG 常量表完整性
+    assert_eq(len(WEN_CHANG), 10, "F2文昌表含10天干")
+
+    # F3: 用家族人物验证原局文昌存在性
+    # 家主(辛): 文昌在子 → 原局有亥(非子) → 原局无文昌
+    p0 = FAMILY[0]["bazi"]
+    ri_zhu = p0.day.gan  # 辛
+    wc = get_wen_chang(ri_zhu)  # 子
+    all_zhis = [p0.year.zhi, p0.month.zhi, p0.day.zhi, p0.hour.zhi]
+    check(f"F3家主(辛→子): 原局地支{all_zhis}含{wc}", wc in all_zhis)
+
+    # 父亲(癸): 文昌在卯 → 原局(己丑 癸酉 癸亥 戊午)无卯
+    p3 = FAMILY[3]["bazi"]
+    ri_zhu3 = p3.day.gan  # 癸
+    wc3 = get_wen_chang(ri_zhu3)  # 卯
+    all_zhis3 = [p3.year.zhi, p3.month.zhi, p3.day.zhi, p3.hour.zhi]
+    check(f"F3父亲(癸→卯): 原局地支{all_zhis3}含{wc3}", wc3 in all_zhis3)
+
+    # F4: 通过 paipan.check_wen_chang 验证
+    try:
+        from paipan import check_wen_chang
+
+        # 甲→巳: 用家主八字(亥)测试不含巳
+        result = check_wen_chang("甲", [p0.year.zhi, p0.month.zhi, p0.day.zhi, p0.hour.zhi])
+        assert_eq(result["wen_chang_zhi"], "巳", "F4check甲→巳")
+        check("F4check_has_wen_chang=False", not result["has_wen_chang"])
+    except ImportError:
+        check("F4paipan.check_wen_chang", False, "import失败")
+
+    print(f"\\n→ {pass_count}/{pass_count + fail_count}")
+
+
+# ════════════════════════════════════════════
+# §G: 流年财富分析验证
+# ════════════════════════════════════════════
+
+
+def test_wealth_liunian():
+    """测试流年财富分析基础功能"""
+    print("\\n" + "=" * 60)
+    print("§G 流年财富分析验证")
+    print("=" * 60)
+
+    # G1: analyze_wealth_full 函数可用
+    for person in FAMILY[:3]:  # 前3人
+        p = person["bazi"]
+        name = person["name"]
+        sqr_score, sqr_label, _ = compute_shen_qiang_ruo(p)
+        cai = compute_cai_xing(p)
+        ge_main, ge_detail = determine_ge_ju(p)
+        xi_yong = determine_xi_yong_shen(p) if hasattr(p, "xi_yong") else [sqr_label]
+
+        # 构造大运列表
+        dy_list, qy_age, qy_year = compute_da_yun(p, person["birth_year"], 1.1)
+
+        try:
+            wf = analyze_wealth_full(
+                ri_zhu=p.day.gan,
+                bazi_gans=[p.year.gan, p.month.gan, p.day.gan, p.hour.gan],
+                bazi_zhis=[p.year.zhi, p.month.zhi, p.day.zhi, p.hour.zhi],
+                shen_label=sqr_label,
+                shen_score=sqr_score,
+                cai_total=cai.total,
+                xi_yong=[],
+                da_yun_list=dy_list,
+            )
+            # 基础字段验证
+            assert_eq("status" in wf, True, f"G1{name}含status")
+            assert_eq("wealth_level" in wf, True, f"G1{name}含wealth_level")
+            assert_eq("effective_score" in wf, True, f"G1{name}含effective_score")
+            assert_eq("cai_ku" in wf, True, f"G1{name}含cai_ku")
+            assert_eq("wealth_windows" in wf, True, f"G1{name}含wealth_windows")
+            check(f"G1{name}财富分析通过: {wf['wealth_level']}", True)
+        except Exception as e:
+            check(f"G1{name}财富分析", False, f"异常: {e}")
+
+    # G2: 流年分析 — 通过 pipeline_v5 检查 sec_8_wealth
+    for person in FAMILY[:2]:  # 前2人
+        p = person["bazi"]
+        name = person["name"]
+        result = run_v5(p, person["birth_year"], person["birth_month"], 1.1, 2026)
+        s8 = result.get("sec_8_wealth", {})
+        check(f"G2{name}§8存在", bool(s8))
+        if s8:
+            # 检查流年相关字段（如存在）
+            for field in ["cai_xing_total", "cai_ku", "summary", "wealth_level"]:
+                has_field = field in s8
+                check(f"G2{name}§8.{field}", has_field)
+
+    # G3: 从弱格的财富特殊处理（主母）
+    zhu_mu = FAMILY[1]["bazi"]
+    sqr_score, sqr_label, _ = compute_shen_qiang_ruo(zhu_mu)
+    cai = compute_cai_xing(zhu_mu)
+    dy_list, _, _ = compute_da_yun(zhu_mu, FAMILY[1]["birth_year"], 1.1)
+    wf = analyze_wealth_full(
+        ri_zhu=zhu_mu.day.gan,
+        bazi_gans=[zhu_mu.year.gan, zhu_mu.month.gan, zhu_mu.day.gan, zhu_mu.hour.gan],
+        bazi_zhis=[zhu_mu.year.zhi, zhu_mu.month.zhi, zhu_mu.day.zhi, zhu_mu.hour.zhi],
+        shen_label=sqr_label,
+        shen_score=sqr_score,
+        cai_total=cai.total,
+        xi_yong=[],
+        da_yun_list=dy_list,
+    )
+    assert_eq(wf["status"], "从弱格", "G3主母从弱格状态")
+
+    print(f"\\n→ {pass_count}/{pass_count + fail_count}")
 
 
 # ════════════════════════════════════════════
@@ -365,6 +505,8 @@ if __name__ == "__main__":
     test_special_rules()
     test_api_compat()
     test_edge_cases()
+    test_wen_chang()
+    test_wealth_liunian()
 
     print("\n" + "=" * 60)
     print("测试总结")

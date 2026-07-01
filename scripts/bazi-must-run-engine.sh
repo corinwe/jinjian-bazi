@@ -29,9 +29,19 @@ fi
 # 用法
 usage() {
     echo ""
-    echo "用法: $0 -n <姓名> -g <男/女> -y <年> -m <月> -d <日> -h <时>"
+    echo "用法: $0 -n <姓名> -g <男/女> -y <年> -m <月> -d <日> -h <时> [-w]"
     echo ""
     echo "示例: $0 -n 梦 -g 女 -y 2007 -m 7 -d 27 -h 5"
+    echo "      $0 -n 张三 -g 男 -y 1990 -m 1 -d 15 -h 10 -w   (带文昌检查)"
+    echo ""
+    echo "参数:"
+    echo "  -n <姓名>   姓名 (必填)"
+    echo "  -g <性别>   性别: 男/女 (必填)"
+    echo "  -y <年>     出生年份 (必填)"
+    echo "  -m <月>     出生月份 (必填)"
+    echo "  -d <日>     出生日期 (必填)"
+    echo "  -h <时>     出生时辰 (选填，不填则输出12个时辰)"
+    echo "  -w          附带文昌贵人检查 (选填)"
     echo ""
     echo "输出: 引擎排盘结果（JSON格式）"
     echo "      必须基于此数据进行后续分析"
@@ -40,7 +50,8 @@ usage() {
 }
 
 # 解析参数
-while getopts "n:g:y:m:d:h:" opt; do
+WEN_CHANG_CHECK="0"
+while getopts "n:g:y:m:d:h:w" opt; do
     case $opt in
         n) NAME="$OPTARG" ;;
         g) GENDER="$OPTARG" ;;
@@ -48,6 +59,7 @@ while getopts "n:g:y:m:d:h:" opt; do
         m) MONTH="$OPTARG" ;;
         d) DAY="$OPTARG" ;;
         h) HOUR="$OPTARG" ;;
+        w) WEN_CHANG_CHECK="1" ;;
         *) usage ;;
     esac
 done
@@ -67,7 +79,7 @@ echo ""
 # 运行引擎排盘
 cd "$ENGINE_DIR"
 
-# 如果有时辰，用 pipeline_v5 或 paipan
+# 如果有时辰，用 get_full_paipan
 if [ -n "$HOUR" ]; then
     python3 -c "
 import sys
@@ -76,11 +88,19 @@ from paipan import get_full_paipan
 from datetime import date
 import json
 
-result = get_full_paipan($YEAR, $MONTH, $DAY, $HOUR, '$GENDER')
+result = get_full_paipan($YEAR, $MONTH, $DAY, $HOUR, '$GENDER', '$NAME')
 result['_gate_verified'] = True
 result['_gate_timestamp'] = '$(date -u +%Y-%m-%dT%H:%M:%SZ)'
 result['_gate_rule'] = '铁律①: 排盘必须跑引擎，禁止手算（2026-06-29固化）'
+# 文昌检查（引擎已自动计算）
+wen_chang = result.get('wen_chang', {})
+wc_status = '✅ 原文昌' if wen_chang.get('has_wen_chang') else '⚠️ 需补文昌'
+wc_detail = wen_chang.get('detail', '未检')
+result['_wen_chang_check'] = wc_status
 print(json.dumps(result, ensure_ascii=False, indent=2))
+print('')
+print('📚 文昌检查: ' + wc_status)
+print('   ' + wc_detail)
 " 2>&1
 
     EXIT_CODE=$?
@@ -98,17 +118,39 @@ import sys
 sys.path.insert(0, '.')
 from paipan import get_full_paipan
 from datetime import date
-import json
-
-# 时辰映射
 SHI_MAP = {'子':0,'丑':2,'寅':4,'卯':6,'辰':8,'巳':10,'午':12,'未':14,'申':16,'酉':18,'戌':20,'亥':22}
 result = get_full_paipan($YEAR, $MONTH, $DAY, SHI_MAP['$shi'], '$GENDER')
-print(f\"\$shi时: {result['bazi']} | 日主: {result['ri_zhu']} | 时柱: {result['hour']['gan']}{result['hour']['zhi']}\")
-"
+wc = result.get('wen_chang', {})
+wc_mark = '✅' if wc.get('has_wen_chang') else '⚠️'
+print(f'{wc_mark} ${shi}时: {result[\"bazi\"]} | 日主: {result[\"ri_zhu\"]} | 文昌: {wc.get(\"detail\", \"-\")}')
+" 2>&1
     done
 fi
 
 echo ""
 echo "✅ 门禁通过 — 排盘数据来自引擎，非手算"
 echo "⚠️  后续分析必须基于上述引擎输出，不可自行重算日柱"
+echo ""
+
+# ── 文昌贵人详细检查（-w 标志）──
+if [ "$WEN_CHANG_CHECK" = "1" ] && [ -n "$HOUR" ]; then
+    echo "────────────────────────────────────────"
+    echo "📚 文昌贵人检查"
+    echo "────────────────────────────────────────"
+    python3 -c "
+import sys
+sys.path.insert(0, '$ENGINE_DIR')
+from paipan import get_full_paipan
+
+result = get_full_paipan($YEAR, $MONTH, $DAY, $HOUR, '$GENDER', '$NAME')
+wc = result.get('wen_chang', {})
+print('  日主: ' + result['day_pillar']['gan'])
+print('  文昌地支: ' + str(wc.get('wen_chang_zhi', '-')))
+print('  检查结果: ' + wc.get('detail', '未知'))
+if not wc.get('has_wen_chang') and wc.get('wen_chang_zhi'):
+    print('  💡 建议: 补文昌方位 ' + wc['wen_chang_zhi'])
+" 2>&1
+    echo "────────────────────────────────────────"
+fi
+
 echo "════════════════════════════════════════"

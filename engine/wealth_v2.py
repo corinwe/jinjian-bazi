@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 from constants import DI_ZHI_CANG_GAN, DI_ZHI_WU_XING, TIAN_GAN_WU_XING, WU_XING_KE
+from shen_sha import get_wen_chang
 from shi_shen import get_shi_shen_for_cang_gan, get_shi_shen_for_gan
 
 # ── 五级定量 (⚠️ 审计标记 2026-06-29: 以下阈值均为自创，九龙道长原始素材无此数值分段) ──
@@ -144,21 +145,19 @@ def analyze_wealth_full(
     # 第5层：大运窗口
     wealth_windows = []
     for dy in da_yun_list:
-        dy_gan = dy.get("gan", "") if hasattr(dy, "gan") else ""
-        dy_zhi = dy.get("zhi", "") if hasattr(dy, "zhi") else ""
+        dy_gan = dy.gan if hasattr(dy, "gan") and dy.gan else (dy.get("gan", "") if isinstance(dy, dict) else "")
+        dy_zhi = dy.zhi if hasattr(dy, "zhi") and dy.zhi else (dy.get("zhi", "") if isinstance(dy, dict) else "")
         dy_ss = get_shi_shen_for_gan(dy_gan, ri_zhu) if dy_gan else ""
 
-        score = dy.get("score", 5) if isinstance(dy, dict) else 5
+        score = dy.score if hasattr(dy, "score") else (dy.get("score", 5) if isinstance(dy, dict) else 5)
         is_wealth = dy_ss in ("正财", "偏财", "食神", "伤官")
 
         if is_wealth and score >= 5:
-            wealth_windows.append(
-                {"da_yun": dy.get("gan_zhi", str(dy)), "window": "补财/食伤大运，利于财富积累", "score": score}
-            )
+            gan_zhi = f"{dy_gan}{dy_zhi}" if dy_gan and dy_zhi else str(dy)
+            wealth_windows.append({"da_yun": gan_zhi, "window": "补财/食伤大运，利于财富积累", "score": score})
         if shen_label == "身弱" and dy_ss in ("正印", "偏印", "比肩", "劫财") and score >= 5:
-            wealth_windows.append(
-                {"da_yun": dy.get("gan_zhi", str(dy)), "window": "印比帮身大运，身弱能担财", "score": score}
-            )
+            gan_zhi = f"{dy_gan}{dy_zhi}" if dy_gan and dy_zhi else str(dy)
+            wealth_windows.append({"da_yun": gan_zhi, "window": "印比帮身大运，身弱能担财", "score": score})
 
     # 综合评级 (⚠️ 审计标记 2026-06-29: effective_score阈值50/40/30/15均为自创，无九龙道长原始素材支撑)
     effective_score = cai_total * discount
@@ -197,4 +196,238 @@ def analyze_wealth_full(
         "has_shi_shang_root": has_shi_shang,
         "wealth_windows": wealth_windows[:3],
         "summary": f"理论{level}，财星{cai_total}分，围克折扣{round(discount * 100)}%，有效{round(effective_score, 1)}分",
+    }
+
+
+# ═══════════════════════════════════════════════════════════
+# 文昌贵人检查 — 用于财富/事业分析中的文昌辅助判断
+# ═══════════════════════════════════════════════════════════
+
+# 十二地支对应位置索引
+_ZHI_POSITION = {
+    "年": 0,
+    "月": 1,
+    "日": 2,
+    "时": 3,
+}
+
+# 反查位置名称
+_ZHI_NAMES = {0: "年支", 1: "月支", 2: "日支", 3: "时支"}
+
+
+def check_wen_chang(rizhu: str, zhi_list: list[str]) -> dict:
+    """
+    文昌贵人检查
+
+    口诀: 甲巳乙午丙戊申, 丁己酉位庚亥辛, 壬寅癸卯顺推轮
+
+    参数:
+      rizhu: 日主天干 (甲~癸)
+      zhi_list: [年支, 月支, 日支, 时支] 四个地支
+
+    返回:
+      {
+        'has_wenchang': bool,       # 原局是否有文昌
+        'wenchang_zhi': str,        # 文昌对应的地支 (如"巳")
+        'need_supplement': bool,    # 是否需要补文昌 (原局无文昌)
+        'wenchang_position': str,   # 文昌所在位置 ("年支"/"月支"/"日支"/"时支"/"无")
+      }
+    """
+    # 查文昌对应的地支
+    wc_zhi = get_wen_chang(rizhu)  # 从 shen_sha 查表
+    if not wc_zhi:
+        return {
+            "has_wenchang": False,
+            "wenchang_zhi": "",
+            "need_supplement": True,
+            "wenchang_position": "无",
+        }
+
+    # 检查四个地支中是否有文昌
+    position = "无"
+    for idx, zhi in enumerate(zhi_list):
+        if zhi == wc_zhi:
+            position = _ZHI_NAMES.get(idx, f"第{idx}柱")
+            break
+
+    has = position != "无"
+
+    # 文昌位置对财富的影响力判断
+    # 年支文昌 → 祖上文风, 月支文昌 → 少年学业加持, 日支文昌 → 自身智慧,
+    # 时支文昌 → 晚年文昌, 子女聪慧
+    wenchang_positions_influence = {
+        "年支": "祖上书香门第",
+        "月支": "少年学业有成",
+        "日支": "自身智慧通达",
+        "时支": "晚年文昌照拂",
+    }
+
+    return {
+        "has_wenchang": has,
+        "wenchang_zhi": wc_zhi,
+        "need_supplement": not has,
+        "wenchang_position": position,
+        "position_influence": wenchang_positions_influence.get(position, ""),
+    }
+
+
+def analyze_liunian_wealth(bazi_data: dict, liunian_gan: str, liunian_zhi: str) -> dict:
+    """
+    流年财富分析 — 判断流年对命主财富的影响
+
+    参数:
+      bazi_data: 包含以下键的字典:
+        - ri_zhu (str): 日主天干
+        - bazi_gans (list[str]): [年干, 月干, 日干, 时干]
+        - bazi_zhis (list[str]): [年支, 月支, 日支, 时支]
+        - shen_label (str): 身强弱标签 ("身强"/"身弱"/"从弱")
+        - shen_score (float): 身强弱分数
+        - cai_total (float): 财星总分
+        - xi_yong (list[str]): 喜用神列表
+      liunian_gan: 流年天干
+      liunian_zhi: 流年地支
+
+    返回:
+      {
+        'liunian': str,                       # 流年干支组合
+        'liunian_shi_shen': str,              # 流年天干对应的十神
+        'is_wealth_year': bool,                # 是否为财星流年
+        'is_xi_yong_year': bool,               # 是否为喜用神流年
+        'impact': str,                         # 影响描述
+        'advice': str,                         # 建议
+        'score_impact': float,                 # 对财富分的影响（-10~+10）
+      }
+    """
+    ri_zhu = bazi_data.get("ri_zhu", "")
+    bazi_gans = bazi_data.get("bazi_gans", [])
+    bazi_zhis = bazi_data.get("bazi_zhis", [])
+    shen_label = bazi_data.get("shen_label", "身弱")
+    shen_score = bazi_data.get("shen_score", 50.0)
+    cai_total = bazi_data.get("cai_total", 0.0)
+    xi_yong = bazi_data.get("xi_yong", [])
+
+    if not ri_zhu:
+        return {"liunian": f"{liunian_gan}{liunian_zhi}", "error": "缺少日主信息"}
+
+    # 流年天干的十神
+    ln_ss = get_shi_shen_for_gan(liunian_gan, ri_zhu)
+    is_wealth = ln_ss in ("正财", "偏财")
+    is_xi_yong = liunian_gan in xi_yong
+
+    # 流年地支的藏干十神
+    ln_zhi_ss_list = []
+    for cg, _ in DI_ZHI_CANG_GAN.get(liunian_zhi, []):
+        ss = get_shi_shen_for_cang_gan(cg, ri_zhu)
+        if ss:
+            ln_zhi_ss_list.append(ss)
+    zhi_has_wealth = "正财" in ln_zhi_ss_list or "偏财" in ln_zhi_ss_list
+    zhi_has_xi_yong = any(cg in xi_yong for cg, _ in DI_ZHI_CANG_GAN.get(liunian_zhi, []))
+
+    # ── 综合判断 ──
+    impact_parts = []
+    score_impact = 0.0
+    advice_parts = []
+
+    # 1) 财星流年
+    if is_wealth:
+        score_impact += 4.0
+        impact_parts.append("流年天干为财星")
+        if shen_label == "身强":
+            score_impact += 3.0
+            impact_parts.append("身强能担财，利于求财")
+            advice_parts.append("积极主动把握机会")
+        elif shen_label == "身弱":
+            score_impact -= 2.0
+            impact_parts.append("身弱财旺需谨慎，防财多压身")
+            advice_parts.append("宜借印比帮身，不宜冒进投资")
+        elif shen_label == "从弱":
+            score_impact += 5.0
+            impact_parts.append("从弱格逢财星，爆发之年")
+            advice_parts.append("顺势而为，果断行动")
+    elif zhi_has_wealth:
+        score_impact += 2.0
+        impact_parts.append("流年地支藏财星")
+
+    # 2) 喜用神流年
+    if is_xi_yong:
+        score_impact += 3.0
+        impact_parts.append("天干为喜用神")
+        advice_parts.append("各方面运势有利，宜积极进取")
+    if zhi_has_xi_yong:
+        score_impact += 1.5
+        impact_parts.append("地支藏喜用神")
+
+    # 3) 忌神流年
+    if not is_xi_yong and ln_ss and ln_ss not in ("正财", "偏财", "正印", "偏印"):
+        # 非喜用的比劫/官杀/食伤
+        if ln_ss in ("比肩", "劫财"):
+            score_impact -= 2.0
+            impact_parts.append("比劫流年，防破财竞争")
+            advice_parts.append("谨慎投资，注意人际关系")
+        elif ln_ss in ("正官", "七杀"):
+            if shen_label == "身强":
+                score_impact += 1.0
+                impact_parts.append("官杀流年，身强能任官，事业带财")
+            else:
+                score_impact -= 2.0
+                impact_parts.append("官杀流年，压力大妨财")
+                advice_parts.append("宜稳守，勿与人争执")
+
+    # 4) 流年与原局特殊关系
+    # 流年地支与原局地支的关系
+    for idx, zhi in enumerate(bazi_zhis):
+        if liunian_zhi == zhi:
+            score_impact += 1.0
+            impact_parts.append(f"流年伏吟{_ZHI_NAMES.get(idx, '')}，能量加倍")
+            break
+
+    # 流年地支冲原局
+    _LIU_HE_MAP = {
+        "子": "午",
+        "丑": "未",
+        "寅": "申",
+        "卯": "酉",
+        "辰": "戌",
+        "巳": "亥",
+        "午": "子",
+        "未": "丑",
+        "申": "寅",
+        "酉": "卯",
+        "戌": "辰",
+        "亥": "巳",
+    }
+    for idx, zhi in enumerate(bazi_zhis):
+        if _LIU_HE_MAP.get(liunian_zhi) == zhi:
+            score_impact -= 1.5
+            pos_name = _ZHI_NAMES.get(idx, "")
+            impact_parts.append(f"流年冲动{pos_name}，财运动荡")
+            advice_parts.append(f"{pos_name}受冲之年，注意财务波动")
+
+    # 5) 文昌流年
+    wc_zhi = get_wen_chang(ri_zhu)
+    if wc_zhi and liunian_zhi == wc_zhi:
+        score_impact += 2.0
+        impact_parts.append("流年逢文昌贵人，智慧开运")
+        advice_parts.append("利学习、决策、签合同")
+
+    # 财星流年又逢冲 → 大起大落
+    if is_wealth and any(_LIU_HE_MAP.get(liunian_zhi) == z for z in bazi_zhis):
+        score_impact -= 1.0
+        impact_parts.append("财星流年逢冲，有财但波动大")
+
+    # 构建输出
+    impact_str = "；".join(impact_parts) if impact_parts else "流年对财富无明显影响"
+    advice_str = "；".join(advice_parts) if advice_parts else "按兵不动，静观其变"
+
+    # 限制影响分数范围
+    score_impact = max(-10.0, min(10.0, score_impact))
+
+    return {
+        "liunian": f"{liunian_gan}{liunian_zhi}",
+        "liunian_shi_shen": ln_ss or "",
+        "is_wealth_year": is_wealth or zhi_has_wealth,
+        "is_xi_yong_year": is_xi_yong or zhi_has_xi_yong,
+        "impact": impact_str,
+        "advice": advice_str,
+        "score_impact": round(score_impact, 1),
     }

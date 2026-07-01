@@ -259,6 +259,60 @@ def paipan(name: str, gender: str, birth_year: int, birth_month: int, birth_day:
     }
 
 
+# ── 文昌贵人表 ──
+WEN_CHANG_MAP = {
+    "甲": "巳",
+    "乙": "午",
+    "丙": "申",
+    "丁": "酉",
+    "戊": "申",
+    "己": "酉",
+    "庚": "亥",
+    "辛": "子",
+    "壬": "寅",
+    "癸": "卯",
+}
+
+
+def check_wen_chang(ri_zhu: str, all_zhis: list[str]) -> dict:
+    """检查文昌贵人是否在八字原局中
+
+    Args:
+        ri_zhu: 日干（如 '庚'）
+        all_zhis: 四个地支（如 ['申','未','亥','卯']）
+
+    Returns:
+        dict: { "has_wen_chang": bool, "wen_chang_zhi": str|None, "detail": str }
+    """
+    wen_chang_zhi = WEN_CHANG_MAP.get(ri_zhu, "")
+    if not wen_chang_zhi:
+        return {"has_wen_chang": False, "wen_chang_zhi": None, "detail": "未知日主"}
+    has_it = wen_chang_zhi in all_zhis
+    if has_it:
+        detail = f"原局自带文昌✅（{ri_zhu}→{wen_chang_zhi}），不需要补"
+    else:
+        detail = f"需要补文昌⚠️（{ri_zhu}→{wen_chang_zhi}），原局无{wen_chang_zhi}地支"
+    return {"has_wen_chang": has_it, "wen_chang_zhi": wen_chang_zhi, "detail": detail}
+
+
+def get_full_paipan(year: int, month: int, day: int, hour: int, gender: str, name: str = "未知") -> dict:
+    """完整排盘+文昌检查（门禁脚本专用接口）
+
+    封装 paipan() 并追加文昌贵人验证。
+    """
+    result = paipan(name, gender, year, month, day, hour)
+    # 追加文昌检查
+    ri_zhu = result["day_pillar"]["gan"]
+    all_zhis = [
+        result["year_pillar"]["zhi"],
+        result["month_pillar"]["zhi"],
+        result["day_pillar"]["zhi"],
+        result["hour_pillar"]["zhi"],
+    ]
+    result["wen_chang"] = check_wen_chang(ri_zhu, all_zhis)
+    return result
+
+
 if __name__ == "__main__":
     # 测试：1980年5月15日 中午12点 男
     result = paipan("测试", "男", 1980, 5, 15, 12)
