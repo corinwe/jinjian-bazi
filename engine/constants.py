@@ -237,6 +237,7 @@ class ScoreDetails:
     nian_shi_zhi_yin_bi: float = 0.0
     total: float = 0.0
     yue_bei_ke_count: int = 0  # 2026-07-04 新增：月令被克次数（0=无, 1=没事, 2=受伤, 3+=弱根）
+    zi_zuo_bi_jie: bool = False  # 2026-07-04 全量审计：自坐比劫永不从弱
 
 
 @dataclass

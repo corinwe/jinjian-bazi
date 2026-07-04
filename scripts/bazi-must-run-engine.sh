@@ -79,19 +79,41 @@ echo ""
 # 运行引擎排盘
 cd "$ENGINE_DIR"
 
-# 如果有时辰，用 get_full_paipan
+# 如果有时辰，用 get_full_paipan + 完整引擎评分
 if [ -n "$HOUR" ]; then
     python3 -c "
 import sys
 sys.path.insert(0, '.')
 from paipan import get_full_paipan
+from pipeline_v5 import run_v5
+from constants import BaZi, Pillar
 from datetime import date
 import json
 
+# 第1步：排盘
 result = get_full_paipan($YEAR, $MONTH, $DAY, $HOUR, '$GENDER', '$NAME')
 result['_gate_verified'] = True
 result['_gate_timestamp'] = '$(date -u +%Y-%m-%dT%H:%M:%SZ)'
 result['_gate_rule'] = '铁律①: 排盘必须跑引擎，禁止手算（2026-06-29固化）'
+
+# 第2步：构建 BaZi 对象并运行完整引擎评分
+bazi = BaZi(
+    year=Pillar(result['year_pillar']['gan'], result['year_pillar']['zhi']),
+    month=Pillar(result['month_pillar']['gan'], result['month_pillar']['zhi']),
+    day=Pillar(result['day_pillar']['gan'], result['day_pillar']['zhi']),
+    hour=Pillar(result['hour_pillar']['gan'], result['hour_pillar']['zhi']),
+    gender='$GENDER'
+)
+full_result = run_v5(bazi, birth_year=$YEAR, birth_month_lunar=$MONTH)
+result['engine_scores'] = {
+    'shen_qiang_ruo': {'score': full_result.get('sec_3_shen_qiang_ruo', {}).get('score'), 'label': full_result.get('sec_3_shen_qiang_ruo', {}).get('label')},
+    'cai_xing': full_result.get('sec_8_wealth', {}).get('cai_xing_total'),
+    'ge_ju': full_result.get('sec_2_ge_ju', {}).get('main'),
+    'xi_yong_shen': full_result.get('sec_4_xi_yong', {}).get('xi'),
+    'marriage': full_result.get('sec_12_marriage'),
+    'da_yun_count': len(full_result.get('sec_17_da_yun_detail', {}).get('list', []))
+}
+
 # 文昌检查（引擎已自动计算）
 wen_chang = result.get('wen_chang', {})
 wc_status = '✅ 原文昌' if wen_chang.get('has_wen_chang') else '⚠️ 需补文昌'
@@ -101,6 +123,7 @@ print(json.dumps(result, ensure_ascii=False, indent=2))
 print('')
 print('📚 文昌检查: ' + wc_status)
 print('   ' + wc_detail)
+print('⚙️  引擎评分: 身强弱=' + str(result['engine_scores']['shen_qiang_ruo']['score']) + '分 → ' + result['engine_scores']['shen_qiang_ruo']['label'])
 " 2>&1
 
     EXIT_CODE=$?

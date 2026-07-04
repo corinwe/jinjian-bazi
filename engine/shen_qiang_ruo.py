@@ -260,10 +260,24 @@ def compute_shen_qiang_ruo(bazi: BaZi) -> tuple[float, str, ScoreDetails]:
 
     # 从弱格恒定50分
     # 从弱格判定：原局几乎无助（无印无比劫），但这里我们直接用分数判断
-    if total <= 0:
+    # 🚨 自坐比劫永不从弱（2026-07-04全量审计校准）
+    #   口诀：「自作比节永不从弱」— 日支坐比肩或劫财者，即使被克到1分也不从弱
+    #   规则来源：九龙道长·实战铁律（金鉴真人能量牌实验验证）
+    ri_zhi_bi_jie = False
+    for cg, ratio in bazi.day.cang_gan:
+        if _is_bi_jie(cg, ri_zhu):
+            ri_zhi_bi_jie = True
+            break
+    
+    if total <= 0 and ri_zhi_bi_jie:
+        # 日支坐比劫→永不从弱→即使0分也标为身弱
+        label = "身弱"
+        details.zi_zuo_bi_jie = True
+    elif total <= 0:
         total = 50.0
         details.total = 50.0
         label = "从弱"
+        details.zi_zuo_bi_jie = False
     elif total >= 50:
         label = "身强"
     else:
