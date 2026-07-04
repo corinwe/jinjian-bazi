@@ -8,8 +8,12 @@
   4. 所有比劫全计分（天干比劫全计分，地支藏干按比例）
   5. 燥土规则: 未/戌 + 天干丙/丁引化 = 当火看（不计印分、不生金）
               未/戌 + 天干壬/癸灭火 = 当土看（生金）
-  6. 从弱恒定50分（从弱格的判断标准）
+  6. 从弱恒定50分（从弱格恒定50分）
   7. 身强≥50分，身弱<50分（含40~49分区间）
+  8. 月令被克三次递减规则（2026-07-04 九龙道长配婚课校准）:
+     克1次 → 没事（正常计分，当强看）
+     克2次 → 受伤（月令能量削弱约50%）
+     克3次 → 当弱根看（月令剩~15分）
 """
 
 from __future__ import annotations
@@ -61,6 +65,46 @@ def _check_zao_tu_rule(zhi: str, tian_gan_list: list[str], ri_zhu: str) -> str:
     if has_fire:
         return "fire"  # 天干丙/丁引化 → 当火看（不计印分）
     return "earth"  # 无丙/丁引化 → 当土看
+
+
+def _count_yue_bei_ke(bazi: BaZi) -> int:
+    """
+    计算月令被克次数（2026-07-04 九龙道长配婚课校准）
+
+    规则:
+      克1次 → 没事（正常计分，当强看）
+      克2次 → 受伤（月令能量削弱约50%）
+      克3次 → 当弱根看（月令剩~15分）
+
+    被克 = 其他地支（年/日/时）的五行克月令的五行
+    """
+    ZHI_WU_XING = {
+        "寅": "木", "卯": "木",
+        "巳": "火", "午": "火",
+        "辰": "土", "戌": "土", "丑": "土", "未": "土",
+        "申": "金", "酉": "金",
+        "亥": "水", "子": "水"
+    }
+    KE_MAP = {
+        "木": "金", "火": "水", "土": "木",
+        "金": "火", "水": "土"
+    }
+
+    yue_zhi = bazi.month.zhi
+    yue_wx = ZHI_WU_XING.get(yue_zhi, "")
+    if not yue_wx:
+        return 0
+
+    # 月令被什么五行克
+    ke_yue_wx = KE_MAP.get(yue_wx, "")
+
+    count = 0
+    for zhi in [bazi.year.zhi, bazi.day.zhi, bazi.hour.zhi]:
+        zhi_wx = ZHI_WU_XING.get(zhi, "")
+        if zhi_wx == ke_yue_wx:
+            count += 1
+
+    return count
 
 
 def compute_shen_qiang_ruo(bazi: BaZi) -> tuple[float, str, ScoreDetails]:
@@ -181,6 +225,26 @@ def compute_shen_qiang_ruo(bazi: BaZi) -> tuple[float, str, ScoreDetails]:
     details.nian_shi_zhi_yin_bi = round(nian_shi_score, 1)
 
     # ═══════════════════════════════════════
+    # 月令被克三次递减规则（2026-07-04新增）
+    # ═══════════════════════════════════════
+    yue_bei_ke_count = _count_yue_bei_ke(bazi)
+    details.yue_bei_ke_count = yue_bei_ke_count
+
+    if yue_bei_ke_count >= 3:
+        # 被克3次以上 → 当弱根看，月令能量仅剩约15分
+        details.yue_ling_yin *= 0.375  # 40×0.375=15
+        details.yue_ling_bi_jie *= 0.375
+        yue_bi_jie_score_adj = yue_bi_jie_score * 0.375
+    elif yue_bei_ke_count == 2:
+        # 被克2次 → 受伤，月令能量削弱约50%
+        details.yue_ling_yin *= 0.5
+        details.yue_ling_bi_jie *= 0.5
+        yue_bi_jie_score_adj = yue_bi_jie_score * 0.5
+    else:
+        # 被克0-1次 → 没事，正常计分
+        yue_bi_jie_score_adj = yue_bi_jie_score
+
+    # ═══════════════════════════════════════
     # 总分计算
     # ═══════════════════════════════════════
     total = (
@@ -217,6 +281,7 @@ def explain_score(details: ScoreDetails) -> str:
         f"天干比劫: {details.tian_gan_bi_jie}分",
         f"日支印比: {details.ri_zhi_yin_bi}分",
         f"年时支印比: {details.nian_shi_zhi_yin_bi}分",
+        f"月令被克: {details.yue_bei_ke_count}次",
         f"总分: {details.total}分",
     ]
     return "\n".join(lines)

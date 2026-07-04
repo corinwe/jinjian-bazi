@@ -236,6 +236,7 @@ class ScoreDetails:
     ri_zhi_yin_bi: float = 0.0
     nian_shi_zhi_yin_bi: float = 0.0
     total: float = 0.0
+    yue_bei_ke_count: int = 0  # 2026-07-04 新增：月令被克次数（0=无, 1=没事, 2=受伤, 3+=弱根）
 
 
 @dataclass
