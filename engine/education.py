@@ -1,31 +1,38 @@
 """
-金鉴真人·学历学业分析引擎 v2.2 — 确定性规则版（正反面逻辑完整）
+金鉴真人·学历学业分析引擎 v2.3 — 九龙道长原始理论版
 基于bazi-education-analysis v1.6
 
-规则体系：
-  第0层：年柱有印三档法（3秒定性）
-  六步排查（决定兑现程度）
-  学校等级六档定位
-  学历层级判定：身强弱×(十神正反面+印运窗口)联合判定
-  文昌贵人双轨制（年干查命/日干补运）
-  年干伤官检查
+═══════════════════════════════════════════════
+九龙道长判学业原始逻辑（按优先级排列）：
+═══════════════════════════════════════════════
 
-学业期时间窗口（九龙道长原始划分）：
-  0-18岁：小学→高中，基础学业期，决定能否考大学
-  18-22岁：本科窗口
-  22-25岁：硕士窗口
-  25-30岁：博士窗口
+第一层：身强弱（基准框架）
+  身强(≥60分)：耐力足，能持续学，不依赖印运
+  中和(40-60分)：平衡型，有印更好无印也能学
+  身弱(<40分)：学得快但容易累，需印运托底
+  身极弱(<15分)：学习吃力，需大运印比强力补救
 
-身强（≥60分）：官杀/食伤/财=喜用；印/比=忌凶
-  ✅ 官杀/食伤/财运 → 学得好
-  ❌ 印运 → 学非所用，尤其8岁前遇印=基础不好
-  ❌ 比劫运 → 拖累
+第二层：印运+喜忌（核心·决定学历高度）
+  学业窗口期 = 0-18岁（基础教育）+ 18-22岁（高等教育）
+  
+  身强(≥60分) → 印为忌凶
+    印运在学业窗口→学非所用，拉低学历
+    无印运在学业窗口→不影响，靠其他运也行
+  
+  身弱(<40分) → 印为喜用
+    印运在学业窗口→能学进去 ✅ 关键
+    无印运在学业窗口→学不进去 ❌
 
-身弱（<40分）：印/比=喜用；官杀/食伤/财=忌凶
-  ✅ 印/比运 → 学得进去
-  ❌ 官杀运 → 压力大发挥失常
-  ❌ 食伤运 → 贪玩偏科
-  ❌ 财运 → 杂念早恋弃学
+第三层：文昌贵人（辅助·决定学习效率）
+  文昌在局 → 效率高，加持
+  文昌在大运 → 10年补救
+  文昌缺失 → 效率打折
+
+第四层：其他十神（修正·非核心）
+  正财运 → 倾向搞钱，无心向学
+  食伤运 → 吃喝玩乐，聪明但贪玩（素材02行129）
+  官杀运 → 自律，有压力（身强正向，身弱负向）
+  比劫运 → 同伴影响（身弱正向，身强负向）
 """
 
 from __future__ import annotations
@@ -34,20 +41,33 @@ from constants import CANG_GAN_RATIO, DI_ZHI_CANG_GAN, TIAN_GAN_WU_XING
 from shi_shen import get_shi_shen_for_cang_gan, get_shi_shen_for_gan
 from xing_chong_he_hua import check_liu_he
 
-# ── 文昌贵人表（年干查命理，日干查补运）──
+# ── 文昌贵人表 ──
 WEN_CHANG_MAP = {
     "甲": "巳", "乙": "午", "丙": "申", "丁": "酉",
     "戊": "申", "己": "酉", "庚": "亥", "辛": "子",
     "壬": "寅", "癸": "卯",
 }
 
-# ── 身强弱决定的学业十神正反面 ──
-# 身强：官杀/食伤/财=喜用(正面)；印/比=忌凶(反面)
-# 身弱：印/比=喜用(正面)；官杀/食伤/财=忌凶(反面)
-SHI_SHEN_POSITIVE_QIANG = {"正官", "七杀", "食神", "伤官", "正财", "偏财"}
-SHI_SHEN_NEGATIVE_QIANG = {"正印", "偏印", "比肩", "劫财"}
-SHI_SHEN_POSITIVE_RUO = {"正印", "偏印", "比肩", "劫财"}
-SHI_SHEN_NEGATIVE_RUO = {"正官", "七杀", "食神", "伤官", "正财", "偏财"}
+# ── 十神对学业的原始影响（九龙道长原始理论）──
+# 素材02行129：食神与伤官格追求的是吃喝玩乐，享受生活
+# 素材12行517：年柱伤官=少年叛逆打架
+# 素材08行247：身弱走食神伤官运=学习不好
+# 素材18行305：身弱走食神伤官大运=学习不好，贪玩偏科
+# 素材03行497：伤官多=学一门技能，靠技能生财
+SHI_SHEN_STUDY_EFFECT = {
+    # 十神: (身强时的学业影响, 身弱时的学业影响)
+    # 取值: "good"=有利, "bad"=不利, "mixed"=利但有副作用, "neutral"=中性
+    "正印": ("bad", "good"),   # 身强忌凶学非所用；身弱喜用学得好
+    "偏印": ("bad", "good"),   # 同上
+    "比肩": ("bad", "good"),   # 身强忌凶拖累；身弱喜用得同学帮
+    "劫财": ("bad", "good"),   # 同上
+    "正官": ("good", "bad"),   # 身强喜用自律；身弱忌凶压力大
+    "七杀": ("mixed", "bad"),  # 身强有竞争力但压力；身弱压力更大
+    "正财": ("mixed", "bad"),  # 身强喜用但搞钱无心学习；身弱忌凶杂念
+    "偏财": ("mixed", "bad"),  # 同上
+    "食神": ("mixed", "bad"),  # 身强喜用但吃喝玩乐贪玩；身弱忌凶更贪玩
+    "伤官": ("mixed", "bad"),  # 身强聪明但叛逆；身弱更叛逆
+}
 
 
 def _nian_gan_shi_shen_check(nian_gan: str, ri_zhu: str) -> dict:
@@ -56,7 +76,7 @@ def _nian_gan_shi_shen_check(nian_gan: str, ri_zhu: str) -> dict:
     result = {"shi_shen": ss, "signal": "neutral", "note": ""}
     if ss == "伤官":
         result["signal"] = "negative"
-        result["note"] = "年干伤官→少年叛逆、打架（素材12行517）"
+        result["note"] = "年干伤官→少年叛逆打架【素材12行517】"
     elif ss in ("正印", "偏印"):
         result["signal"] = "positive"
         result["note"] = "年干印星→有学业基因"
@@ -140,111 +160,12 @@ def _check_yin_gen_he_hua(bazi_zhis: list[str], ri_zhu: str) -> dict:
     return {"passed": True, "detail": "印根完整无伤✅", "issues": []}
 
 
-def _analyze_da_yun_shi_shen_effect(
-    da_yun_gans: list[str], da_yun_start_ages: list[float],
-    ri_zhu: str, shen_score: float
-) -> dict:
-    """
-    学业期大运十神正反面分析
-
-    身强（≥60分）：官杀/食伤/财=正面；印/比=反面
-    身弱（<40分）：印/比=正面；官杀/食伤/财=反面
-    中和（40-60分）：正反面各半
-
-    按学业期时间窗口分析：
-      0-18岁：基础学业期
-      18-22岁：本科窗口
-      22-25岁：硕士窗口
-      25-30岁：博士窗口
-    """
-    # 定义时间窗口
-    windows = {
-        "basic_0_18": {"name": "0-18岁基础期", "positive": 0, "negative": 0, "details": []},
-        "college_18_22": {"name": "18-22岁本科窗口", "positive": 0, "negative": 0, "details": []},
-        "master_22_25": {"name": "22-25岁硕士窗口", "positive": 0, "negative": 0, "details": []},
-        "phd_25_30": {"name": "25-30岁博士窗口", "positive": 0, "negative": 0, "details": []},
-    }
-
-    # 按身强弱确定正反面十神集合
-    if shen_score >= 60:
-        positive_ss = SHI_SHEN_POSITIVE_QIANG  # 官杀/食伤/财
-        negative_ss = SHI_SHEN_NEGATIVE_QIANG  # 印/比
-    elif shen_score >= 40:
-        # 中和：所有十神都算中性，无正反面
-        positive_ss = set()
-        negative_ss = set()
-    else:
-        positive_ss = SHI_SHEN_POSITIVE_RUO  # 印/比
-        negative_ss = SHI_SHEN_NEGATIVE_RUO  # 官杀/食伤/财
-
-    for dg, sa in zip(da_yun_gans, da_yun_start_ages, strict=False):
-        ss = get_shi_shen_for_gan(dg, ri_zhu)
-        tag = ""
-        if shen_score >= 60:
-            if ss in positive_ss:
-                tag = "✅正面"
-            elif ss in negative_ss:
-                tag = "❌反面"
-            else:
-                tag = "➖中性"
-        elif shen_score >= 40:
-            tag = "➖中性"
-        else:
-            if ss in positive_ss:
-                tag = "✅正面"
-            elif ss in negative_ss:
-                tag = "❌反面"
-            else:
-                tag = "➖中性"
-
-        item = {"age": int(sa), "gan": dg, "shi_shen": ss, "tag": tag}
-
-        # 分配到各时间窗口
-        if sa < 18:
-            windows["basic_0_18"]["details"].append(item)
-            if "正面" in tag:
-                windows["basic_0_18"]["positive"] += 1
-            elif "反面" in tag:
-                windows["basic_0_18"]["negative"] += 1
-        elif 18 <= sa < 22:
-            windows["college_18_22"]["details"].append(item)
-            if "正面" in tag:
-                windows["college_18_22"]["positive"] += 1
-            elif "反面" in tag:
-                windows["college_18_22"]["negative"] += 1
-        elif 22 <= sa < 25:
-            windows["master_22_25"]["details"].append(item)
-            if "正面" in tag:
-                windows["master_22_25"]["positive"] += 1
-            elif "反面" in tag:
-                windows["master_22_25"]["negative"] += 1
-        elif 25 <= sa < 30:
-            windows["phd_25_30"]["details"].append(item)
-            if "正面" in tag:
-                windows["phd_25_30"]["positive"] += 1
-            elif "反面" in tag:
-                windows["phd_25_30"]["negative"] += 1
-
-    # 综合评分：正面运 - 反面运
-    total_score = 0
-    for wk, wv in windows.items():
-        net = wv["positive"] - wv["negative"]
-        wv["net"] = net
-        total_score += net
-
-    return {
-        "windows": windows,
-        "total_net": total_score,
-        "shen_level": "身强" if shen_score >= 60 else "中和" if shen_score >= 40 else "身弱" if shen_score >= 15 else "身极弱",
-    }
-
-
 def _check_six_steps(
     bazi_gans: list[str], bazi_zhis: list[str], ri_zhu: str,
     shen_label: str, shen_score: float, xi_yong: list[str],
     da_yun_gans: list[str], da_yun_zhis: list[str], da_yun_start_ages: list[float],
 ) -> dict:
-    """六步精细排查 — 决定学业兑现程度"""
+    """六步精细排查"""
     checks = {}
     passed = 0
     total = 6
@@ -274,7 +195,7 @@ def _check_six_steps(
     else:
         checks["step3"] = {"passed": False, "detail": wc["detail"]}
 
-    # Step 4: 18岁前走喜用还是忌神？
+    # Step 4: 18岁前走喜用还是忌神？（五行维度）
     pre_18_positive = 0
     pre_18_negative = 0
     for dg, dz, sa in zip(da_yun_gans, da_yun_zhis, da_yun_start_ages, strict=False):
@@ -297,7 +218,7 @@ def _check_six_steps(
         if dg_ss in ("正印", "偏印") and sa <= 25:
             yin_window_ages.append(int(sa))
     if yin_window_ages:
-        checks["step5"] = {"passed": True, "detail": f"印运来到{min(yin_window_ages)}岁✅", "yin_ages": yin_window_ages}
+        checks["step5"] = {"passed": True, "detail": f"印运{min(yin_window_ages)}岁到✅", "yin_ages": yin_window_ages}
         passed += 1
     else:
         checks["step5"] = {"passed": False, "detail": "学业期无印运❌", "yin_ages": []}
@@ -314,6 +235,70 @@ def _check_six_steps(
     return {"checks": checks, "passed": passed, "total": total}
 
 
+def _analyze_da_yun_for_study(
+    da_yun_gans: list[str], da_yun_start_ages: list[float],
+    ri_zhu: str, shen_score: float,
+) -> dict:
+    """
+    学业期大运分析（基于九龙道长原始十神影响）
+
+    学业窗口：0-18岁（基础教育）+ 18-22岁（高等教育）
+
+    每个十神对学业的影响（原始理论）：
+      印枭 → 学习本身（身强忌凶=学非所用；身弱喜用=学得好）
+      正财 → 搞钱，无心向学
+      食伤 → 吃喝玩乐贪玩（素材02行129）
+      伤官 → 聪明但叛逆（素材12行517）
+      官杀 → 自律但压力
+      比劫 → 同伴影响
+    """
+    windows = {
+        "basic_0_18": {"name": "0-18岁基础教育", "effect": 0, "details": []},
+        "college_18_22": {"name": "18-22岁高等教育", "effect": 0, "details": []},
+    }
+
+    for dg, sa in zip(da_yun_gans, da_yun_start_ages, strict=False):
+        ss = get_shi_shen_for_gan(dg, ri_zhu)
+
+        # 查十神学业影响表
+        effect_map = SHI_SHEN_STUDY_EFFECT.get(ss, ("neutral", "neutral"))
+        if shen_score >= 60:
+            effect = effect_map[0]  # 身强的效果
+        elif shen_score >= 40:
+            effect = "neutral"  # 中和=中性
+        else:
+            effect = effect_map[1]  # 身弱的效果
+
+        # 量化
+        if effect == "good":
+            score = 1
+            tag = "✅有利"
+        elif effect == "bad":
+            score = -1
+            tag = "❌不利"
+        elif effect == "mixed":
+            score = 0
+            tag = "⚠️混合"
+        else:
+            score = 0
+            tag = "➖中性"
+
+        item = {"age": int(sa), "gan": dg, "shi_shen": ss, "effect": effect, "tag": tag}
+
+        if sa < 18:
+            windows["basic_0_18"]["effect"] += score
+            windows["basic_0_18"]["details"].append(item)
+        elif 18 <= sa < 22:
+            windows["college_18_22"]["effect"] += score
+            windows["college_18_22"]["details"].append(item)
+
+    return {
+        "windows": windows,
+        "total_effect": sum(w["effect"] for w in windows.values()),
+        "shen_level": "身强" if shen_score >= 60 else "中和" if shen_score >= 40 else "身弱" if shen_score >= 15 else "身极弱",
+    }
+
+
 def _determine_degree(
     shen_score: float, shen_label: str, checks_passed: int,
     da_yun_gans: list[str], da_yun_start_ages: list[float],
@@ -321,101 +306,84 @@ def _determine_degree(
     ri_zhu: str,
 ) -> tuple[str, str, str]:
     """
-    学历层级判定 — 身强弱×(十神正反面+印运窗口)联合判定
-
-    输入：
-      - 身强/身弱（确定十神正反面）
-      - 学业期大运十神正反面分析（正面运多→学得好；反面运多→学不好）
-      - 印运窗口（印运在哪一年龄段到来）
-      - 六步得分（综合兑现条件）
-
-    输出：
-      (学校等级, 学历层级, 推理理由)
+    学历层级判定（九龙道长原始逻辑）
+    
+    第一层：身强弱（基准）
+    第二层：印运+喜忌（核心） 
+    第三层：文昌（辅助）
+    第四层：其他十神修正
     """
-    # ── 学业期大运十神正反面分析 ──
-    dy_effect = _analyze_da_yun_shi_shen_effect(da_yun_gans, da_yun_start_ages, ri_zhu, shen_score)
-    win = dy_effect["windows"]
-
-    # 各阶段净得分
-    basic_net = win["basic_0_18"]["net"]       # 0-18岁
-    college_net = win["college_18_22"]["net"]  # 18-22岁
-    master_net = win["master_22_25"]["net"]    # 22-25岁
-    phd_net = win["phd_25_30"]["net"]          # 25-30岁
-
-    # 印运窗口年龄
+    # ── 第二层：印运分析 ──
     yin_ages = []
     for dg, sa in zip(da_yun_gans, da_yun_start_ages, strict=False):
         dg_ss = get_shi_shen_for_gan(dg, ri_zhu)
         if dg_ss in ("正印", "偏印") and sa <= 30:
             yin_ages.append(int(sa))
 
-    yin_before_18 = any(a < 18 for a in yin_ages)
-    yin_18_22 = any(18 <= a <= 22 for a in yin_ages)
-    yin_22_25 = any(22 <= a <= 25 for a in yin_ages)
-    yin_25_30 = any(25 <= a <= 30 for a in yin_ages)
+    # 印运在学业窗口(0-22岁)内到来
+    yin_in_basic = any(a < 18 for a in yin_ages)
+    yin_in_college = any(18 <= a <= 22 for a in yin_ages)
+    yin_in_master = any(22 <= a <= 25 for a in yin_ages)
+    yin_in_phd = any(25 <= a <= 30 for a in yin_ages)
     has_yin = bool(yin_ages)
+
+    # ── 第四层：十神修正 ──
+    dy_analysis = _analyze_da_yun_for_study(da_yun_gans, da_yun_start_ages, ri_zhu, shen_score)
+    basic_eff = dy_analysis["windows"]["basic_0_18"]["effect"]
+    college_eff = dy_analysis["windows"]["college_18_22"]["effect"]
 
     nian_negative = (nian_check.get("signal") == "negative")
 
-    # ── 推理理由构建 ──
-    def _reason():
-        parts = []
-        parts.append(dy_effect["shen_level"])
-        if shen_score >= 60:
+    # ── 推理理由 ──
+    def _build_reason():
+        parts = [dy_analysis["shen_level"]]
+        if shen_score >= 60 or shen_score < 40:
             parts.append(f"({round(shen_score,1)}分)")
-        # 0-18岁正反面
-        if basic_net > 0:
-            parts.append(f"0-18岁正面运偏多(+{basic_net})")
-        elif basic_net < 0:
-            parts.append(f"0-18岁反面运偏多({basic_net})")
-        else:
-            parts.append("0-18岁中性")
-        if college_net > 0:
-            parts.append(f"18-22岁正面")
-        elif college_net < 0:
-            parts.append(f"18-22岁反面")
         if yin_ages:
-            parts.append(f"印运{min(yin_ages)}岁到")
-        if checks_passed >= 3:
-            parts.append(f"六步{checks_passed}/{6}")
+            parts.append(f"印{min(yin_ages)}岁到")
         if wen_chang["has"]:
             parts.append("文昌")
+        if checks_passed >= 3:
+            parts.append(f"六步{checks_passed}/6")
+        if basic_eff > 0:
+            parts.append("0-18岁利学")
+        elif basic_eff < 0:
+            parts.append("0-18岁不利")
+        if college_eff > 0:
+            parts.append("18-22岁利学")
+        elif college_eff < 0:
+            parts.append("18-22岁不利")
         if nian_negative:
             parts.append("年干伤官")
         return "；".join(parts)
 
-    # ── 等级判定 ──
+    # ==========================================
+    # 判定逻辑
+    # ==========================================
 
-    # ===== 身强（≥60分）：官杀/食伤/财=正面；印/比=反面 =====
+    # ── 身强（≥60分）：印为忌凶，印运=学非所用 ──
     if shen_score >= 60:
-        if basic_net >= 0 and checks_passed >= 4 and wen_chang["has"]:
+        if checks_passed >= 4 and wen_chang["has"]:
             level, degree = "👑 顶尖（清北/常春藤）", "硕士及以上"
-        elif basic_net >= 0 and checks_passed >= 3:
-            level, degree = "🥇 985顶级大学", "硕士" if yin_18_22 else "本科"
-        elif basic_net >= 0:
-            level, degree = "🥇 211/一本", "本科"
-        elif basic_net >= -1 and checks_passed >= 2:
-            level, degree = "🥈 普通本科", "本科"
+        elif checks_passed >= 3:
+            if yin_in_basic:
+                # 身强遇印运=学非所用，拉低上限
+                level = "🥇 985顶级大学" if not nian_negative else "🥇 211/一本"
+            else:
+                level = "🥇 985顶级大学"
+            degree = "本科"
         elif checks_passed >= 2:
-            level, degree = "🥈 普通本科", "专科"
+            level, degree = "🥈 普通本科", "本科"
         else:
             level, degree = "🥉 大专/职校", "专科"
 
-        # 身强特别反面逻辑：8岁前遇印运=学非所用
-        if basic_net < 0 and any(a < 8 for dg, a in zip(da_yun_gans, da_yun_start_ages)
-                                  if get_shi_shen_for_gan(dg, ri_zhu) in ("正印", "偏印") and a < 8):
-            # 8岁前遇印→基础学习不好
-            if "985" in level or "顶尖" in level:
-                level = "🥇 211/一本（8岁前遇印运·基础不好）"
-                degree = "本科"
-
-    # ===== 中和（40-60分）：平衡型 =====
+    # ── 中和（40-60分）：有印更好无印也能学 ──
     elif shen_score >= 40:
-        if yin_before_18 and checks_passed >= 4:
+        if yin_in_basic and checks_passed >= 4 and wen_chang["has"]:
             level, degree = "🥇 985顶级大学", "硕士及以上"
-        elif yin_before_18 and checks_passed >= 3:
-            level, degree = "🥇 985顶级大学", "硕士"
-        elif yin_18_22 and checks_passed >= 3:
+        elif yin_in_basic and checks_passed >= 3:
+            level, degree = "🥇 985顶级大学", "本科"
+        elif yin_in_college and checks_passed >= 3:
             level, degree = "🥇 211/一本", "本科"
         elif checks_passed >= 3:
             level, degree = "🥇 211/一本", "本科"
@@ -424,24 +392,23 @@ def _determine_degree(
         else:
             level, degree = "🥉 大专/职校", "专科"
 
-    # ===== 身弱（<40分）：印/比=正面；官杀/食伤/财=反面 =====
+    # ── 身弱（<40分）：必须印运托底 ──
     elif shen_score >= 15:
-        # 身弱关键：0-18岁正面运（印/比）必须≥反面运（官杀/食伤/财）
-        if basic_net > 0 and checks_passed >= 3 and wen_chang["has"]:
+        if yin_in_basic and checks_passed >= 3 and wen_chang["has"]:
             level, degree = "🥇 211/一本", "本科"
-        elif basic_net > 0 and checks_passed >= 2:
+        elif yin_in_basic and checks_passed >= 2:
             level, degree = "🥈 普通本科", "本科"
-        elif basic_net >= 0 and checks_passed >= 2:
+        elif yin_in_college and checks_passed >= 2:
             level, degree = "🥈 普通本科", "专科"
-        elif has_yin and checks_passed >= 2:
-            # 有印运补救但0-18岁反面运偏多→低一层
+        elif has_yin:
             level, degree = "🥉 大专/职校", "专科"
         else:
+            # 身弱+无印运 → 学不进去
             level, degree = "🪜 初中/高中", "初中/专科"
 
-    # ===== 身极弱（<15分）：除非大运强力补救 =====
+    # ── 身极弱（<15分）：除非大运印比强力补救 ──
     else:
-        if basic_net > 0 and checks_passed >= 3 and wen_chang["has"]:
+        if yin_in_basic and checks_passed >= 3 and wen_chang["has"]:
             level, degree = "🥈 普通本科", "本科"
         else:
             level, degree = "🪜 初中/高中", "初中/专科"
@@ -449,15 +416,11 @@ def _determine_degree(
     # ── 年干伤官拉低 ──
     if nian_negative:
         if "顶尖" in level or "985" in level:
-            level = level.replace("👑 ", "🥇 ").replace("🥇 ", "🥇 ")
-            level += "（年干伤官拉低）"
-        elif "211" in level or "一本" in level:
-            level += "（年干伤官拉低）"
+            level = "🥇 211/一本（年干伤官拉低）" if "985" not in level else level.replace("985", "211")
         if degree in ("硕士及以上", "硕士"):
             degree = "本科"
-        _reason()
 
-    return level, degree, _reason()
+    return level, degree, _build_reason()
 
 
 def analyze_education(
@@ -465,37 +428,45 @@ def analyze_education(
     shen_score: float, shen_label: str, xi_yong: list[str],
     da_yun_gans: list[str], da_yun_zhis: list[str], da_yun_start_ages: list[float],
 ) -> dict:
-    """学历分析完整体系 v2.2"""
-    # ── 第0层：年柱有印三档法 ──
+    """学历分析完整体系 v2.3 — 九龙道长原始理论"""
     year_check = _check_year_pillar_yin(bazi_gans[0], bazi_zhis[0], ri_zhu)
-
-    # ── 年干伤官检查 ──
     nian_check = _nian_gan_shi_shen_check(bazi_gans[0], ri_zhu)
-
-    # ── 文昌检查（年干查命理） ──
     wen_chang = _check_wen_chang(bazi_gans[0], bazi_zhis, da_yun_zhis)
 
-    # ── 六步排查 ──
     six_steps = _check_six_steps(
         bazi_gans, bazi_zhis, ri_zhu, shen_label, shen_score, xi_yong,
         da_yun_gans, da_yun_zhis, da_yun_start_ages
     )
 
-    # ── 学业期大运十神正反面分析 ──
-    dy_effect = _analyze_da_yun_shi_shen_effect(da_yun_gans, da_yun_start_ages, ri_zhu, shen_score)
+    dy_analysis = _analyze_da_yun_for_study(da_yun_gans, da_yun_start_ages, ri_zhu, shen_score)
 
-    # ── 学校等级+学历层级 ──
     school_level, degree, reason = _determine_degree(
         shen_score, shen_label, six_steps["passed"],
         da_yun_gans, da_yun_start_ages,
         year_check, nian_check, wen_chang, ri_zhu,
     )
 
-    # ── 最终结论 ──
-    final_note = reason
-
-    # 文昌补文昌（日干查补运）
     bu_wen_chang_zhi = WEN_CHANG_MAP.get(ri_zhu, "")
+
+    # 构建细节
+    step_details = []
+    step_details.append(f"【第0层】年柱有印: {year_check['detail']}")
+    step_details.append(f"【年干】{nian_check['shi_shen']}: {nian_check['note']}")
+    step_details.append(f"【身强弱】{dy_analysis['shen_level']}({round(shen_score,1)}分)")
+    
+    # 印运信息
+    edu_yin_ages = six_steps.get("checks", {}).get("step5", {}).get("yin_ages", [])
+    if edu_yin_ages:
+        step_details.append(f"【印运】{min(edu_yin_ages)}岁到")
+    else:
+        step_details.append("【印运】学业窗口期无印运")
+    
+    step_details.append(f"【文昌】{wen_chang['detail']}")
+    step_details.append(f"【六步】{six_steps['passed']}/{six_steps['total']}项通过")
+    for wk, wv in dy_analysis["windows"].items():
+        if wv["details"]:
+            effects = ", ".join(f"{d['age']}岁{d['gan']}={d['shi_shen']}({d['tag']})" for d in wv["details"])
+            step_details.append(f"【{wv['name']}】{effects} → 净{wv['effect']}")
 
     return {
         "school_level": school_level,
@@ -506,8 +477,8 @@ def analyze_education(
         "wen_chang_ming_li": wen_chang,
         "wen_chang_bu_yun": {"zhi": bu_wen_chang_zhi},
         "six_steps": six_steps,
-        "final_note": final_note,
-        "da_yun_shi_shen_effect": dy_effect,
+        "final_note": reason,
+        "six_step_details": step_details,
         "edu_da_yun_windows": [
             f"{dg}{da_yun_zhis[i] if i < len(da_yun_zhis) else ''}运(~{int(age)})"
             for i, (dg, age) in enumerate(zip(da_yun_gans, da_yun_start_ages))
