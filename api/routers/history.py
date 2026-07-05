@@ -1,6 +1,6 @@
 """金鉴真人·分析历史管理路由 v1.0 — 保存/查询分析历史"""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from api.routers.auth import get_current_user
 from database.connection import get_connection, row_to_dict, rows_to_dicts
@@ -44,19 +44,17 @@ async def save_analysis(data: dict, user: dict = Depends(get_current_user)):
 
 
 @router.get("/analyses")
-async def get_history(user: dict = Depends(get_current_user)):
+async def get_history(user: dict = Depends(get_current_user), limit: int = Query(50, ge=1, le=200)):
     """获取当前用户的历史分析记录"""
     conn = get_connection()
     try:
         cursor = conn.execute(
-            """
-            SELECT id, bazi, ri_zhu, status, created_at
-            FROM analyses
-            WHERE user_id = ?
-            ORDER BY created_at DESC
-            LIMIT 50
-        """,
-            (user["user_id"],),
+            f"""SELECT id, bazi, ri_zhu, status, created_at
+                FROM analyses
+                WHERE user_id = ?
+                ORDER BY created_at DESC
+                LIMIT ?""",
+            (user["user_id"], limit),
         )
         rows = rows_to_dicts(cursor.fetchall())
 
@@ -83,18 +81,40 @@ async def get_history(user: dict = Depends(get_current_user)):
 
 @router.get("/analyses/{analysis_id}")
 async def get_analysis_detail(analysis_id: int, user: dict = Depends(get_current_user)):
-    """获取单个分析详情（含引擎完整结果）"""
+    """获取单个分析详情（含引擎完整结果+基础数据）"""
     conn = get_connection()
     try:
         cursor = conn.execute(
-            "SELECT id, bazi, status, created_at FROM analyses WHERE id = ? AND user_id = ?",
+            """SELECT a.id, a.bazi, a.status, a.created_at,
+                      bd.year_data, bd.month_data, bd.day_data, bd.hour_data,
+                      bd.ri_zhu_gan, bd.ri_zhu_wx, bd.ri_zhu_yy,
+                      bd.tian_gan_notes, bd.di_zhi_notes,
+                      bd.cheng_gu_weight, bd.cheng_gu_comment,
+                      ar.shen_qiang_ruo, ar.cai_xing, ar.ge_ju,
+                      ar.xi_yong_shen, ar.energy, ar.da_yun, ar.dimensions
+               FROM analyses a
+               LEFT JOIN basic_data bd ON a.id = bd.analysis_id
+               LEFT JOIN analysis_results ar ON a.id = ar.analysis_id
+               WHERE a.id = ? AND a.user_id = ?""",
             (analysis_id, user["user_id"]),
         )
         row = cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="分析记录不存在")
 
-        return {"success": True, "analysis": row_to_dict(row)}
+        d = dict(row)
+        # 将JSON字符串字段解析为dict
+        import json
+        for json_field in ["year_data", "month_data", "day_data", "hour_data",
+                           "tian_gan_notes", "di_zhi_notes",
+                           "shen_qiang_ruo", "cai_xing", "ge_ju",
+                           "xi_yong_shen", "energy", "da_yun", "dimensions"]:
+            if d.get(json_field):
+                try:
+                    d[json_field] = json.loads(d[json_field])
+                except (json.JSONDecodeError, TypeError):
+                    pass
+        return {"success": True, "analysis": d}
     except HTTPException:
         raise
     except Exception as e:

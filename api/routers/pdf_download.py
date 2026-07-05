@@ -28,14 +28,24 @@ class PDFRequest(BaseModel):
 async def download_pdf(request: PDFRequest):
     """生成真正的文本PDF报告并下载"""
     try:
-        # 调用引擎（排除success标志后即为数据）
+        # 农历→公历转换（同analyze路由逻辑）
+        sy, sm, sd = request.birth_year, request.birth_month, request.birth_day
+        lunar_month, lunar_day = None, None
+        if request.calendar_type == "lunar":
+            lunar_month, lunar_day = request.birth_month, request.birth_day
+            sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "engine"))
+            from lunar import lunar_to_solar
+            solar = lunar_to_solar(request.birth_year, request.birth_month, request.birth_day)
+            sy, sm, sd = solar.year, solar.month, solar.day
+
+        # 调用引擎（传递农历参数让引擎正确处理）
         engine_result = call_engine(
             request.name,
             request.gender,
-            request.birth_year,
-            request.birth_month,
-            request.birth_day,
+            sy, sm, sd,
             request.birth_hour,
+            lunar_month=lunar_month,
+            lunar_day=lunar_day,
         )
 
         if not engine_result.get("success"):
