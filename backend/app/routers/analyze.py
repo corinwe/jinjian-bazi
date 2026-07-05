@@ -145,10 +145,10 @@ def run_full_analysis_v4(
         gender=gender,
     )
 
-    # 3. 全量分析 v4
-    from pipeline_v4 import run_v4
+    # 3. 全量分析 v5（2026-07-05 修复：v4已归档，改用v5）
+    from pipeline_v5 import run_v5
 
-    result = run_v4(bazi, birth_year, birth_month)
+    result = run_v5(bazi, birth_year, birth_month, birth_day)
 
     # 4. 合并排盘信息
     result["paipan_info"] = pai
