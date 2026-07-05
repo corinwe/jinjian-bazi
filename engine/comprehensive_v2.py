@@ -970,9 +970,10 @@ def run_comprehensive_engine(
 
     best_dy = dy_list_with_score[best_idx] if best_idx >= 0 and best_idx < len(dy_list_with_score) else {}
 
-    # 事业分析（v2.0完整版 — 36命格+伟人格+官杀分析+五行定行业+三起三落）
+    # 事业分析（v3.0完整版 — 财官联动+升官三要素+丢官信号+五行流通+官星合化）
     career = analyze_career_advanced(
-        ri_zhu, all_gans, all_zhis, shen_label, shen_score, xi_yong, ji_shen, ge_ju_main, ge_ju_detail
+        ri_zhu, all_gans, all_zhis, shen_label, shen_score, xi_yong, ji_shen, ge_ju_main, ge_ju_detail,
+        cai_xing_total=cai_detail.total,
     )
 
     # 财富分析（五层动态体系）
