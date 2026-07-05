@@ -781,18 +781,70 @@ def check_thin_fate_factors(
     if hour_shi_shen == "劫财":
         factors.append({"因素": "时支劫财", "说明": "时干为劫财，克子女，或子女破家", "严重": True})
 
-    # 子女星空亡（简化检测）
+    # 子女星空亡检查（精确旬空检测）
     children_stars = unified_stars["all_children_stars"]
-    star_scan = scan_children_stars_in_bazi(ri_zhu, bazi_gans, bazi_zhis, children_stars)
-    if star_scan["缺失"]:
-        factors.append({"因素": "命局无子女星", "说明": "八字中无子女星，缘分极薄", "严重": True})
+    if len(bazi_gans) >= 4 and len(bazi_zhis) >= 4:
+        ri_gan = bazi_gans[2]
+        ri_zhi = bazi_zhis[2]
+        kong_wang_zhis = _get_kong_wang(ri_gan, ri_zhi)
+        # 检查子女星所在之地支是否为空亡
+        found_empty = []
+        for i, z in enumerate(bazi_zhis):
+            if z in kong_wang_zhis:
+                for cg, _ in DI_ZHI_CANG_GAN.get(z, []):
+                    ss = get_shi_shen_for_cang_gan(cg, ri_zhu)
+                    if ss in children_stars:
+                        found_empty.append(f"{z}(藏{cg}{ss})")
+        if found_empty:
+            factors.append({
+                "因素": "子女星空亡",
+                "说明": f"子女星所在{'、'.join(found_empty)}逢空亡，缘分浅",
+                "严重": True
+            })
 
-    # 时柱空亡（简化检测）
-    # 空亡 = 旬空。甲子旬戌亥空，甲戌旬申酉空...
-    # 简化：不精确计算，仅标记
-    factors.append(
-        {"因素": "时柱空亡", "说明": "需结合具体日柱计算旬空（简化检测），时柱空亡则晚年孤独", "严重": False}
-    )
+    # 子女星被冲刑检查
+    children_star_positions = []
+    for i, g in enumerate(bazi_gans):
+        ss = get_shi_shen_for_gan(g, ri_zhu)
+        if ss in children_stars:
+            children_star_positions.append(("天干", g))
+    for i, z in enumerate(bazi_zhis):
+        for cg, _ in DI_ZHI_CANG_GAN.get(z, []):
+            ss = get_shi_shen_for_cang_gan(cg, ri_zhu)
+            if ss in children_stars:
+                children_star_positions.append((f"地支{z}", cg))
+    for pos_type, pos_val in children_star_positions:
+        if pos_type.startswith("地支"):
+            z = pos_type[2:]  # 提取地支字
+            # 被冲
+            if LIU_CHONG.get(z) and LIU_CHONG[z] in bazi_zhis:
+                factors.append({
+                    "因素": "子女星被冲",
+                    "说明": f"子女星所在{z}被{LIU_CHONG[z]}冲，生育困难",
+                    "严重": True
+                })
+            # 被刑
+            xing_results = check_xing(bazi_zhis)
+            for xing_type, _ in xing_results:
+                if z in xing_type:
+                    factors.append({
+                        "因素": "子女星被刑",
+                        "说明": f"子女星所在{z}参与{xing_type}，生育困难",
+                        "严重": True
+                    })
+                    break
+
+    # 时柱空亡检查（替换原简化检测）
+    if len(bazi_gans) >= 4 and len(bazi_zhis) >= 4:
+        ri_gan = bazi_gans[2]
+        ri_zhi = bazi_zhis[2]
+        kong_wang_zhis = _get_kong_wang(ri_gan, ri_zhi)
+        if hour_zhi in kong_wang_zhis:
+            factors.append({
+                "因素": "时柱空亡",
+                "说明": f"时支{hour_zhi}逢空亡，晚年孤独，与子女缘分变浅",
+                "严重": True
+            })
 
     # 子女星被合化
     for (z1, z2), wx in LIU_HE.items():
@@ -826,6 +878,10 @@ def check_thin_fate_factors(
             shi_shang_count += 1
     if yin_count >= 2 and gender == "女":
         factors.append({"因素": "印旺制食伤", "说明": f"天干{yin_count}个印星克制食伤，不容易受孕", "严重": True})
+
+    # 命局无子女星
+    if not children_star_positions:
+        factors.append({"因素": "命局无子女星", "说明": "八字中无子女星，缘分极薄", "严重": True})
 
     return {"因素列表": factors, "严重因素数": sum(1 for f in factors if f["严重"]), "总因素数": len(factors)}
 
@@ -889,6 +945,22 @@ def check_fertility_windows(
                         other = z2 if ln_zhi == z1 else z1
                         if other in bazi_zhis:
                             reasons.append(f"流年{ln_zhi}合{other}化{wx}")
+
+                # 子女星被解合 → 原局有子女星被合化，流年冲开合化
+                for (z1, z2), wx in LIU_HE.items():
+                    if z1 in bazi_zhis and z2 in bazi_zhis:
+                        # 检查合化涉及的地支是否含子女星
+                        for z in (z1, z2):
+                            for cg, _ in DI_ZHI_CANG_GAN.get(z, []):
+                                ss = get_shi_shen_for_cang_gan(cg, ri_zhu)
+                                if ss in children_stars:
+                                    # 流年冲开合化
+                                    chong_map = {"子":"午","午":"子","丑":"未","未":"丑",
+                                                  "寅":"申","申":"寅","卯":"酉","酉":"卯",
+                                                  "辰":"戌","戌":"辰","巳":"亥","亥":"巳"}
+                                    if chong_map.get(ln_zhi) in (z1, z2):
+                                        reasons.append(f"流年{ln_zhi}冲开{z1}{z2}合化→子女星被解合")
+                                    break
 
                 if reasons:
                     windows.append({"年份": year, "原因": reasons})
@@ -1217,8 +1289,13 @@ def consistency_check(report: dict) -> dict:
     # 检查称谓
     birth_years = report.get("出生年份推理", {}).get("可能年份", [])
     if len(birth_years) >= 2:
-        # 如果有2+个年份，第一个不能叫"长子"如果前面已有
-        pass  # 具体称谓需用户数据
+        # 如果有2+个推断年份，注意称谓一致性
+        first_year = birth_years[0].get("年份", "?") if isinstance(birth_years[0], dict) else "?"
+        last_year = birth_years[-1].get("年份", "?") if isinstance(birth_years[-1], dict) else "?"
+        warnings.append(
+            f"推断有{len(birth_years)}个子女可能年份({first_year}~{last_year})，"
+            f"称谓需根据实际性别确认（长子/长女/次子/次女）"
+        )
 
     # 生育年龄检查
     if birth_years:
@@ -1831,6 +1908,14 @@ def analyze_children_full(
     # ── Step 3: 时支生育力 ──
     fertility = get_shi_zhi_fertility(hour_zhi, bazi_zhis)
 
+    # 空亡减半检查（skill原文：时支空亡→减半）
+    if len(bazi_gans) >= 4 and len(bazi_zhis) >= 4:
+        kong_wang = _get_kong_wang(bazi_gans[2], bazi_zhis[2])
+        if hour_zhi in kong_wang:
+            fertility["调校后中值"] *= 0.5
+            fertility["削弱因素"].append("时支空亡→减半")
+            fertility["调校说明"] = "时支逢空亡→中值减半"
+
     # ── Step 4: 子女星评分 ──
     star_score = calc_children_star_score(ri_zhu, bazi_gans, bazi_zhis, unified_stars)
 
@@ -1889,7 +1974,8 @@ def analyze_children_full(
 
     # ── 构建报告 ──
     report = {
-        "基础信息": {"日主": ri_zhu, "性别": gender, "时柱": f"{hour_gan}{hour_zhi}", "时柱十神": hour_shi_shen},
+        "基础信息": {"日主": ri_zhu, "性别": gender, "时柱": f"{hour_gan}{hour_zhi}", "时柱十神": hour_shi_shen,
+                     "子女宫": {"时干": f"{hour_gan}→长子/长女", "时支": f"{hour_zhi}→次子及后续"}},
         "子女星定位": {
             "流派A": unified_stars["school_a"],
             "流派B": unified_stars["school_b"],
