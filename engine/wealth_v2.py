@@ -40,8 +40,8 @@ WU_KU = {
     "木": {"比劫库": "未", "财库": "戌", "官杀库": "丑", "印库": "辰", "食伤库": "戌"},
     "火": {"比劫库": "戌", "财库": "丑", "官杀库": "辰", "印库": "未", "食伤库": "戌"},
     "土": {"比劫库": "戌", "财库": "辰", "官杀库": "未", "印库": "戌", "食伤库": "丑"},
-    "金": {"比劫库": "丑", "财库": "未", "官杀库": "戌", "印库": "丑", "食伤库": "辰"},
-    "水": {"比劫库": "辰", "财库": "戌", "官杀库": "未", "印库": "丑", "食伤库": "未"},
+    "金": {"比劫库": "丑", "财库": "未", "官杀库": "戌", "印库": "戌", "食伤库": "辰"},
+    "水": {"比劫库": "辰", "财库": "戌", "官杀库": "戌", "印库": "丑", "食伤库": "未"},
 }
 
 
@@ -184,6 +184,28 @@ def analyze_wealth_full(
     all_ss = [get_shi_shen_for_gan(g, ri_zhu) for g in bazi_gans]
     has_shi_shang = "食神" in all_ss or "伤官" in all_ss
 
+    # 冲库检查（辰戌冲/丑未冲=开财库）
+    cai_ku_open = False
+    cai_ku_signals = []
+    if len(bazi_zhis) >= 4:
+        chong_pairs = [("辰", "戌"), ("戌", "辰"), ("丑", "未"), ("未", "丑")]
+        for i in range(len(bazi_zhis)):
+            for j in range(i + 1, len(bazi_zhis)):
+                pair = (bazi_zhis[i], bazi_zhis[j])
+                if pair in chong_pairs:
+                    # 检查冲开的是否为财库
+                    ri_wx = TIAN_GAN_WU_XING[ri_zhu]
+                    cai_ku_zhi = WU_KU.get(ri_wx, {}).get("财库", "")
+                    if bazi_zhis[i] == cai_ku_zhi or bazi_zhis[j] == cai_ku_zhi:
+                        cai_ku_open = True
+                        cai_ku_signals.append(
+                            f"{bazi_zhis[i]}{bazi_zhis[j]}冲→开财库({cai_ku_zhi})，财富爆发信号"
+                        )
+                    else:
+                        cai_ku_signals.append(
+                            f"{bazi_zhis[i]}{bazi_zhis[j]}冲→并非本命财库，需大运流年引动"
+                        )
+
     return {
         "status": status,
         "status_template": template,
@@ -193,6 +215,8 @@ def analyze_wealth_full(
         "wealth_level": level,
         "level_index": level_idx,
         "cai_ku": ku,
+        "cai_ku_open": cai_ku_open,
+        "cai_ku_signals": cai_ku_signals,
         "has_shi_shang_root": has_shi_shang,
         "wealth_windows": wealth_windows[:3],
         "summary": f"理论{level}，财星{cai_total}分，围克折扣{round(discount * 100)}%，有效{round(effective_score, 1)}分",
@@ -361,9 +385,18 @@ def analyze_liunian_wealth(bazi_data: dict, liunian_gan: str, liunian_zhi: str) 
     if not is_xi_yong and ln_ss and ln_ss not in ("正财", "偏财", "正印", "偏印"):
         # 非喜用的比劫/官杀/食伤
         if ln_ss in ("比肩", "劫财"):
-            score_impact -= 2.0
-            impact_parts.append("比劫流年，防破财竞争")
-            advice_parts.append("谨慎投资，注意人际关系")
+            if shen_label == "身强":
+                score_impact -= 3.0
+                impact_parts.append("身强遇比劫流年→比劫夺财，防破财")
+                advice_parts.append("身强比劫年，忌投资合作，防朋友借钱")
+            elif shen_label == "身弱":
+                score_impact += 2.0
+                impact_parts.append("身弱遇比劫流年→比劫帮身，可得合作之财")
+                advice_parts.append("身弱喜比劫帮身，可与人合作求财")
+            else:
+                score_impact -= 2.0
+                impact_parts.append("比劫流年，防破财竞争")
+                advice_parts.append("谨慎投资，注意人际关系")
         elif ln_ss in ("正官", "七杀"):
             if shen_label == "身强":
                 score_impact += 1.0
@@ -381,8 +414,8 @@ def analyze_liunian_wealth(bazi_data: dict, liunian_gan: str, liunian_zhi: str) 
             impact_parts.append(f"流年伏吟{_ZHI_NAMES.get(idx, '')}，能量加倍")
             break
 
-    # 流年地支冲原局
-    _LIU_HE_MAP = {
+    # 流年地支冲原局（六冲映射）
+    _LIU_CHONG_MAP = {
         "子": "午",
         "丑": "未",
         "寅": "申",
@@ -397,7 +430,7 @@ def analyze_liunian_wealth(bazi_data: dict, liunian_gan: str, liunian_zhi: str) 
         "亥": "巳",
     }
     for idx, zhi in enumerate(bazi_zhis):
-        if _LIU_HE_MAP.get(liunian_zhi) == zhi:
+        if _LIU_CHONG_MAP.get(liunian_zhi) == zhi:
             score_impact -= 1.5
             pos_name = _ZHI_NAMES.get(idx, "")
             impact_parts.append(f"流年冲动{pos_name}，财运动荡")
@@ -411,7 +444,7 @@ def analyze_liunian_wealth(bazi_data: dict, liunian_gan: str, liunian_zhi: str) 
         advice_parts.append("利学习、决策、签合同")
 
     # 财星流年又逢冲 → 大起大落
-    if is_wealth and any(_LIU_HE_MAP.get(liunian_zhi) == z for z in bazi_zhis):
+    if is_wealth and any(_LIU_CHONG_MAP.get(liunian_zhi) == z for z in bazi_zhis):
         score_impact -= 1.0
         impact_parts.append("财星流年逢冲，有财但波动大")
 

@@ -124,9 +124,12 @@ DIRECTION_MAP = {"金": "西/西北", "水": "北", "木": "东/东南", "火": 
 
 
 def analyze_property(
-    ri_zhu: str, ri_zhi: str, xi_yong: list[str], da_yun_list: list[dict], best_idx: int, cai_xing_total: float
+    ri_zhu: str, ri_zhi: str, xi_yong: list[str], da_yun_list: list[dict], best_idx: int, cai_xing_total: float,
+    bazi_zhis: list[str] | None = None,
 ) -> dict:
     """§9 置业分析"""
+    from xing_chong_he_hua import check_all_relations
+
     xi = xi_yong[0] if xi_yong else "土"
     direction = DIRECTION_MAP.get(xi, "吉")
 
@@ -149,10 +152,28 @@ def analyze_property(
     else:
         property_level = "偏弱，需大运配合"
 
+    # 刑冲合害→房产/搬迁判断
+    property_timing = []
+    if bazi_zhis and len(bazi_zhis) >= 4:
+        rel = check_all_relations(bazi_zhis)
+        # 土冲→住宅变动（辰戌/丑未为土冲）
+        for ch in rel["冲"]:
+            if "辰戌" in ch or "丑未" in ch:
+                property_timing.append(f"{ch}→土冲越冲越强，房产/住宅变动机遇期")
+        # 驿马冲→搬迁/搬家
+        for ch in rel["冲"]:
+            if ch in ("寅申冲", "申寅冲", "巳亥冲", "亥巳冲"):
+                property_timing.append(f"{ch}→驿马冲，搬迁/换房机遇期")
+        # 三合→购房窗口
+        for he in rel["三合"]:
+            if he.get("energy", 0) >= 1.0:
+                property_timing.append(f"{he['type']}→能量共振，可把握购房窗口")
+
     return {
         "property_potential": f"喜用{xi}→宜选{direction}方位",
         "property_level": property_level,
         "windows": windows,
+        "property_timing": property_timing if property_timing else ["无明显冲合信号"],
         "risk": "忌在忌神大运购置大额不动产",
     }
 
@@ -985,7 +1006,7 @@ def run_comprehensive_engine(
     appearance = analyze_appearance(ri_zhu, shen_label, shen_score, all_gans, all_zhis, ge_ju_main)
 
     # 置业分析
-    property_analysis = analyze_property(ri_zhu, bazi.day.zhi, xi_yong, dy_list_with_score, best_idx, cai_detail.total)
+    property_analysis = analyze_property(ri_zhu, bazi.day.zhi, xi_yong, dy_list_with_score, best_idx, cai_detail.total, all_zhis)
 
     # 子女分析（v2完整版 — 十二长生+出生年份推理+父母合参）
     children = analyze_children_advanced(

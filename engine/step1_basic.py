@@ -174,7 +174,7 @@ def _get_shi_shen(gan: str, ri_zhu: str, is_ri_zhu: bool = False, gender: str = 
         return "偏印" if same_yy else "正印"
     # 我生者为食伤
     if WU_XING_SHENG[ri_wx] == gan_wx:
-        return "伤官" if same_yy else "食神"
+        return "食神" if same_yy else "伤官"
     # 克我者为官杀
     if WU_XING_KE[gan_wx] == ri_wx:
         return "七杀" if same_yy else "正官"
@@ -200,13 +200,13 @@ def _get_cang_gan_shi_shen(cg: str, ri_zhu: str) -> str:
     if WU_XING_SHENG[cg_wx] == ri_wx:
         return "偏印" if same_yy else "正印"
     if WU_XING_SHENG[ri_wx] == cg_wx:
-        return "伤官" if same_yy else "食神"
+        return "食神" if same_yy else "伤官"
     if WU_XING_KE[cg_wx] == ri_wx:
         return "七杀" if same_yy else "正官"
     if WU_XING_KE[ri_wx] == cg_wx:
         return "偏财" if same_yy else "正财"
     if cg_wx == ri_wx:
-        return "劫财" if same_yy else "比肩"
+        return "比肩" if same_yy else "劫财"
     return ""
 
 
@@ -401,7 +401,7 @@ TIAN_GAN_HE = {
     ("癸", "戊"): "戊癸合化火",
 }
 
-# 天干相冲
+# 天干相冲（仅四冲标准）
 TIAN_GAN_CHONG = {
     ("甲", "庚"): "甲庚冲",
     ("庚", "甲"): "甲庚冲",
@@ -411,14 +411,6 @@ TIAN_GAN_CHONG = {
     ("壬", "丙"): "丙壬冲",
     ("丁", "癸"): "丁癸冲",
     ("癸", "丁"): "丁癸冲",
-    ("戊", "甲"): "戊甲冲",
-    ("甲", "戊"): "戊甲冲",
-    ("己", "乙"): "己乙冲",
-    ("乙", "己"): "己乙冲",
-    ("丙", "庚"): "丙庚冲",
-    ("庚", "丙"): "丙庚冲",
-    ("丁", "辛"): "丁辛冲",
-    ("辛", "丁"): "丁辛冲",
 }
 
 
@@ -622,6 +614,16 @@ def compute_di_zhi_notes(zhis: list[str]) -> list[str]:
                 break
         if not has_zi_mao:
             notes.append("子卯无礼之刑")
+
+    # 自刑（辰辰/午午/酉酉/亥亥）——需要原始重复计数
+    ZI_XING_TARGETS = {"辰", "午", "酉", "亥"}
+    for z in ZI_XING_TARGETS:
+        count_z = sum(1 for dz in zhis if dz == z)
+        if count_z >= 2:
+            desc = f"{z}{z}自刑"
+            already = any(desc in n for n in notes)
+            if not already:
+                notes.append(desc)
 
     # 去重
     seen = set()

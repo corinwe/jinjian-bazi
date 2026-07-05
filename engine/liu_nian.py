@@ -43,7 +43,7 @@ FAN_TAI_SUI = {
 
 def check_fan_tai_sui(year_zhi: str, liu_nian_zhi: str) -> tuple[str, float] | None:
     """检查犯太岁"""
-    from xing_chong_he_hua import LIU_CHONG, LIU_HAI, SAN_XING
+    from xing_chong_he_hua import LIU_CHONG, LIU_HAI, LIU_PO, SAN_XING
 
     # 值太岁（本命年）
     if liu_nian_zhi == year_zhi:
@@ -60,6 +60,10 @@ def check_fan_tai_sui(year_zhi: str, liu_nian_zhi: str) -> tuple[str, float] | N
     # 害太岁
     if LIU_HAI.get(year_zhi) == liu_nian_zhi:
         return ("害太岁", FAN_TAI_SUI["害太岁"])
+
+    # 破太岁
+    if (year_zhi, liu_nian_zhi) in LIU_PO or (liu_nian_zhi, year_zhi) in LIU_PO:
+        return ("破太岁", FAN_TAI_SUI["破太岁"])
 
     return None
 

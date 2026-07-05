@@ -199,7 +199,31 @@ def analyze_misfortune(
     tian_luo = _check_tian_luo_di_wang(nian_na_yin)
     result["tian_luo_di_wang"] = tian_luo
 
-    # ④ 印星被冲检查
+    # ④ 三刑/冲/害检查（对应docstring"三刑/冲/害应事规则"）
+    xing_chong_hai = []
+    from xing_chong_he_hua import check_xing, check_all_relations
+
+    # 三刑检查
+    xing_results = check_xing(bazi_zhis)
+    for xing_type, energy in xing_results:
+        xing_chong_hai.append({
+            "type": xing_type,
+            "energy": energy,
+            "note": f"{xing_type}→恶神能量{energy}倍，36岁后应事概率大增"
+        })
+
+    # 冲刑叠加：同时有冲和刑 → 更严重
+    rel = check_all_relations(bazi_zhis)
+    if rel["冲"] and rel["刑"]:
+        xing_chong_hai.append({
+            "type": "冲刑叠加",
+            "energy": 1.5,
+            "note": "冲刑并存→能量叠加，灾祸风险更高"
+        })
+
+    result["xing_chong_hai"] = xing_chong_hai if xing_chong_hai else [{"type": "无显著刑冲害", "energy": 0}]
+
+    # ⑤ 印星被冲检查
     yin_chong = []
     all_ss = [get_shi_shen_for_gan(g, ri_zhu) for g in bazi_gans]
     yin_count = sum(1 for ss in all_ss if ss in ("正印", "偏印"))
@@ -214,7 +238,7 @@ def analyze_misfortune(
             yin_chong.append(f"印星{yin_count}个→护身力强")
     result["yin_protection"] = yin_chong if yin_chong else ["印星护身正常"]
 
-    # ⑤ 恶神能量检查
+    # ⑥ 恶神能量检查
     evil_types = []
     for g in bazi_gans:
         ss = get_shi_shen_for_gan(g, ri_zhu)
@@ -229,7 +253,7 @@ def analyze_misfortune(
 
     result["evil_energy"] = energy_checks
 
-    # ⑥ 综合评级
+    # ⑦ 综合评级
     risk_level = "低"
     risk_score = 0
     for ec in energy_checks:
@@ -244,6 +268,15 @@ def analyze_misfortune(
         risk_score += 0.5
     if zai_sha:
         risk_score += 1
+
+    # 三刑/冲/害加入风险评分
+    for xch in xing_chong_hai:
+        if xch.get("energy", 0) >= 1.2:
+            risk_score += 1.5
+        elif xch.get("energy", 0) >= 0.8:
+            risk_score += 1.0
+        elif xch.get("energy", 0) >= 0.5:
+            risk_score += 0.5
 
     if risk_score >= 4:
         risk_level = "高"

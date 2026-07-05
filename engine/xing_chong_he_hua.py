@@ -10,6 +10,7 @@
   半合: 申子/子辰·亥卯/卯未·寅午/午戌·巳酉/酉丑
   暗合: 寅午戌中暗合等
   拱合: 隔支拱合
+  六破: 子酉破·寅亥破·卯午破·辰丑破·巳申破·未戌破
   合化条件: 天干引化
 """
 
@@ -94,6 +95,22 @@ BAN_HE = {
     ("酉", "丑"): "金",
 }
 
+# ── 六破 ──
+LIU_PO = {
+    ("子", "酉"): "子酉破",
+    ("酉", "子"): "子酉破",
+    ("寅", "亥"): "寅亥破",
+    ("亥", "寅"): "寅亥破",
+    ("辰", "丑"): "辰丑破",
+    ("丑", "辰"): "辰丑破",
+    ("午", "卯"): "午卯破",
+    ("卯", "午"): "午卯破",
+    ("申", "巳"): "申巳破",
+    ("巳", "申"): "申巳破",
+    ("戌", "未"): "戌未破",
+    ("未", "戌"): "戌未破",
+}
+
 # 刑冲合化能量系数
 NENG_LIANG = {
     "六冲": 1.0,  # 完整冲力
@@ -117,7 +134,6 @@ def check_chong(zhi1: str, zhi2: str) -> str | None:
 def check_xing(zhi_list: list[str]) -> list[tuple[str, float]]:
     """检查三刑 返回[(刑类型, 能量系数)]"""
     results = []
-    # 寅巳申三刑
     has_yin = "寅" in zhi_list
     has_si = "巳" in zhi_list
     has_shen = "申" in zhi_list
@@ -126,7 +142,6 @@ def check_xing(zhi_list: list[str]) -> list[tuple[str, float]]:
     elif (has_yin and has_si) or (has_si and has_shen) or (has_shen and has_yin):
         results.append(("寅巳申二刑", NENG_LIANG["二刑"]))
 
-    # 丑未戌三刑
     has_chou = "丑" in zhi_list
     has_wei = "未" in zhi_list
     has_xu = "戌" in zhi_list
@@ -135,11 +150,9 @@ def check_xing(zhi_list: list[str]) -> list[tuple[str, float]]:
     elif (has_chou and has_wei) or (has_wei and has_xu) or (has_xu and has_chou):
         results.append(("丑未戌二刑", NENG_LIANG["二刑"]))
 
-    # 子卯刑
     if "子" in zhi_list and "卯" in zhi_list:
         results.append(("子卯刑", NENG_LIANG["二刑"]))
 
-    # 自刑
     for zhi in ["辰", "午", "酉", "亥"]:
         if zhi_list.count(zhi) >= 2:
             results.append((f"{zhi}{zhi}自刑", NENG_LIANG["自刑"]))
