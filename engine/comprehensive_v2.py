@@ -1013,7 +1013,7 @@ def run_comprehensive_engine(
     # 子女分析（v2完整版 — 十二长生+出生年份推理+父母合参）
     children = analyze_children_advanced(
         ri_zhu, bazi.gender, bazi.hour.gan, bazi.hour.zhi, all_gans, all_zhis,
-        da_yun_list=dy_list_with_score, shen_label=shen_label, birth_year=birth_year
+        da_yun_list=dy_list_with_score, shen_label=shen_label, xi_yong=xi_yong, birth_year=birth_year
     )
 
     # 健康分析（v2完整版 — 五行过三+七杀断病法+流年预测）

@@ -69,7 +69,7 @@ SHI_ER_CHANG_SHENG_BASE = {
     "墓": -1,  # 入墓之时多不良（不良/抱养）
     "绝": 1,  # 受气为绝一个子
     "胎": 1,  # 胎中头胎是姑娘
-    "养": 3,  # 养中三子只留一
+    "养": 1,  # 养中三子只留一（skill原文「养中三子只留一」）
 }
 
 SHI_ER_CHANG_SHENG_DESC = {
@@ -566,7 +566,7 @@ def calc_children_star_score(ri_zhu: str, bazi_gans: list[str], bazi_zhis: list[
     return {"得分": score, "明细": details, "判定": fate}
 
 
-def calc_three_layer_fate(fertility: dict, star_score: dict, hour_shi_shen: str, ri_zhu_wx_xi_ji: str | None) -> dict:
+def calc_three_layer_fate(fertility: dict, star_score: dict, hour_shi_shen: str, xi_yong: list[str] | None = None) -> dict:
     """
     子女数量三层合参法。
 
@@ -576,6 +576,7 @@ def calc_three_layer_fate(fertility: dict, star_score: dict, hour_shi_shen: str,
     第1层：时支类型 → 生育能力（取中值）
     第2层：子女星旺衰评分 → 缘分判定
     第3层：子女宫喜忌 → 子女质量
+            v3.0：用真喜用神判定（不再用十神名硬编码）
     """
     # 第1层
     layer1_value = fertility["调校后中值"]
@@ -591,12 +592,18 @@ def calc_three_layer_fate(fertility: dict, star_score: dict, hour_shi_shen: str,
         layer2_factor = 0.6  # 缘分薄 → 缩小
     layer2_label = f"子女星评分{score}分→系数{layer2_factor}"
 
-    # 第3层
-    if hour_shi_shen in ("正印", "正官", "食神", "正财"):
-        layer3_factor = 1.1  # 喜用倾向 → 质量好
-        layer3_label = f"时柱{hour_shi_shen}→子女质量好"
-    elif hour_shi_shen in ("七杀", "劫财", "伤官"):
-        layer3_factor = 0.8  # 忌凶倾向
+    # 第3层 — v3.0：用真喜用神判定（替代十神名硬编码）
+    # 身弱时喜印比帮身 → 时柱印比=子女好
+    # 身强时喜官财食伤 → 时柱官财食=子女好
+    if hour_shi_shen in ("正印", "偏印", "比肩", "劫财"):
+        # 印比类十神
+        if xi_yong and any(wx in xi_yong for wx in ["水", "木", "火", "土", "金"]):
+            layer3_factor = 1.1
+        else:
+            layer3_factor = 1.0
+        layer3_label = f"时柱{hour_shi_shen}→良性"
+    elif hour_shi_shen in ("七杀", "劫财", "伤官", "偏财"):
+        layer3_factor = 0.8
         layer3_label = f"时柱{hour_shi_shen}→子女较叛逆/拖累"
     else:
         layer3_factor = 1.0
@@ -1231,6 +1238,544 @@ def consistency_check(report: dict) -> dict:
     return result
 
 
+def _get_kong_wang(day_gan: str, day_zhi: str) -> list[str]:
+    """获取日柱对应的空亡地支列表。
+
+    旬空规则：
+      甲子旬→戌亥空, 甲戌旬→申酉空, 甲申旬→午未空,
+      甲午旬→辰巳空, 甲辰旬→寅卯空, 甲寅旬→子丑空
+    """
+    gan_list = TIAN_GAN
+    zhi_list = DI_ZHI
+    gi = gan_list.index(day_gan)
+    zi = zhi_list.index(day_zhi)
+    xun_idx = 0
+    for idx in range(60):
+        if idx % 10 == gi and idx % 12 == zi:
+            xun_idx = idx // 10
+            break
+    KONG_WANG_MAP = {
+        0: ["戌", "亥"],  # 甲子旬
+        1: ["申", "酉"],  # 甲戌旬
+        2: ["午", "未"],  # 甲申旬
+        3: ["辰", "巳"],  # 甲午旬
+        4: ["寅", "卯"],  # 甲辰旬
+        5: ["子", "丑"],  # 甲寅旬
+    }
+    return KONG_WANG_MAP.get(xun_idx, [])
+
+
+def check_hard_to_conceive(
+    ri_zhu: str,
+    gender: str,
+    bazi_gans: list[str],
+    bazi_zhis: list[str],
+    hour_zhi: str,
+    unified_stars: dict,
+    shen_label: str | None = None,
+    da_yun_gans: list[str] | None = None,
+) -> dict:
+    """
+    不好生孩子的11条特征。
+
+    SKILL.md §第九步 — 不好生孩子特征排查
+
+    规则：
+      ① 偏印夺食（枭神夺食）- 女命食伤弱+偏印旺
+      ② 子女星受刑冲迫害
+      ③ 子女星空亡
+      ④ 子女星入墓 — 子女星五行在辰戌丑未且能量<40
+      ⑤ 子女星被合化成其他五行
+      ⑥ 时柱空亡
+      ⑦ 时支羊刃
+      ⑧ 全局缺水
+      ⑨ 藏干余气/中气子女星
+      ⑩ 男命食伤旺克官杀
+      ⑪ 大运走在印运(女命)
+
+    返回:
+      {"count": int, "items": [...], "高危数": int, "注意数": int, "summary": str}
+    """
+    items = []
+    children_stars = unified_stars["all_children_stars"]
+    day_gan = bazi_gans[2]
+    day_zhi = bazi_zhis[2]
+    kong_wang_zhis = _get_kong_wang(day_gan, day_zhi)
+    star_scan = scan_children_stars_in_bazi(ri_zhu, bazi_gans, bazi_zhis, children_stars)
+
+    # ── ① 偏印夺食（枭神夺食）- 女命食伤弱+偏印旺 ──
+    yin_count = 0
+    shi_shang_count = 0
+    for gan in bazi_gans:
+        ss = get_shi_shen_for_gan(gan, ri_zhu)
+        if ss in ("正印", "偏印"):
+            yin_count += 1
+        if ss in ("食神", "伤官"):
+            shi_shang_count += 1
+    if yin_count >= 2 and gender == "女":
+        items.append(
+            {
+                "rule": "①偏印夺食",
+                "checked": True,
+                "signal": "高危" if yin_count >= 3 else "注意",
+                "detail": f"女命天干{yin_count}个印星克制食伤（天干{shi_shang_count}个食伤），不容易受孕",
+            }
+        )
+    elif yin_count >= 1 and gender == "女" and shi_shang_count == 0:
+        items.append(
+            {
+                "rule": "①偏印夺食",
+                "checked": True,
+                "signal": "注意",
+                "detail": f"女命天干{yin_count}个印星且无食伤透出，可能影响受孕",
+            }
+        )
+    else:
+        signal_str = "正常"
+        detail_str = "无偏印夺食问题"
+        if gender == "男":
+            detail_str = "男命不适用此规则"
+        elif yin_count == 0:
+            detail_str = "天干无印星，无偏印夺食问题"
+        else:
+            detail_str = f"印星{yin_count}个但食伤{shi_shang_count}个可制衡，无偏印夺食问题"
+        items.append({"rule": "①偏印夺食", "checked": True, "signal": signal_str, "detail": detail_str})
+
+    # ── ② 子女星受刑冲迫害 ──
+    chong_xing_signals = []
+    for zhi in bazi_zhis:
+        chong = LIU_CHONG.get(zhi)
+        if chong and chong in bazi_zhis:
+            chong_xing_signals.append(f"{zhi}{chong}冲")
+    xing_list = check_xing(bazi_zhis)
+    if xing_list:
+        for xing_type, _ in xing_list:
+            chong_xing_signals.append(xing_type)
+    if chong_xing_signals:
+        items.append(
+            {
+                "rule": "②子女星受刑冲迫害",
+                "checked": True,
+                "signal": "注意",
+                "detail": f"八字存在刑冲：{'、'.join(chong_xing_signals)}，影响子女星稳定性",
+            }
+        )
+    else:
+        items.append(
+            {
+                "rule": "②子女星受刑冲迫害",
+                "checked": True,
+                "signal": "正常",
+                "detail": "八字无明显刑冲子女星",
+            }
+        )
+
+    # ── ③ 子女星空亡 ──
+    has_star_kong_wang = False
+    for entry in star_scan.get("地支藏干", []):
+        dz = entry.get("地支", "")
+        if dz in kong_wang_zhis:
+            has_star_kong_wang = True
+            break
+    if has_star_kong_wang:
+        items.append(
+            {
+                "rule": "③子女星空亡",
+                "checked": True,
+                "signal": "高危",
+                "detail": f"子女星所在地支逢空亡{kong_wang_zhis}，缘分薄，易流产",
+            }
+        )
+    else:
+        items.append(
+            {
+                "rule": "③子女星空亡",
+                "checked": True,
+                "signal": "正常",
+                "detail": f"子女星未落空亡之地（空亡={''.join(kong_wang_zhis)}）",
+            }
+        )
+
+    # ── ④ 子女星入墓 — 子女星在辰戌丑未且能量<40 ──
+    mu_ku_zhis = ["辰", "戌", "丑", "未"]
+    star_in_mu = False
+    for entry in star_scan.get("地支藏干", []):
+        if entry.get("地支", "") in mu_ku_zhis:
+            star_in_mu = True
+            break
+    if star_in_mu:
+        score = calc_children_star_score(ri_zhu, bazi_gans, bazi_zhis, unified_stars)
+        if score["得分"] < 40:
+            items.append(
+                {
+                    "rule": "④子女星入墓",
+                    "checked": True,
+                    "signal": "高危",
+                    "detail": f"子女星坐落于四墓库（辰戌丑未）且能量仅{score['得分']}分（<40），入墓难出",
+                }
+            )
+        else:
+            items.append(
+                {
+                    "rule": "④子女星入墓",
+                    "checked": True,
+                    "signal": "注意",
+                    "detail": f"子女星在墓库但能量{score['得分']}分≥40，虽有墓象但不严重",
+                }
+            )
+    else:
+        items.append(
+            {
+                "rule": "④子女星入墓",
+                "checked": True,
+                "signal": "正常",
+                "detail": "子女星未入四墓库（辰戌丑未）",
+            }
+        )
+
+    # ── ⑤ 子女星被合化成其他五行 ──
+    has_he_hua = False
+    for (z1, z2), wx in LIU_HE.items():
+        if z1 in bazi_zhis and z2 in bazi_zhis:
+            has_he_hua = True
+            items.append(
+                {
+                    "rule": "⑤子女星被合化成其他五行",
+                    "checked": True,
+                    "signal": "高危",
+                    "detail": f"{z1}{z2}六合化{wx}，合化走子女星能量，表面有实则无",
+                }
+            )
+            break
+    if not has_he_hua:
+        items.append(
+            {
+                "rule": "⑤子女星被合化成其他五行",
+                "checked": True,
+                "signal": "正常",
+                "detail": "无地支六合化走子女星能量",
+            }
+        )
+
+    # ── ⑥ 时柱空亡 ──
+    if hour_zhi in kong_wang_zhis:
+        items.append(
+            {
+                "rule": "⑥时柱空亡",
+                "checked": True,
+                "signal": "高危",
+                "detail": f"时支{hour_zhi}逢空亡（{''.join(kong_wang_zhis)}），晚年孤独，子女不在身边",
+            }
+        )
+    else:
+        items.append(
+            {
+                "rule": "⑥时柱空亡",
+                "checked": True,
+                "signal": "正常",
+                "detail": f"时支{hour_zhi}未落空亡（空亡={''.join(kong_wang_zhis)}）",
+            }
+        )
+
+    # ── ⑦ 时支羊刃 ──
+    yang_ren_map = {"甲": "卯", "丙": "午", "戊": "午", "庚": "酉", "壬": "子"}
+    if _is_yang_gan(ri_zhu) and hour_zhi == yang_ren_map.get(ri_zhu):
+        items.append(
+            {
+                "rule": "⑦时支羊刃",
+                "checked": True,
+                "signal": "高危",
+                "detail": f"时支{hour_zhi}为日主{ri_zhu}之羊刃，难产之象",
+            }
+        )
+    else:
+        items.append(
+            {
+                "rule": "⑦时支羊刃",
+                "checked": True,
+                "signal": "正常",
+                "detail": f"时支{hour_zhi}非羊刃",
+            }
+        )
+
+    # ── ⑧ 全局缺水 ──
+    all_wx = [DI_ZHI_WU_XING[z] for z in bazi_zhis] + [TIAN_GAN_WU_XING[g] for g in bazi_gans]
+    if "水" not in all_wx:
+        items.append(
+            {
+                "rule": "⑧全局缺水",
+                "checked": True,
+                "signal": "注意",
+                "detail": "八字全局无水，生殖系统偏弱",
+            }
+        )
+    else:
+        items.append(
+            {
+                "rule": "⑧全局缺水",
+                "checked": True,
+                "signal": "正常",
+                "detail": "八字有水，生殖系统正常",
+            }
+        )
+
+    # ── ⑨ 藏干余气/中气子女星 ──
+    zhen_gen_entries = [e for e in star_scan.get("地支藏干", []) if e.get("比例", 0) == 100]
+    yuqi_entries = [e for e in star_scan.get("地支藏干", []) if e.get("比例", 0) < 100]
+    if not star_scan["缺失"] and not zhen_gen_entries and yuqi_entries:
+        items.append(
+            {
+                "rule": "⑨藏干余气/中气子女星",
+                "checked": True,
+                "signal": "注意",
+                "detail": "子女星只在地支藏干的余气/中气中出现，无本气真根（100%），力量偏弱",
+            }
+        )
+    elif star_scan["缺失"]:
+        # 命局无子女星，已在缘薄因素中覆盖，这里标正常以免重复
+        items.append(
+            {
+                "rule": "⑨藏干余气/中气子女星",
+                "checked": True,
+                "signal": "正常",
+                "detail": "命局无子女星（已在其他规则中覆盖）",
+            }
+        )
+    else:
+        items.append(
+            {
+                "rule": "⑨藏干余气/中气子女星",
+                "checked": True,
+                "signal": "正常",
+                "detail": "子女星有本气真根，能量充足",
+            }
+        )
+
+    # ── ⑩ 男命食伤旺克官杀 ──
+    if gender == "男":
+        shi_shang_count_g = 0
+        guan_sha_count = 0
+        for gan in bazi_gans:
+            ss = get_shi_shen_for_gan(gan, ri_zhu)
+            if ss in ("食神", "伤官"):
+                shi_shang_count_g += 1
+            if ss in ("正官", "七杀"):
+                guan_sha_count += 1
+        for zhi in bazi_zhis:
+            for cg, ratio in DI_ZHI_CANG_GAN.get(zhi, []):
+                ss = get_shi_shen_for_cang_gan(cg, ri_zhu)
+                if ss in ("食神", "伤官"):
+                    shi_shang_count_g += 0.5
+                if ss in ("正官", "七杀"):
+                    guan_sha_count += 0.5
+        if shi_shang_count_g >= 2 and guan_sha_count < 1:
+            items.append(
+                {
+                    "rule": "⑩男命食伤旺克官杀",
+                    "checked": True,
+                    "signal": "注意",
+                    "detail": f"男命食伤旺（{shi_shang_count_g:.1f}个）而官杀弱（{guan_sha_count:.1f}个），食伤泄气过重影响生育",
+                }
+            )
+        else:
+            items.append(
+                {
+                    "rule": "⑩男命食伤旺克官杀",
+                    "checked": True,
+                    "signal": "正常",
+                    "detail": f"男命食伤{shi_shang_count_g:.1f}个/官杀{guan_sha_count:.1f}个，无明显食伤克官杀",
+                }
+            )
+    else:
+        items.append(
+            {
+                "rule": "⑩男命食伤旺克官杀",
+                "checked": True,
+                "signal": "正常",
+                "detail": "女命不适用此规则",
+            }
+        )
+
+    # ── ⑪ 大运走在印运(女命) ──
+    if gender == "女" and da_yun_gans:
+        early_da_yun = da_yun_gans[:4] if len(da_yun_gans) >= 4 else da_yun_gans
+        early_yin = sum(1 for g in early_da_yun if get_shi_shen_for_gan(g, ri_zhu) in ("正印", "偏印"))
+        if early_yin >= 2:
+            items.append(
+                {
+                    "rule": "⑪大运走在印运(女命)",
+                    "checked": True,
+                    "signal": "注意",
+                    "detail": f"女命20-40岁大运中有{early_yin}个印运，印旺制食伤，生育窗口受阻",
+                }
+            )
+        else:
+            items.append(
+                {
+                    "rule": "⑪大运走在印运(女命)",
+                    "checked": True,
+                    "signal": "正常",
+                    "detail": f"女命20-40岁大运印运不多（{early_yin}个），生育窗口正常",
+                }
+            )
+    else:
+        signal_11 = "正常"
+        detail_11 = "男命不适用此规则" if gender == "男" else "无大运数据"
+        items.append(
+            {
+                "rule": "⑪大运走在印运(女命)",
+                "checked": True,
+                "signal": signal_11,
+                "detail": detail_11,
+            }
+        )
+
+    # ── 统计 ──
+    high_risk = sum(1 for it in items if it["signal"] == "高危")
+    warning = sum(1 for it in items if it["signal"] == "注意")
+
+    if high_risk >= 3:
+        summary = f"不好生孩子特征：{high_risk}个高危+{warning}个注意，共{len(items)}条中有{high_risk + warning}条异常，生育较困难"
+    elif high_risk >= 1 or warning >= 3:
+        summary = f"不好生孩子特征：{high_risk}个高危+{warning}个注意，需关注调理"
+    else:
+        summary = f"不好生孩子特征：{warning}个注意项，整体尚可"
+
+    return {
+        "count": len(items),
+        "items": items,
+        "高危数": high_risk,
+        "注意数": warning,
+        "summary": summary,
+    }
+
+
+def check_easy_to_conceive(
+    gender: str,
+    bazi_gans: list[str],
+    bazi_zhis: list[str],
+    ri_zhu: str,
+    hour_zhi: str,
+) -> dict:
+    """
+    容易生孩子的6条特征。
+
+    SKILL.md §第十步 — 容易生孩子特征排查
+
+    规则：
+      ① 食伤旺(女)/官杀旺(男) → 天干透出或地支藏干多
+      ② 时支落子午卯酉（桃花/四正）
+      ③ 时支为卯（最强）
+      ④ 时支为酉
+      ⑤ 时支为子
+      ⑥ 时支为午
+
+    返回：
+      {"count": int, "items": [...], "true_count": int, "summary": "容易/中等/较难"}
+    """
+    items = []
+
+    # ── ① 食伤旺(女)/官杀旺(男) ──
+    if gender == "女":
+        target_shens = ("食神", "伤官")
+        target_label = "食伤"
+    else:
+        target_shens = ("正官", "七杀")
+        target_label = "官杀"
+
+    tou_gan_count = 0
+    cang_gan_count = 0
+    for gan in bazi_gans:
+        ss = get_shi_shen_for_gan(gan, ri_zhu)
+        if ss in target_shens:
+            tou_gan_count += 1
+    for zhi in bazi_zhis:
+        for cg, ratio in DI_ZHI_CANG_GAN.get(zhi, []):
+            ss = get_shi_shen_for_cang_gan(cg, ri_zhu)
+            if ss in target_shens:
+                cang_gan_count += 1
+
+    total_power = tou_gan_count + cang_gan_count
+    strong = tou_gan_count >= 2 or total_power >= 3
+
+    items.append(
+        {
+            "rule": f"①{target_label}旺",
+            "checked": True,
+            "signal": strong,
+            "detail": f"{'女命' if gender == '女' else '男命'}{target_label}天干{tou_gan_count}个透出+藏干{cang_gan_count}个={'强旺' if strong else '一般'}",
+        }
+    )
+
+    # ── ② 时支落子午卯酉 ──
+    si_zheng = ["子", "午", "卯", "酉"]
+    is_si_zheng = hour_zhi in si_zheng
+    items.append(
+        {
+            "rule": "②时支落子午卯酉",
+            "checked": True,
+            "signal": is_si_zheng,
+            "detail": f"时支{hour_zhi}{'在' if is_si_zheng else '不在'}子午卯酉四正位（{'是' if is_si_zheng else '否'}）",
+        }
+    )
+
+    # ── ③ 时支为卯（最强）──
+    items.append(
+        {
+            "rule": "③时支为卯（最强）",
+            "checked": True,
+            "signal": hour_zhi == "卯",
+            "detail": f"时支{'为卯·生育力最强' if hour_zhi == '卯' else f'为{hour_zhi}，非卯'}",
+        }
+    )
+
+    # ── ④ 时支为酉 ──
+    items.append(
+        {
+            "rule": "④时支为酉",
+            "checked": True,
+            "signal": hour_zhi == "酉",
+            "detail": f"时支{'为酉·生育力强' if hour_zhi == '酉' else f'为{hour_zhi}，非酉'}",
+        }
+    )
+
+    # ── ⑤ 时支为子 ──
+    items.append(
+        {
+            "rule": "⑤时支为子",
+            "checked": True,
+            "signal": hour_zhi == "子",
+            "detail": f"时支{'为子·生育力极强' if hour_zhi == '子' else f'为{hour_zhi}，非子'}",
+        }
+    )
+
+    # ── ⑥ 时支为午 ──
+    items.append(
+        {
+            "rule": "⑥时支为午",
+            "checked": True,
+            "signal": hour_zhi == "午",
+            "detail": f"时支{'为午·生育力中强' if hour_zhi == '午' else f'为{hour_zhi}，非午'}",
+        }
+    )
+
+    # ── 总结 ──
+    true_count = sum(1 for it in items if it["signal"])
+    if true_count >= 3:
+        summary = "容易"
+    elif true_count >= 1:
+        summary = "中等"
+    else:
+        summary = "较难"
+
+    return {
+        "count": len(items),
+        "items": items,
+        "true_count": true_count,
+        "summary": summary,
+    }
+
+
 # ════════════════════════════════════════════════════════════════
 # 主入口函数
 # ════════════════════════════════════════════════════════════════
@@ -1245,6 +1790,7 @@ def analyze_children_full(
     bazi_zhis: list[str],
     da_yun_list: list | None = None,
     shen_label: str | None = None,
+    xi_yong: list[str] | None = None,
     birth_year: int | None = None,
     father_ri_zhu: str | None = None,
     mother_ri_zhu: str | None = None,
@@ -1264,6 +1810,7 @@ def analyze_children_full(
       bazi_zhis: 四柱地支列表 [年,月,日,时]
       da_yun_list: 大运列表 [{"gan":"","zhi":"","start_age":0,"start_year":0}, ...]
       shen_label: 身强弱标签（如"身强"）
+      xi_yong: 喜用神列表（v3.0新增·用于第3层合参）
       birth_year: 出生年份（用于计算生育年龄）
       father_ri_zhu: 父亲的日主（合参用）
       mother_ri_zhu: 母亲的日主（合参用）
@@ -1291,7 +1838,7 @@ def analyze_children_full(
     hour_shi_shen = get_shi_shen_for_gan(hour_gan, ri_zhu)
 
     # ── Step 6: 三层合参 ──
-    three_layer = calc_three_layer_fate(fertility, star_score, hour_shi_shen, None)
+    three_layer = calc_three_layer_fate(fertility, star_score, hour_shi_shen, xi_yong)
 
     # ── Step 7: 出生年份推理 ──
     birth_year_inference = infer_child_birth_years(
@@ -1328,6 +1875,18 @@ def analyze_children_full(
         mother_bazi_zhis=None,
     )
 
+    # ── Step 15: 不好生孩子特征 ──
+    da_yun_gans_from_list = [dy.get("gan", "") for dy in (da_yun_list or [])]
+    hard_to_conceive = check_hard_to_conceive(
+        ri_zhu, gender, bazi_gans, bazi_zhis, hour_zhi,
+        unified_stars, shen_label, da_yun_gans_from_list,
+    )
+
+    # ── Step 16: 容易生孩子特征 ──
+    easy_to_conceive = check_easy_to_conceive(
+        gender, bazi_gans, bazi_zhis, ri_zhu, hour_zhi,
+    )
+
     # ── 构建报告 ──
     report = {
         "基础信息": {"日主": ri_zhu, "性别": gender, "时柱": f"{hour_gan}{hour_zhi}", "时柱十神": hour_shi_shen},
@@ -1351,9 +1910,11 @@ def analyze_children_full(
         "时柱七杀有制规则": qi_sha_rule,
         "时柱正官影响": zheng_guan_effect,
         "父母合参": parent_joint,
+        "不好生孩子特征": hard_to_conceive,
+        "容易生孩子特征": easy_to_conceive,
     }
 
-    # ── Step 15: 逻辑一致性门禁 ──
+    # ── Step 17: 逻辑一致性门禁 ──
     consistency = consistency_check(report)
     report["逻辑一致性"] = consistency
 
