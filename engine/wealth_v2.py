@@ -49,8 +49,8 @@ def _get_base_status(shen_label: str, shen_score: float, cai_total: float) -> st
     """第1层：定基础状态"""
     if shen_label == "从弱":
         return "从弱格"
-    if cai_total <= 0 and shen_label == "身弱":
-        return "无财身弱"
+    if cai_total <= 0:
+        return "无财身弱" if shen_label == "身弱" else "无财身强"
     if shen_label == "身强" or shen_score >= 55:
         return "身强财旺" if cai_total >= 40 else "身强财弱"
     else:

@@ -260,45 +260,85 @@ def _calculate_marriage_quality(
     score = 100.0
 
     # ── 夫妻宫与其他三柱的刑冲破害检查 ──
-    all_zhis_for_check = [z for z in bazi_zhis if z != ri_zhi]  # 除日支外的三柱地支
-    all_zhis_for_check.append(ri_zhi)  # 加上日支自己
 
-    # 三刑检查
+    # 三刑检查 — 仅日支参与的三刑才扣分（未参与的不影响婚姻）
     xing_results = check_xing(bazi_zhis)
-    has_three_xing = any("三刑" in r[0] for r in xing_results)
-    has_two_xing = any("二刑" in r[0] for r in xing_results)
-    has_zi_xing = any("自刑" in r[0] for r in xing_results)
+    has_three_xing = False
+    has_two_xing = False
+    has_zi_xing = False
+    for xing_type, energy in xing_results:
+        # 检查日支是否参与该刑
+        ri_zhi_in_xing = ri_zhi in xing_type
+        if not ri_zhi_in_xing:
+            continue
+        if "三刑" in xing_type:
+            has_three_xing = True
+        elif "二刑" in xing_type:
+            has_two_xing = True
+        elif "自刑" in xing_type:
+            has_zi_xing = True
+
+    # 喜用神保护：刑的五行若为喜用，少扣或不扣
+    def _xing_wx_in_xi(xing_type: str) -> bool:
+        """判断刑中涉及的地支五行是否属于喜用神"""
+        from constants import DI_ZHI_WU_XING
+        involved_zhis = [z for z in xing_type if z in "子丑寅卯辰巳午未申酉戌亥"]
+        for z in involved_zhis:
+            if DI_ZHI_WU_XING.get(z, "") in xi_yong:
+                return True
+        return False
 
     if has_three_xing:
-        score -= 100  # 三刑归零
+        score -= 50 if _xing_wx_in_xi("三刑") else 100  # 喜用减半扣
     elif has_two_xing:
-        score -= 70
+        score -= 35 if _xing_wx_in_xi("二刑") else 70
     elif has_zi_xing:
-        score -= 30
+        score -= 15 if _xing_wx_in_xi("自刑") else 30
 
-    # 六冲检查（日支与其它三柱的冲）
+    # 六冲检查（日支与其它三柱的冲）— 冲为喜用不扣分
     chong_count = 0
+    chong_xi_count = 0
     for other_zhi in bazi_zhis:
         if other_zhi != ri_zhi:
             if check_chong(ri_zhi, other_zhi):
-                chong_count += 1
+                from constants import DI_ZHI_WU_XING
+                chong_wx = DI_ZHI_WU_XING.get(other_zhi, "")
+                if chong_wx in xi_yong:
+                    chong_xi_count += 1
+                else:
+                    chong_count += 1
     score -= chong_count * 70
+    score -= chong_xi_count * 35  # 喜用冲减半扣
 
-    # 六害检查
+    # 六害检查 — 害为喜用不扣分
     hai_count = 0
+    hai_xi_count = 0
     for other_zhi in bazi_zhis:
         if other_zhi != ri_zhi:
             if check_hai(ri_zhi, other_zhi):
-                hai_count += 1
+                from constants import DI_ZHI_WU_XING
+                hai_wx = DI_ZHI_WU_XING.get(other_zhi, "")
+                if hai_wx in xi_yong:
+                    hai_xi_count += 1
+                else:
+                    hai_count += 1
     score -= hai_count * 30
+    score -= hai_xi_count * 15  # 喜用害减半扣
 
-    # 六破检查
+    # 六破检查 — 破为喜用不扣分
     po_count = 0
+    po_xi_count = 0
     for other_zhi in bazi_zhis:
         if other_zhi != ri_zhi:
             if LIU_PO.get(ri_zhi) == other_zhi:
-                po_count += 1
+                from constants import DI_ZHI_WU_XING
+                po_wx = DI_ZHI_WU_XING.get(other_zhi, "")
+                if po_wx in xi_yong:
+                    po_xi_count += 1
+                else:
+                    po_count += 1
     score -= po_count * 20
+    score -= po_xi_count * 10  # 喜用破减半扣
 
     # ── 夫妻宫十神扣分（九龙道长原始理论）──
     master_cg = DI_ZHI_CANG_GAN.get(ri_zhi, [])

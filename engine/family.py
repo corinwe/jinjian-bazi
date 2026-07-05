@@ -167,6 +167,24 @@ def analyze_nian_yue(
         "劫财": "兄弟姐妹间有竞争或资源争夺",
     }
 
+    # ── 家庭经济与压力判断（供下游report_generator使用）──
+    # 经济：印星旺=经济好，财星旺=经济活，比劫多=负担重
+    from constants import TIAN_GAN_WU_XING
+    year_gan_wx = TIAN_GAN_WU_XING.get(year_gan, "")
+    month_gan_wx = TIAN_GAN_WU_XING.get(month_gan, "")
+    # 简单估算：年柱财/印为吉，月柱财/印为吉
+    wealth_zhis = [year_zhi, month_zhi]
+    wealth_zhis_wx = [DI_ZHI_WU_XING.get(z, "") for z in wealth_zhis]
+    if xi_yong_wuxing:
+        good_wx = sum(1 for wx in [year_gan_wx, month_gan_wx] + wealth_zhis_wx if wx in xi_yong_wuxing)
+        family_economy = "上" if good_wx >= 3 else ("中" if good_wx >= 1 else "下")
+    else:
+        family_economy = "中"
+    # 压力：七杀/劫财/伤官在年月为压力
+    pressure_ss = [year_shi_shen, month_shi_shen]
+    pressure_score = sum(1 for ss in pressure_ss if ss in ("七杀", "劫财", "伤官"))
+    family_pressure = "大" if pressure_score >= 2 else ("中" if pressure_score == 1 else "小")
+
     return {
         "year_pillar": {
             "gan": year_gan,
@@ -194,6 +212,8 @@ def analyze_nian_yue(
         },
         "shen_label": shen_label,
         "summary": f"年柱{year_shi_shen}+月柱{month_shi_shen}，{rel['summary']}",
+        "family_economy": family_economy,
+        "family_pressure": family_pressure,
     }
 
 

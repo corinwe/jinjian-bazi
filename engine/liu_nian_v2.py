@@ -928,7 +928,7 @@ def analyze_liu_nian_v2(
         wealth_desc = "喜用财星到位"
 
     # 条件3: 三合财局（动态判断财星五行）
-    CAI_WUXING_MAP = {"木": "土", "火": "金", "土": "水", "金": "火", "水": "火"}
+    CAI_WUXING_MAP = {"木": "土", "火": "金", "土": "水", "金": "木", "水": "火"}
     ri_cai_wx = CAI_WUXING_MAP.get(ri_zhu_wx, "")
     for he in all_rels["三合"]:
         he_wx = he.get("wx", "")

@@ -1135,13 +1135,22 @@ def analyze_misfortune(
     result["yuan_chen_detail"] = yuan_chen_detail
 
     # ── P0-6: 岁运并临天克地冲 ──
+    # 从 da_yun_list 中找到当前大运的干支（根据年龄判断）
+    current_dy_gan = liu_nian_gan  # fallback
+    current_dy_zhi = liu_nian_zhi  # fallback
+    if da_yun_list and age > 0:
+        for dy in da_yun_list:
+            start = dy.get("start_age", 0)
+            end = dy.get("end_age", 9)
+            if start <= age <= start + end:
+                current_dy_gan = dy.get("gan", liu_nian_gan)
+                current_dy_zhi = dy.get("zhi", liu_nian_zhi)
+                break
     sui_yun_bing_lin = _check_sui_yun_bing_lin_tian_ke_di_chong(
-        bazi_gans, bazi_zhis, da_yun_gan=liu_nian_gan, da_yun_zhi=liu_nian_zhi,
+        bazi_gans, bazi_zhis, da_yun_gan=current_dy_gan, da_yun_zhi=current_dy_zhi,
         liu_nian_gan=liu_nian_gan, liu_nian_zhi=liu_nian_zhi
     )
     result["sui_yun_bing_lin"] = sui_yun_bing_lin
-    # 注意: 此处da_yun参数在岁运并临中需要的是大运干支，不是流年干支
-    # 当前接口没有传递大运信息，留空
 
     # ── P1: 血刃查法 ──
     xue_ren = _check_xue_ren(ri_zhu, bazi_zhis, bazi_zhis, age)

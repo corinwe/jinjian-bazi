@@ -158,7 +158,8 @@ AN_HE = {
 # 注：有引化/无引化的区分未在此版本实现，取有引化倍数为标准值
 NENG_LIANG = {
     "六冲": 10.0,  # 辰戌/丑未冲=10倍（有引化）/5倍（无引化）— 取有引化最大值
-    "三刑": 15.0,  # 丑未戌三刑=15倍（有引化）/10倍（无引化）— 取全刑最大值
+    "丑未戌三刑": 15.0,  # 丑未戌三刑=15倍（有引化）/10倍（无引化）
+    "寅巳申三刑": 10.0,  # 寅巳申三刑=10倍（有引化）/8倍（无引化）
     "二刑": 8.0,   # 寅巳申二刑（不全）=约7~8倍
     "自刑": 10.0,  # 辰午酉亥自刑=10倍（有引化）/5倍（无引化）
     "六害": 5.0,   # 六害=5倍
@@ -185,7 +186,7 @@ def check_xing(zhi_list: list[str]) -> list[tuple[str, float]]:
     has_si = "巳" in zhi_list
     has_shen = "申" in zhi_list
     if has_yin and has_si and has_shen:
-        results.append(("寅巳申三刑", NENG_LIANG["三刑"]))
+        results.append(("寅巳申三刑", NENG_LIANG["寅巳申三刑"]))
     elif (has_yin and has_si) or (has_si and has_shen) or (has_shen and has_yin):
         results.append(("寅巳申二刑", NENG_LIANG["二刑"]))
 
@@ -193,16 +194,18 @@ def check_xing(zhi_list: list[str]) -> list[tuple[str, float]]:
     has_wei = "未" in zhi_list
     has_xu = "戌" in zhi_list
     if has_chou and has_wei and has_xu:
-        results.append(("丑未戌三刑", NENG_LIANG["三刑"]))
+        results.append(("丑未戌三刑", NENG_LIANG["丑未戌三刑"]))
     elif (has_chou and has_wei) or (has_wei and has_xu) or (has_xu and has_chou):
         results.append(("丑未戌二刑", NENG_LIANG["二刑"]))
 
     if "子" in zhi_list and "卯" in zhi_list:
         results.append(("子卯刑", NENG_LIANG["二刑"]))
 
-    for zhi in ["辰", "午", "酉", "亥"]:
-        if zhi_list.count(zhi) >= 2:
-            results.append((f"{zhi}{zhi}自刑", NENG_LIANG["自刑"]))
+    # 辰午酉亥自刑 — 自刑四字中任意2个及以上即构成自刑（含跨字组合）
+    zi_xing_zhis = ["辰", "午", "酉", "亥"]
+    present_zi_xing = [z for z in zi_xing_zhis if z in zhi_list]
+    if len(present_zi_xing) >= 2:
+        results.append((f"{''.join(present_zi_xing)}自刑", NENG_LIANG["自刑"]))
 
     return results
 
