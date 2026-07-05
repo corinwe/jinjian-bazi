@@ -108,9 +108,9 @@ def compute_qi_yun_days(birth_year: int, birth_month: int, birth_day: int, month
         # 逆排：上一个节气 = 月支对应的节
         jie_month, jie_day = JIE_QI[zhi_idx]
         jie_year = birth_year
-        # 节气月跨年处理
+        # 逆排节气月跨年处理：节气在出生月之后→节气在上一年
         if jie_month > birth_month and jie_month - birth_month > 6:
-            jie_year = birth_year + 1
+            jie_year = birth_year - 1  # 逆排跨年：如子月(12月)节气在1月出生之前→上一年
         elif jie_month > birth_month:
             jie_year = birth_year - 1
         jie_date = date(jie_year, jie_month, jie_day)

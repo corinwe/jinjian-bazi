@@ -1,12 +1,17 @@
 """
-能量等级分析引擎 v1.0 — 金鉴真人·金鉴真人原始规则
+能量等级分析引擎 v2.0 — 金鉴真人·金鉴真人原始规则
 
 能量分析维度:
-  1. 原局五行能量分布（干支含藏全部计算）
+  1. 原局五行能量分布（干支含藏全部计算，各位置按BASE_SCORE加权）
   2. 地支关系能量（冲刑合害）
   3. 大运能量加成
   4. 流年触发能量
   5. 神煞能量修正
+
+位置权重说明:
+  - 月令(month_zhi)=40分，为能量最重之位（得令/失令）
+  - 其他地支按格局权重: year=4, day=12, hour=12
+  - 天干权重: year=8, month=12, day=12, hour=12
 """
 
 from __future__ import annotations
@@ -14,37 +19,71 @@ from __future__ import annotations
 from constants import TIAN_GAN_WU_XING, WU_XING_KE, WU_XING_SHENG, BaZi, Pillar
 from xing_chong_he_hua import NENG_LIANG, check_all_relations
 
+# ── 位置能量权重 ──────────────────────────────────────────────
+# 月令最重(40分)，其他天干地支按命理格局权重分配
+ENERGY_BASE_SCORE = {
+    "year_gan": 8.0,
+    "year_zhi": 4.0,
+    "month_gan": 12.0,
+    "month_zhi": 40.0,
+    "day_gan": 12.0,
+    "day_zhi": 12.0,
+    "hour_gan": 12.0,
+    "hour_zhi": 12.0,
+}
+
+# 四柱→键名映射（与 ENERGY_BASE_SCORE 配合）
+PILLAR_KEYS = [
+    ("year_gan", "year_zhi"),
+    ("month_gan", "month_zhi"),
+    ("day_gan", "day_zhi"),
+    ("hour_gan", "hour_zhi"),
+]
+
 
 def compute_wu_xing_energy(bazi: BaZi) -> dict:
     """
-    计算五行能量分布
+    计算五行能量分布（带位置权重）
+
+    计算规则:
+      - 天干: ENERGY_BASE_SCORE[gan_key] 分（独一个天干，100%）
+      - 地支本气: ENERGY_BASE_SCORE[zhi_key] × 100%
+      - 地支中气: ENERGY_BASE_SCORE[zhi_key] × 60%
+      - 地支余气: ENERGY_BASE_SCORE[zhi_key] × 30%
+
     返回: {五行: 能量分}
-    计算规则: 天干全计(1分), 地支藏干按比例
     """
     energy = {"木": 0, "火": 0, "土": 0, "金": 0, "水": 0}
+    pillars = [bazi.year, bazi.month, bazi.day, bazi.hour]
 
-    # 天干能量
-    for p in [bazi.year, bazi.month, bazi.day, bazi.hour]:
+    # ── 天干能量（加权） ──
+    for i, p in enumerate(pillars):
+        gan_key, _ = PILLAR_KEYS[i]
         wx = TIAN_GAN_WU_XING[p.gan]
-        energy[wx] += 1.0  # 天干=1分
+        energy[wx] += ENERGY_BASE_SCORE[gan_key]
 
-    # 地支本气能量
-    for p in [bazi.year, bazi.month, bazi.day, bazi.hour]:
-        # 本气
+    # ── 地支藏干能量（加权） ──
+    for i, p in enumerate(pillars):
+        _, zhi_key = PILLAR_KEYS[i]
+        base = ENERGY_BASE_SCORE[zhi_key]
+
+        # 本气(100%)
         ben_qi = p.cang_gan[0] if p.cang_gan else None
         if ben_qi:
             wx = TIAN_GAN_WU_XING[ben_qi[0]]
-            energy[wx] += 1.0  # 本气=1分
+            energy[wx] += base * 1.0
+
         # 中气(60%)
         if len(p.cang_gan) > 1:
             zhong_qi = p.cang_gan[1]
             wx = TIAN_GAN_WU_XING[zhong_qi[0]]
-            energy[wx] += 0.6
+            energy[wx] += base * 0.6
+
         # 余气(30%)
         if len(p.cang_gan) > 2:
             yu_qi = p.cang_gan[2]
             wx = TIAN_GAN_WU_XING[yu_qi[0]]
-            energy[wx] += 0.3
+            energy[wx] += base * 0.3
 
     # 四舍五入到1位小数
     for k in energy:

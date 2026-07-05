@@ -147,7 +147,9 @@ def analyze_character(
 
     # ── Step 2: 十神特质 ──
     shi_shen_traits = []
-    for g in bazi_gans:
+    for i, g in enumerate(bazi_gans):
+        if i == 2:  # Skip 日主自身，避免比肩被重复计入十神维度
+            continue
         ss = get_shi_shen_for_gan(g, ri_zhu)
         ss_info = SHI_SHEN_CHARACTER.get(ss, {})
         if ss_info:
@@ -172,12 +174,12 @@ def analyze_character(
     # ── Step 4: 性格冲突 ──
     conflicts = []
     ss_labels = [s["label"] for s in shi_shen_traits]
-    if "规则型" in ss_labels and "叛逆型" in ss_labels:
-        conflicts.append("内心有规则与叛逆的冲突")
+    if "规则型" in ss_labels and "才华型" in ss_labels:
+        conflicts.append("内心有规则与才华的冲突")
     if "权威型" in ss_labels and "享受型" in ss_labels:
         conflicts.append("强势与安逸的矛盾")
-    if "开拓型" in ss_labels and "保守型" in ss_labels:
-        conflicts.append("进取与守成的拉锯")
+    if "务实型" in ss_labels and "社交型" in ss_labels:
+        conflicts.append("节俭务实与慷慨社交的拉锯")
 
     if "冲" in di_zhi_summary:
         conflicts.append("地支多冲→性格波动大，内心矛盾多")

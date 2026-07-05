@@ -1,0 +1,120 @@
+{
+  "audit_id": "20260705-cai-xing-deep-audit",
+  "target": "/root/bazi-platform/engine/cai_xing.py",
+  "auditor": "subagent",
+  "timestamp": "2026-07-05",
+  "reference_skill": "bazi-wealth-analysis",
+  "audit_results": {
+    "overall": {
+      "status": "PASS_WITH_ISSUES",
+      "total_checks": 6,
+      "passed": 5,
+      "failed": 1,
+      "bugs_found": 2,
+      "missing_features": 1
+    },
+    "checks": [
+      {
+        "id": "C1",
+        "name": "位置基础分",
+        "status": "PASS",
+        "detail": "年干8分✅ 年支4分✅ 月干12分✅ 月令40分✅ 日支12分✅ 时干12分✅ 时支12分✅",
+        "code_evidence": {
+          "nian_gan": "line 45: nian_gan_score = 8.0",
+          "month_gan": "line 48: month_gan_score = 12.0",
+          "nian_zhi": "line 55: nian_score += 4.0 * r",
+          "yue_ling": "line 63: yue_score += 40.0 * r",
+          "ri_zhi": "line 71: ri_score += 12.0 * r",
+          "shi_gan": "line 78: shi_gan_score += 12.0",
+          "shi_zhi": "line 86: shi_zhi_score += 12.0 * r"
+        }
+      },
+      {
+        "id": "C2",
+        "name": "藏干百分比",
+        "status": "PASS",
+        "detail": "CANG_GAN_RATIO = {100: 1.0, 60: 0.6, 30: 0.3} — 本气100%/中气60%/余气30% ✅",
+        "code_evidence": "constants.py line 89"
+      },
+      {
+        "id": "C3",
+        "name": "财星五行定向（日主克者为财）",
+        "status": "PASS",
+        "detail": "函数 _is_cai_xing 使用 WU_XING_KE[ri_wx] == cg_wx 判断，即日主所克之五行等于待判天干五行 ✓ 劫财与日主同五行，不会被误判 ✓",
+        "code_evidence": "lines 20-29, WU_XING_KE line 152"
+      },
+      {
+        "id": "C4",
+        "name": "月令藏干必须用40分（不是12分）",
+        "status": "PASS",
+        "detail": "line 63: yue_score += 40.0 * r — 正确使用40分基础分 ✅",
+        "code_evidence": "line 63"
+      },
+      {
+        "id": "C5",
+        "name": "从弱格特殊处理",
+        "status": "FAIL",
+        "detail": "compute_cai_xing 不接收从弱格参数，无任何从弱格逻辑。§3规则：从弱格身弱0→50分，财星得令加40分，财≥48分。pipeline_v5 line 297虽有cong_ruo_check标记但未用于调整财星分数。",
+        "code_evidence": "cai_xing.py: 函数签名def compute_cai_xing(bazi: BaZi) — 无sqr_label参数",
+        "remediation": "需在compute_cai_xing添加sqr_label参数，当sqr_label=='从弱'时应用§3特殊规则"
+      },
+      {
+        "id": "C6",
+        "name": "劫财误算为财星的Bug",
+        "status": "PASS",
+        "detail": "无劫财误算为财星。WU_XING_KE[ri_wx]==cg_wx 确保仅日主所克五行被识别为财星，劫财与日主同五行，不会被误判 ✅",
+        "code_evidence": "lines 20-29"
+      }
+    ],
+    "bugs": [
+      {
+        "id": "BUG-1",
+        "severity": "HIGH",
+        "title": "CaiXingDetail 缺少年干(nian_gan_score)和月干(month_gan_score)字段",
+        "description": "nian_gan_score（年干8分）和month_gan_score（月干12分）被计算为局部变量并参与总分求和，但未存入CaiXingDetail对象。外部代码无法读取这两个分项的明细值。",
+        "impact": "总分正确但明细不完整。任何读取CaiXingDetail的代码（pipeline输出、报告生成、第三方调用）都看不到年干和月干的财星分数。当只有年干/月干有财星时，detail显示全0但总分非0——严重误导。",
+        "code_evidence": "cai_xing.py lines 45-48 (局部变量), constants.py lines 244-253 (CaiXingDetail缺少对应字段)",
+        "proof": "庚申乙酉庚午丙戌: 年干甲木偏财8分+月干乙木正财12分=20分，但explain输出全部detail=0，总分20.0",
+        "remediation": "在CaiXingDetail添加nian_gan_score和month_gan_score字段，compute_cai_xing中将局部变量赋值到detail，pipeline_v5输出也包含这两项"
+      },
+      {
+        "id": "BUG-2",
+        "severity": "HIGH",
+        "title": "cai_xing_explain 缺少年干和月干输出",
+        "description": "cai_xing_explain函数只输出年支/月令/日支/时干/时支5个分项，缺失年干(8分)和月干(12分)。当用户只看explain输出时，分项之和≠总分。",
+        "impact": "用户得到不完整的财星评分明细，分项加减无法与总分对应，直接违反算数一致性原则。",
+        "code_evidence": "cai_xing.py lines 107-115",
+        "proof": "同上BUG-1证明: explain显示所有detail=0但total=20.0",
+        "remediation": "在cai_xing_explain中添加年干和月干两行输出"
+      },
+      {
+        "id": "BUG-3",
+        "severity": "MEDIUM",
+        "title": "pipeline_v5 输出也缺少年干和月干",
+        "description": "sec_1_overview.cai_xing_detail 和 sec_8_wealth.cai_xing_details 都只含年支/月令/日支/时干/时支，缺失年干和月干。",
+        "impact": "所有下游JSON消费方（前端显示、报告模板、数据分析）都得不到年干和月干的财星明细。",
+        "code_evidence": "pipeline_v5.py lines 301-307 (sec_1) and 341-347 (sec_8)",
+        "remediation": "在pipeline_v5的两处输出中添加年干(nian_gan)和月干(month_gan)字段"
+      }
+    ],
+    "missing_features": [
+      {
+        "id": "MF-1",
+        "severity": "MEDIUM",
+        "title": "从弱格财星特殊规则未实现",
+        "description": "§3 从弱格财富规则：身弱0分→定格50分，财星得令（月令生财）→加40分，所有财星为喜用。当前compute_cai_xing不处理任何从弱格逻辑。pipeline_v5虽有cong_ruo_check标记但未用于调整财星。",
+        "code_evidence": "cai_xing.py: 无任何从弱格相关代码; pipeline_v5.py line 152 调用不传sqr_label",
+        "remediation": "方案A：compute_cai_xing添加sqr_label参数，内部判断从弱格时应用§3规则。方案B：pipeline_v5在调用cai_xing后根据cong_ruo_check调整cai.total。建议方案A（模块自洽）"
+      }
+    ],
+    "code_quality": {
+      "readability": "良好 — 函数划分清晰，注释完备",
+      "type_safety": "良好 — 使用dataclass返回，类型明确",
+      "encapsulation": "中 — nian_gan和month_gan未封装到dataclass中",
+      "test_coverage": "良好 — __main__ 包含3个测试用例",
+      "docstring": "良好 — 有模块级docstring说明核心规则"
+    },
+    "summary": "cai_xing.py 的核心算法正确：位置基础分✅、藏干百分比✅、财星五行定向✅、月令40分✅、无劫财误算Bug✅。但有1个结构性缺陷：年干(8分)和月干(12分)虽然计入总分，但未存入CaiXingDetail dataclass，导致explain和pipeline输出均缺失这两项明细——算数一致性被破坏。另缺少从弱格特殊处理。发现3个BUG，1个缺失功能。",
+    "recommendation": "优先修复BUG-1（CaiXingDetail添加年干月干字段），同步修复BUG-2（explain输出）和BUG-3（pipeline输出）。从弱格处理（MF-1）视产品需求排期。"
+  }
+}

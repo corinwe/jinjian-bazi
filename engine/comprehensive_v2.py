@@ -16,6 +16,7 @@ from children_v2 import analyze_children_full as analyze_children_advanced
 from constants import DI_ZHI_CANG_GAN, TIAN_GAN_WU_XING, BaZi
 from health_v2 import analyze_health_full as analyze_health_advanced
 from shi_shen import get_shi_shen_for_cang_gan, get_shi_shen_for_gan
+from shi_shang import calc_shi_shang_score
 from wealth_v2 import analyze_wealth_full as analyze_wealth_advanced
 
 # ════════════════════════════════════════════
@@ -1004,6 +1005,9 @@ def run_comprehensive_engine(
 
     # 教育分析（九龙道长原始理论 v2.3 — 来自pipeline_v5传入）
 
+    # 食伤评分（引通引用链）
+    shi_shang = calc_shi_shang_score(ri_zhu, all_gans, all_zhis)
+
     # 外貌分析
     appearance = analyze_appearance(ri_zhu, shen_label, shen_score, all_gans, all_zhis, ge_ju_main)
 
@@ -1075,6 +1079,7 @@ def run_comprehensive_engine(
         "sec_8_wealth_full": wealth,
         "sec_7_appearance": appearance,
         "sec_5_education": education_result,
+        "sec_5b_shi_shang": shi_shang,
         "sec_9_property": property_analysis,
         "sec_13_children": _map_children(children),
         "sec_14_health": _map_health(health),
