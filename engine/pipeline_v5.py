@@ -132,7 +132,7 @@ def _get_kong_wang(gan: str, zhi: str) -> str:
     return ["戌亥", "申酉", "午未", "辰巳", "寅卯", "子丑"][xun]
 
 
-def run_v5(bazi: BaZi, birth_year=1980, birth_month_lunar=1, qi_yun_days=1.1, current_year=None):
+def run_v5(bazi: BaZi, birth_year=1980, birth_month=1, birth_day=1, qi_yun_days=None, current_year=None):
     """v5.0 确定性pipeline主入口"""
     if current_year is None:
         current_year = datetime.now().year
@@ -156,7 +156,7 @@ def run_v5(bazi: BaZi, birth_year=1980, birth_month_lunar=1, qi_yun_days=1.1, cu
     xi, ji = determine_xi_yong_shen(bazi)
 
     # 调候
-    th = get_tiao_hou_yong_shen(ri_zhu, birth_month_lunar)
+    th = get_tiao_hou_yong_shen(ri_zhu, birth_month)
 
     # 五行能量
     energy = compute_energy_profile(bazi)
@@ -168,7 +168,7 @@ def run_v5(bazi: BaZi, birth_year=1980, birth_month_lunar=1, qi_yun_days=1.1, cu
     ss = compute_all_shen_sha(all_gans, all_zhis, bazi.year.zhi, bazi.month.zhi, ri_zhu)
 
     # 大运
-    dy_list, qy_age, qy_year = compute_da_yun(bazi, birth_year, qi_yun_days)
+    dy_list, qy_age, qy_year = compute_da_yun(bazi, birth_year, birth_month, birth_day, qi_yun_days)
     dy_scores = compute_da_yun_scores(bazi, dy_list)
 
     # 最佳/最差大运
@@ -597,8 +597,9 @@ def run_pipeline(
     hour_gan: str,
     hour_zhi: str,
     birth_year: int = 1980,
-    birth_month_lunar: int = 1,
-    qi_yun_days: float = 1.1,
+    birth_month: int = 1,
+    birth_day: int = 1,
+    qi_yun_days: float | None = None,
 ) -> dict:
     """外部调用入口"""
     ri_zhu = day_gan
@@ -610,7 +611,7 @@ def run_pipeline(
         gender=gender,
     )
 
-    result = run_v5(bazi, birth_year, birth_month_lunar, qi_yun_days)
+    result = run_v5(bazi, birth_year, birth_month, birth_day, qi_yun_days)
 
     # 🆕 为所有21个§附加详细规则分析文本
     result = attach_detail_analysis(result)
@@ -759,10 +760,10 @@ if __name__ == "__main__":
     hz = paipan_result.get("hour_pillar", {}).get("zhi", "")
 
     qi_yun_days = 1.1
-    birth_month_lunar = args.lunar_month or calc_month
+    birth_month_val = args.lunar_month or calc_month
 
     output = run_pipeline(
-        args.name, args.gender, yg, yz, mg, mz, dg, dz, hg, hz, calc_year, birth_month_lunar, qi_yun_days
+        args.name, args.gender, yg, yz, mg, mz, dg, dz, hg, hz, calc_year, birth_month_val, args.day, qi_yun_days
     )
     output["success"] = True
 

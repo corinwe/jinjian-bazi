@@ -104,7 +104,7 @@ bazi = BaZi(
     hour=Pillar(result['hour_pillar']['gan'], result['hour_pillar']['zhi']),
     gender='$GENDER'
 )
-full_result = run_v5(bazi, birth_year=$YEAR, birth_month_lunar=$MONTH)
+full_result = run_v5(bazi, birth_year=$YEAR, birth_month=$MONTH, birth_day=$DAY)
 result['engine_scores'] = {
     'shen_qiang_ruo': {'score': full_result.get('sec_3_shen_qiang_ruo', {}).get('score'), 'label': full_result.get('sec_3_shen_qiang_ruo', {}).get('label')},
     'cai_xing': full_result.get('sec_8_wealth', {}).get('cai_xing_total'),

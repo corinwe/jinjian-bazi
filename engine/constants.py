@@ -212,8 +212,8 @@ class DaYun:
 
     gan: str  # 天干
     zhi: str  # 地支
-    start_age: int  # 起始年龄
-    end_age: int  # 结束年龄
+    start_age: float  # 起始年龄（支持小数，如0.4岁）
+    end_age: float  # 结束年龄（支持小数）
     start_year: int  # 起始年份
     gan_zhi: str = ""  # 干支字符串
 

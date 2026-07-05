@@ -20,7 +20,6 @@ MODULE_CHECKS = {
     "energy": ["compute_wu_xing_energy", "compute_energy_profile"],
     "xing_chong_he_hua": ["check_chong", "check_xing", "check_hai"],
     "liu_nian_v2": ["analyze_liu_nian_v2", "analyze_liu_nian_range"],
-    "dimensions_v2": ["score_cai_fu", "score_shi_ye", "score_hun_yin"],
     "wealth_v2": ["analyze_wealth_full"],
     "career_v2": ["analyze_career_full"],
     "marriage_v2": ["analyze_marriage"],
