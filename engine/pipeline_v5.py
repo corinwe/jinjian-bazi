@@ -496,7 +496,7 @@ def format_21_section_report(result: dict) -> str:
     s12 = result["sec_12_marriage"]
     if isinstance(s12, dict):
         lines.append(
-            f"## §12 婚姻: {s12.get('quality', '')}({s12.get('quality_score', '')}/10) | 最佳{s12.get('best_window_age', '')}"
+            f"## §12 婚姻: {s12.get('quality_display', s12.get('quality', ''))} | 最佳{s12.get('best_window_age', '')}"
         )
         lines.append(f"  配偶特征: {s12.get('spouse_trait', '')}")
     lines.append("")

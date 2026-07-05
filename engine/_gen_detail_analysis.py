@@ -225,8 +225,8 @@ def _marriage_detail(result: dict) -> str:
     parts = []
 
     quality = s12.get("quality", "")
-    qs = s12.get("quality_score", "")
-    parts.append(f"【婚姻质量】{quality}（{qs}/10）")
+    qs = s12.get("quality_display", f"{quality}（{s12.get('quality_score', '')}/10）")
+    parts.append(f"【婚姻质量】{qs}")
 
     spouse = s12.get("spouse_trait", "")
     if spouse:
