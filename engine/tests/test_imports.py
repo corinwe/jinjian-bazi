@@ -23,7 +23,7 @@ MODULE_CHECKS = {
     "wealth_v2": ["analyze_wealth_full"],
     "career_v2": ["analyze_career_full"],
     "marriage_v2": ["analyze_marriage"],
-    "education_v2": ["analyze_education"],
+    "education": ["analyze_education"],
     "children_v2": ["get_children_star_school_a"],
     "health_v2": ["calc_wuxing_scores"],
     "misfortune_analysis": ["analyze_misfortune"],

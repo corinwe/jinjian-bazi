@@ -135,6 +135,37 @@ MONTH_GAN_ZHI = {
 # 三会(20倍) > 三合(15倍) > 半合/六合(10倍) > 拱合(10倍) > 暗合
 HE_HUA_PRIORITY = {"三会": 4, "三合": 3, "六合": 2, "半合": 2, "拱合": 2, "暗合": 1}
 
+# ── 犯太岁体系（原 liu_nian.py 内联，2026-07-05 旧版归档）──
+FAN_TAI_SUI = {
+    "值太岁": 1.0,  # 本命年
+    "冲太岁": 1.2,  # 六冲
+    "刑太岁": 1.0,  # 三刑
+    "害太岁": 0.8,  # 六害
+    "破太岁": 0.6,  # 六破
+}
+
+
+def check_fan_tai_sui(year_zhi: str, liu_nian_zhi: str) -> tuple[str, float] | None:
+    """检查犯太岁"""
+    from xing_chong_he_hua import LIU_CHONG, LIU_HAI, LIU_PO, SAN_XING
+
+    # 值太岁（本命年）
+    if liu_nian_zhi == year_zhi:
+        return ("值太岁", FAN_TAI_SUI["值太岁"])
+    # 冲太岁
+    if LIU_CHONG.get(year_zhi) == liu_nian_zhi:
+        return ("冲太岁", FAN_TAI_SUI["冲太岁"])
+    # 刑太岁
+    if year_zhi in SAN_XING and liu_nian_zhi in SAN_XING[year_zhi]:
+        return ("刑太岁", FAN_TAI_SUI["刑太岁"])
+    # 害太岁
+    if LIU_HAI.get(year_zhi) == liu_nian_zhi:
+        return ("害太岁", FAN_TAI_SUI["害太岁"])
+    # 破太岁
+    if (year_zhi, liu_nian_zhi) in LIU_PO or (liu_nian_zhi, year_zhi) in LIU_PO:
+        return ("破太岁", FAN_TAI_SUI["破太岁"])
+    return None
+
 
 def _get_key_months(liu_nian_wx_gan: str, liu_nian_wx_zhi: str, xi_yong: list[str], ji_shen: list[str]) -> str:
     """R26: 根据流年干支五行和喜忌，标注关键应事月份"""
@@ -984,8 +1015,6 @@ def analyze_liu_nian_v2(
         mis_desc = "忌神+冲刑"
 
     # 条件3: 犯太岁
-    from liu_nian import check_fan_tai_sui
-
     fan_tai_sui = check_fan_tai_sui(year_zhi, liu_nian_zhi)
     if fan_tai_sui:
         mis_conf += fan_tai_sui[1] * 0.3
