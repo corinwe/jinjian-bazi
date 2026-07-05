@@ -31,7 +31,7 @@ def generate_report(result: dict, name: str = "", gender: str = "") -> str:
     try:
         from generate_deep_report import generate_deep_report
 
-        deep = generate_deep_report({"paipan": {}, "basic_data": {}, "result": result}, name, gender)
+        deep = generate_deep_report({"paipan": {}, "basic_data": {}, "result": result}, name, gender, version="4.0")
         if len(deep.split("\n")) > len(standard.split("\n")):
             return deep
     except Exception:

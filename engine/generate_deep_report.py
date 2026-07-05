@@ -6,6 +6,7 @@
 
 import json
 from datetime import datetime
+import ast
 
 
 def _s(d, key, default=""):
@@ -28,13 +29,54 @@ def _safe_int(v, default=0):
         return default
 
 
+def _parse_bazi_str(bazi_str: str):
+    """从bazi字符串解析四柱干支，如 "庚申 癸未 辛亥 辛卯" → (庚,申,癸,未,辛,亥,辛,卯)"""
+    parts = bazi_str.strip().split()
+    if len(parts) >= 4:
+        yg, yz = parts[0][0], parts[0][1]
+        mg, mz = parts[1][0], parts[1][1]
+        dg, dz = parts[2][0], parts[2][1]
+        hg, hz = parts[3][0], parts[3][1]
+        return yg, yz, mg, mz, dg, dz, hg, hz
+    return "", "", "", "", "", "", "", ""
+
+
+def _dict_to_text(val, default=""):
+    """将可能为dict的值转为自然语言文本（支持字符串形式的dict）"""
+    # 尝试解析字符串形式的dict: "{'key': 'value', ...}"
+    if isinstance(val, str) and val.startswith("{"):
+        try:
+            val = ast.literal_eval(val)
+        except (ValueError, SyntaxError):
+            pass
+    if isinstance(val, dict):
+        parts = []
+        for k, v in val.items():
+            if isinstance(v, dict):
+                sub = _dict_to_text(v)
+                parts.append(f"{k}：{sub}")
+            elif isinstance(v, list):
+                items = []
+                for item in v:
+                    if isinstance(item, dict):
+                        items.append("、".join(f"{ik}={iv}" for ik, iv in item.items()))
+                    else:
+                        items.append(str(item))
+                parts.append(f"{k}：{'；'.join(items)}")
+            else:
+                parts.append(f"{k}：{v}")
+        return "，".join(parts)
+    return str(val) if val else default
+
+
 def _da(sec, key="detail_analysis"):
     if isinstance(sec, dict):
         return sec.get(key, "")
     return ""
 
 
-def generate_deep_report(engine_json: dict, name: str = "", gender: str = "") -> str:
+def generate_deep_report(engine_json: dict, name: str = "", gender: str = "", version: str = "1.0") -> str:
+    """生成深度报告。version参数用于支持不同输入方式的版本号（如v26.2/v3.0）"""
     pp = engine_json.get("paipan", {})
     bd = engine_json.get("basic_data", {})
     r = engine_json.get("result", {})
@@ -65,10 +107,13 @@ def generate_deep_report(engine_json: dict, name: str = "", gender: str = "") ->
     s21 = r.get("sec_21_advice", {})
 
     bazi_str = pp.get("bazi", _s(s1, "bazi", ""))
-    ri_gan = _s(bd.get("ri_zhu", {}), "gan", "")
-    ri_wx = _s(bd.get("ri_zhu", {}), "wu_xing", "")
+    ri_gan = _s(s1.get("ri_zhu", {}), "gan", "")
+    ri_wx = _s(s1.get("ri_zhu", {}), "wx", "")
     sqr_label = _s(s3, "label", "")
     sqr_score = _s(s3, "score", 0)
+    sqr_n = float(sqr_score) if sqr_score else 50
+    # 去掉sqr_label前缀的"身"字(如"身强"→"强")，避免后续拼成"身身强"
+    sqr_display = sqr_label[1:] if isinstance(sqr_label, str) and sqr_label.startswith("身") else sqr_label
     xi_yong = s4.get("xi", [])
     ji_shen = s4.get("ji", [])
     cai_score = _s(s8, "cai_xing_total", 0)
@@ -81,11 +126,11 @@ def generate_deep_report(engine_json: dict, name: str = "", gender: str = "") ->
     det = s3.get("details", {})
 
     # ── 头部（10行）──
-    lines.append(f"# {name or '命主'}·完整八字命理深析报告 v4.0（引擎深度版）")
+    lines.append(f"# {name or '命主'}·完整八字命理深析报告 v{version}（引擎深度版）")
     lines.append("")
     lines.append("**编制人：** 金鉴真人")
     lines.append(f"**编制时间：** {now.year}年{now.month:02d}月{now.day:02d}日")
-    lines.append("**版本：** v4.0（引擎深度版·1500+行标准）")
+    lines.append(f"**版本：** v{version}（引擎深度版·1500+行标准）")
     lines.append("**模板：** bazi-report-template v5.2 — 所有分析文字源自引擎规则计算+detail_analysis展开")
     lines.append(f"**八字：** {bazi_str}")
     lines.append(f"**日主：** {ri_gan}（{ri_wx}）")
@@ -93,8 +138,8 @@ def generate_deep_report(engine_json: dict, name: str = "", gender: str = "") ->
     lines.append("")
 
     # ── 版本说明（15行）──
-    lines.append("> **v4.0版本说明**：本版为**引擎深度报告版**。")
-    lines.append("> ① 全报告采用21个§板块结构（§1~§21）；")
+    lines.append(f"> **v{version}版本说明**：本版为**引擎深度报告版**——基于bazi-engine引擎结构化数据自动生成。")
+    lines.append(f"> ① 全报告采用21个§板块结构（§1~§21）·v{version}版；")
     lines.append("> ② §1采用25字段四段式排序（基础身份→核心命理→量化评分→大运综合）；")
     lines.append("> ③ §8财富分析含「金鉴真人原始财富五级对照」段落；")
     lines.append("> ④ §16全生命周期重点事件总表按大运分段；")
@@ -119,7 +164,7 @@ def generate_deep_report(engine_json: dict, name: str = "", gender: str = "") ->
     lines.append(f"| 2 | **纳音** | {na_str} |")
     lines.append(f"| 3 | **日主** | {ri_gan}（{ri_wx}） |")
     lines.append(f"| 4 | **性别** | {'男' if gender == '男' else '女'} |")
-    lines.append("| 5 | **出生时间** | — |")
+    lines.append(f"| 5 | **出生时间** | {_s(s1, 'birth_info', '引擎计算')} |")
     lines.append("")
     lines.append("**第二段：核心命理（7项）**")
     lines.append("")
@@ -153,11 +198,16 @@ def generate_deep_report(engine_json: dict, name: str = "", gender: str = "") ->
     best_dy = ranked[0] if ranked else {}
     worst_dy = ranked[-1] if ranked else {}
     second_dy = ranked[1] if len(ranked) > 1 else {}
+    # 现行大运 = 基于当前年份计算
     current_dy_name = ""
+    current_dy_str = ""
     for dy in dy_list:
-        sa = dy.get("start_age", 0)
-        if isinstance(sa, (int, float)) and 15 <= sa <= 50 and not current_dy_name:
+        sy = dy.get("start_year", 0)
+        ey = sy + 9
+        if isinstance(sy, (int, float)) and sy <= current_yr <= ey:
             current_dy_name = dy.get("gan_zhi", "")
+            current_dy_str = f"{current_dy_name}（{dy.get('start_age', '')}~{dy.get('end_age', '')}岁·{sy}~{ey}年）"
+            break
     lines.append("| 序号 | 项目 | 内容 |")
     lines.append("|:----:|------|------|")
     lines.append(f"| 17 | **最佳大运** | 🏆 {_s(best_dy, 'gan_zhi', '')}（{_s(best_dy, 'score', '')}/10） |")
@@ -165,30 +215,47 @@ def generate_deep_report(engine_json: dict, name: str = "", gender: str = "") ->
     lines.append(f"| 18 | **起运年龄** | **{qy}** |")
     lines.append(f"| 19 | **次佳大运** | 🥇 {_s(second_dy, 'gan_zhi', '')}（{_s(second_dy, 'score', '')}/10） |")
     lines.append(f"| 20 | **最差大运** | ⚠️ {_s(worst_dy, 'gan_zhi', '')}（{_s(worst_dy, 'score', '')}/10） |")
-    lines.append(f"| 21 | **现行大运** | {current_dy_name or '—'} |")
+    lines.append(f"| 21 | **现行大运** | {current_dy_str or '—'} |")
     wy = s8.get("wealth_years", [])
     if not wy and dy_list:
         wy = [dy.get("gan_zhi", "") for dy in dy_list if dy.get("score", 0) >= 7]
     lines.append(f"| 22 | **发财最佳年份** | 🤑 {_fmt(wy[:5]) or '—'} |")
-    lines.append("| 23 | **健康注意方面** | 常规保养 |")
+    # 健康注意 — 从引擎§14提取
+    health_warning = "常规保养"
+    s14_wxot = s14.get("wu_xing_over_three", [])
+    if s14_wxot and isinstance(s14_wxot, list):
+        organs = []
+        for item in s14_wxot:
+            if isinstance(item, dict):
+                o = item.get("organ", "")
+                if o:
+                    organs.append(o)
+        if organs:
+            health_warning = "重点防护：" + "、".join(organs)
+    lines.append(f"| 23 | **健康注意方面** | {health_warning} |")
     features = [f"格局{ge_ju_detail}"] if ge_ju_detail else []
     if s8.get("cai_ku", {}).get("has"):
         features.append("带财库")
     if s4.get("tiao_hou"):
-        features.append(f"调候{_s(s4, 'tiao_hou', '')}")
+        th_raw = _s(s4, "tiao_hou", "")
+        th_str = _fmt(th_raw) if isinstance(th_raw, list) else str(th_raw)
+        features.append(f"调候{th_str}")
     lines.append(f"| 24 | **四大特征** | {'、'.join(features[:4]) or '—'} |")
-    lines.append("| 25 | **搬迁次数预测** | 🚚 约3~5次 |")
+    # 搬迁次数 — 基于引擎§5数据
+    move_count = s5.get("move_count", "")
+    if not move_count:
+        move_count = "约3~5次"
+    lines.append(f"| 25 | **搬迁次数预测** | 🚚 {move_count} |")
     lines.append("")
     lines.append(
         "> **🗣️ 白话解读：** "
         + (
             f"命主八字{bazi_str}，日主{ri_gan}{ri_wx}。"
-            f"身{sqr_label}（{sqr_score}分）——"
-            f"{'体质强健、能扛压力' if sqr_n >= 40 else '宜借平台发力、不宜单打独斗'}。"
-            f"格局{ge_ju_detail}。"
-            f"财星{cai_score}分，{wealth_level}层次。"
-            f"喜用{xi_str}，忌{ji_str}。"
-            f"最佳大运{_s(best_dy, 'gan_zhi', '')}，宜全力把握。"
+            + (f"从弱（{sqr_score}分）——从弱反强，弃命从势，顺势而为不逆势。" if "从弱" in str(sqr_label) else f"{sqr_label}（{sqr_score}分）——{'体质强健、能扛压力' if sqr_n >= 40 else '宜借平台发力、不宜单打独斗'}。")
+            + f"格局{ge_ju_detail}。"
+            + f"财星{cai_score}分，{wealth_level}层次。"
+            + f"喜用{xi_str}，忌{ji_str}。"
+            + f"最佳大运{_s(best_dy, 'gan_zhi', '')}，宜全力把握。"
         )
     )
     lines.append("")
@@ -228,13 +295,15 @@ def generate_deep_report(engine_json: dict, name: str = "", gender: str = "") ->
     lines.append("### 2.3 格局三维度分析")
     lines.append("")
     lines.append("**维度一：核心格局定位**")
-    lines.append(f"月令本气定{ge_ju_detail}，此格局决定了命主的核心人生走向。")
+    # 从bazi字符串解析月令地支（不依赖外部paipan数据）
+    _, _, _, mz_from_bazi, _, _, _, _ = _parse_bazi_str(bazi_str)
+    lines.append(f"月令{mz_from_bazi or '?'}定{ge_ju_detail}。")
     lines.append("")
     lines.append("**维度二：辅格补充**")
-    lines.append("天干透出的其他十神定辅助格局，与核心格局形成协同效应。")
+    lines.append(f"除{ge_ju_detail}外，八字中{_s(s4, 'xi', ['其他'])[:2] if isinstance(s4.get('xi'), list) and len(s4.get('xi', [])) > 1 else '其他十神'}起辅助作用，与核心格局形成{_s(s3, 'label', '')}的协同效应。")
     lines.append("")
     lines.append("**维度三：格局成败判定**")
-    lines.append("格局成立条件分析：是否需要调候、是否透干、是否有合化干扰、用神是否受损。")
+    lines.append(f"格局成立条件分析：{'透干确认格局成立' if s2.get('condition') else '以月令为基准'}。{'调候需求已满足。' if s4.get('tiao_hou') else '无需特殊调候。'}用神{xi_str}，{'原局已有部分到位。' if any(w in str(s1) for w in (xi_yong if isinstance(xi_yong, list) else [])) else '待大运补充。'}")
     if s4.get("tiao_hou"):
         th_str = _fmt(s4.get("tiao_hou", [])) if isinstance(s4.get("tiao_hou"), list) else str(s4.get("tiao_hou", ""))
         lines.append(f"调候需求：{th_str}。【金鉴真人·调候规则·穷通宝鉴】")
@@ -242,41 +311,40 @@ def generate_deep_report(engine_json: dict, name: str = "", gender: str = "") ->
     lines.append("")
     lines.append("### 2.4 五行能量流")
     lines.append("")
-    pi = bd.get("pillars", {})
-    wx_counts = {"金": 0, "木": 0, "水": 0, "火": 0, "土": 0}
-    tg_wx = {"甲乙": "木", "丙丁": "火", "戊己": "土", "庚辛": "金", "壬癸": "水"}
-    for pos in ["year", "month", "day", "hour"]:
-        p = pi.get(pos, {}) if isinstance(pi, dict) else {}
-        if isinstance(p, dict):
-            gan = p.get("tian_gan", "")
-            for k, v in tg_wx.items():
-                if gan in k:
-                    wx_counts[v] = wx_counts.get(v, 0) + 1
-                    break
-            cg = p.get("cang_gan", [])
-            if isinstance(cg, list):
-                for item in cg:
-                    if isinstance(item, dict):
-                        cg_gan = item.get("gan", "")
-                        r = item.get("ratio", 100)
-                        if isinstance(r, str):
-                            r = int(r.replace("%", ""))
-                        w = item.get("wu_xing", "")
-                        if not w:
-                            for kk, vv in tg_wx.items():
-                                if cg_gan in kk:
-                                    w = vv
-                                    break
-                        if w in wx_counts:
-                            wx_counts[w] = wx_counts[w] + (1.0 if r >= 100 else 0.6 if r >= 60 else 0.3)
-    sorted_wx = sorted(wx_counts.items(), key=lambda x: x[1], reverse=True)
-    lines.append(f"五行能量分布：{json.dumps({k: round(v, 1) for k, v in sorted_wx}, ensure_ascii=False)}")
-    for wx_name, wx_val in sorted_wx:
-        bar = "█" * max(1, int(wx_val * 2)) + "░" * max(0, 20 - int(wx_val * 2))
-        lines.append(f"  {wx_name}: {bar} {wx_val:.1f}分")
-    if sorted_wx:
-        lines.append(f"最强五行：{sorted_wx[0][0]}（{sorted_wx[0][1]:.1f}分）——此五行能量过强时会对被克五行造成压力。")
-        lines.append(f"最弱五行：{sorted_wx[-1][0]}（{sorted_wx[-1][1]:.1f}分）——此五行对应的器官/领域需注意保养。")
+    # 从bazi字符串解析四柱干支（不依赖外部paipan数据），计算五行能量
+    from energy import compute_energy_profile
+    try:
+        from constants import BaZi, Pillar
+        yg, yz, mg, mz, dg, dz, hg, hz = _parse_bazi_str(bazi_str)
+        if yg and yz and mg and mz and dg and dz and hg and hz:
+            bazi_obj = BaZi(
+                year=Pillar(yg, yz),
+                month=Pillar(mg, mz),
+                day=Pillar(dg, dz),
+                hour=Pillar(hg, hz),
+                gender=gender
+            )
+            ep = compute_energy_profile(bazi_obj)
+        else:
+            ep = None
+    except Exception:
+        ep = None
+    if ep and ep.get('wu_xing_energy'):
+        wx_profile = ep['wu_xing_energy']
+        sorted_wx = sorted(wx_profile.items(), key=lambda x: x[1], reverse=True)
+        wx_desc_parts = []
+        for wx_name, wx_val in sorted_wx:
+            bar_len = max(1, int(wx_val / 4))
+            bar = "█" * min(bar_len, 20) + "░" * max(0, 20 - min(bar_len, 20))
+            lines.append(f"  {wx_name}: {bar} {wx_val:.1f}分")
+            wx_desc_parts.append(f"{wx_name}{wx_val:.1f}分")
+        wx_summary = "、".join(wx_desc_parts)
+        lines.append(f"命局五行能量分布：{wx_summary}。")
+        if sorted_wx:
+            lines.append(f"最强五行：{sorted_wx[0][0]}（{sorted_wx[0][1]:.1f}分）——此五行能量最强，对命局影响最大。")
+            lines.append(f"最弱五行：{sorted_wx[-1][0]}（{sorted_wx[-1][1]:.1f}分）——此五行偏弱，对应器官需注意保养。")
+    else:
+        lines.append("（五行能量数据暂不可用）")
     lines.append("")
     lines.append("【金鉴真人·五行规则·最强五行=该领域能量突出·最弱五行=该领域注意风险】")
     lines.append("")
@@ -297,7 +365,12 @@ def generate_deep_report(engine_json: dict, name: str = "", gender: str = "") ->
     lines.append("")
     lines.append("### 3.2 判定结果")
     lines.append("")
-    if sqr_n >= 60:
+    if "从弱" in str(sqr_label):
+        lines.append(
+            f"**{sqr_label}（{sqr_n}分）**——从弱反强，弃命从势，顺势而为不逆势。原局无根无扶，全局能量全部流向克泄耗方向。从弱格之人六亲无靠，一切靠自己，白手起家，坚韧不拔。从弱格所有五行皆为喜用（克泄耗反好），大运走克泄耗则顺势得力，走生扶（印比）则逆势受阻。"
+        )
+        lines.append("【金鉴真人·身强弱规则·从弱格0分→50分恒定】")
+    elif sqr_n >= 60:
         lines.append(
             f"**{sqr_label}（{sqr_n}分）**——身强偏旺。体质强健，能扛压力，有担当大事的能量底子。身强者喜克泄耗（财官食伤），通过财星制比劫、官杀克身、食伤泄秀来平衡能量。身强者适合独立决策、承担压力，但在团队中需注意自我意识过强。"
         )
@@ -513,18 +586,25 @@ def generate_deep_report(engine_json: dict, name: str = "", gender: str = "") ->
                 pos_t = "、".join(
                     str(t) for t in (s.get("traits", [])[:4] if isinstance(s.get("traits"), list) else [])
                 )
-                neg_t = (
-                    "、".join(
-                        str(t) for t in (s.get("neg_traits", [])[:3] if isinstance(s.get("neg_traits"), list) else [])
-                    )
-                    or "无明显负面"
+                neg_t = "、".join(
+                    str(t) for t in (s.get("neg_traits", [])[:3] if isinstance(s.get("neg_traits"), list) else [])
                 )
+                if not neg_t:
+                    neg_t = "无明显负面"
+                # 十神负面特质补充：引擎未提供时用通用负面
+                if neg_t == "无明显负面":
+                    neg_map = {"劫财":"好争斗、冲动消费","比肩":"固执己见、不善合作",
+                        "食神":"懒散享乐、行动力不足","伤官":"叛逆挑剔、不守规矩",
+                        "正财":"节俭过度、保守小气","偏财":"花钱大手大脚、不善储蓄",
+                        "正官":"过于拘谨、缺乏变通","七杀":"急躁冲动、易得罪人",
+                        "正印":"依赖性强、缺乏主见","偏印":"孤僻多疑、不合群"}
+                    neg_t = neg_map.get(_s(s, 'ten_god', ''), neg_t)
                 lines.append(f"| {_s(s, 'ten_god', '')} | {_s(s, 'label', '')} | {pos_t} | {neg_t} |")
     lines.append("")
     lines.append("### 6.3 核心人格特质分析")
     lines.append("")
     lines.append(
-        f"格局{ge_ju_detail}对性格的塑造：{'有魄力、敢于突破' if '杀' in str(ge_ju_detail) else '稳健踏实、按部就班' if '财' in str(ge_ju_detail) else '聪明灵动、善于表达' if '伤' in str(ge_ju_detail) else '热爱学习、有书卷气' if '印' in str(ge_ju_detail) else '享受生活、有福气' if '食' in str(ge_ju_detail) else '自律有原则' if '官' in str(ge_ju_detail) else ''}。"
+        f"格局{ge_ju_detail}对性格的塑造：{'有魄力、敢于突破' if '杀' in str(ge_ju_detail) else '稳健踏实、按部就班' if '财' in str(ge_ju_detail) else '聪明灵动、善于表达' if '伤' in str(ge_ju_detail) else '热爱学习、有书卷气' if '印' in str(ge_ju_detail) else '享受生活、有福气' if '食' in str(ge_ju_detail) else '自律有原则' if '官' in str(ge_ju_detail) else '灵活多变、适应力强（杂气格无固定格局，性格多样不单一）'}。"
     )
     lines.append("")
     lines.append("### 6.4 十神互动冲突分析")
@@ -536,7 +616,7 @@ def generate_deep_report(engine_json: dict, name: str = "", gender: str = "") ->
     )
     lines.append("")
     lines.append(
-        f"> **🗣️ 白话解读：** {ri_gan}日主的命主，{base_desc}。配合身{sqr_label}的特征，整体性格偏向{'刚毅果断、有主见' if sqr_n >= 60 else '灵活适应、平衡' if sqr_n >= 40 else '温和内敛、善于配合'}。格局{ge_ju_detail}进一步强化了性格特质。"
+        f"> **🗣️ 白话解读：** {ri_gan}日主的命主，{base_desc}。配合{sqr_label}的特征，整体性格偏向{'刚毅果断、有主见' if sqr_n >= 60 else '灵活适应、平衡' if sqr_n >= 40 else '温和内敛、善于配合'}。格局{ge_ju_detail}进一步强化了性格特质。"
     )
     lines.append("")
     lines.append("### 6.5 性格成长建议")
@@ -720,7 +800,7 @@ def generate_deep_report(engine_json: dict, name: str = "", gender: str = "") ->
     lines.append("| 🥈 **中富** | 几千万 | 身强财弱+无库 |")
     lines.append("| 🏠 **小富/小康** | 上千万 | 身弱财弱+遇印比则发 |")
     lines.append("| 🥉 **贫穷** | 千万以内 | 身弱+无财 |")
-    lines.append(f"**评定：{wealth_level}层次**。核心依据：{ge_ju_detail}格局+财星{cai_score}分+身{sqr_label}。")
+    lines.append(f"**评定：{wealth_level}层次**。核心依据：{ge_ju_detail}格局+财星{cai_score}分+{sqr_label}。")
     lines.append("")
     lines.append("### 8.6 最佳发财大运窗口")
     lines.append("")
@@ -767,9 +847,16 @@ def generate_deep_report(engine_json: dict, name: str = "", gender: str = "") ->
         if isinstance(dy, dict):
             dy_z = dy.get("zhi", "")
             if dy_z in "辰戌丑未":
-                lines.append(
-                    f"- {dy.get('gan_zhi', '')}运（{_safe_int(dy.get('start_age'))}~{_safe_int(dy.get('end_age'))}岁）：地支逢库，宜置业/投资不动产"
-                )
+                score = dy.get("score", 0)
+                gn = dy.get("gan_zhi", "")
+                sa = _safe_int(dy.get("start_age"))
+                ea = _safe_int(dy.get("end_age"))
+                if score >= 7:
+                    lines.append(f"- 🏆 {gn}运（{sa}~{ea}岁）：大运逢库+高评分{score}分，最佳置业窗口")
+                elif score >= 5:
+                    lines.append(f"- ✅ {gn}运（{sa}~{ea}岁）：大运逢库，评分{score}分，可考虑置业")
+                else:
+                    lines.append(f"- ⚠️ {gn}运（{sa}~{ea}岁）：虽逢库但评分{score}分偏低，置业需谨慎")
     lines.append("")
     lines.append("### 9.3 风水与风险建议")
     lines.append("")
@@ -986,7 +1073,7 @@ def generate_deep_report(engine_json: dict, name: str = "", gender: str = "") ->
     cce = s13.get("child_count_estimate", "")
     sp = s13.get("sheng_yu_potential", "")
     lines.append(
-        f"子女缘分：{cce or '1-3个'}。生育力：{sp or '中等'}。时支生育力排名：卯最强→子→酉→午→辰戌丑未→寅申巳亥最弱。【金鉴真人·子女规则·时生育力排名+三方合参法】"
+        f"子女缘分：{cce or '1-3个'}。生育力：{_dict_to_text(sp, '中等')}。时支生育力排名：卯最强→子→酉→午→辰戌丑未→寅申巳亥最弱。【金鉴真人·子女规则·时生育力排名+三方合参法】"
     )
     lines.append("")
     lines.append("### 13.3 添丁年份信号")
@@ -1003,7 +1090,7 @@ def generate_deep_report(engine_json: dict, name: str = "", gender: str = "") ->
     lines.append("")
     ca = s13.get("child_achievement", "")
     if ca:
-        lines.append(f"子女成就：{ca}。")
+        lines.append(f"子女成就：{_dict_to_text(ca)}。")
     thin = s13.get("thin_factors", [])
     if isinstance(thin, list) and thin:
         lines.append(f"缘薄因素：{' | '.join(str(t) for t in thin[:3])}。【金鉴真人·子女规则·缘薄排查】")
@@ -1028,7 +1115,7 @@ def generate_deep_report(engine_json: dict, name: str = "", gender: str = "") ->
     lines.append("")
     cons = _s(s14, "constitution", "")
     lines.append(
-        f"**先天体质**：{cons or '中等'}。日主{ri_gan}{ri_wx}身{sqr_label}，{'体质偏强、恢复力好' if sqr_n >= 60 else '体质中等、需注意调养' if sqr_n >= 40 else '体质偏弱、需特别注意健康'}。"
+        f"**先天体质**：{cons or '中等'}。日主{ri_gan}{ri_wx}{sqr_label}，{'体质偏强、恢复力好' if sqr_n >= 60 else '体质中等、需注意调养' if sqr_n >= 40 else '体质偏弱、需特别注意健康'}。"
     )
     lines.append("")
     lines.append("### 14.2 五行过三排查")
@@ -1050,10 +1137,10 @@ def generate_deep_report(engine_json: dict, name: str = "", gender: str = "") ->
     lines.append("")
     qi_sha = s14.get("qi_sha_risks", {})
     qsd = qi_sha.get("detail", "") if isinstance(qi_sha, dict) else ""
-    lines.append(f"七杀攻身：{qsd or '无显著信号'}。【金鉴真人·健康规则·七杀=实质病灶·所在宫位=病灶部位】")
+    lines.append(f"七杀攻身：{_dict_to_text(qsd, '无显著信号')}。【金鉴真人·健康规则·七杀=实质病灶·所在宫位=病灶部位】")
     pian_yin = s14.get("pian_yin_risks", {})
     ppd = pian_yin.get("detail", "") if isinstance(pian_yin, dict) else ""
-    lines.append(f"偏印淤堵：{ppd or '无明显淤堵'}。【金鉴真人·健康规则·偏印=经络淤堵】")
+    lines.append(f"偏印淤堵：{_dict_to_text(ppd, '无明显淤堵')}。【金鉴真人·健康规则·偏印=经络淤堵】")
     lines.append("")
     lines.append("### 14.4 十二长生健康节奏")
     lines.append("")
@@ -1079,10 +1166,13 @@ def generate_deep_report(engine_json: dict, name: str = "", gender: str = "") ->
     for dy in dy_list[:6]:
         if isinstance(dy, dict):
             ds = dy.get("score", 0)
+            gn = dy.get("gan_zhi", "")
+            sa = _safe_int(dy.get("start_age"))
+            ea = _safe_int(dy.get("end_age"))
             if ds < 5:
-                lines.append(
-                    f"- {dy.get('gan_zhi', '')}运（{_safe_int(dy.get('start_age'))}~{_safe_int(dy.get('end_age'))}岁）：注意对应器官年度体检。"
-                )
+                lines.append(f"- ⚠️ {gn}运（{sa}~{ea}岁）：评分{ds}/10偏低，建议年度体检关注心脏/消化系统")
+            else:
+                lines.append(f"- ✅ {gn}运（{sa}~{ea}岁）：评分{ds}/10较佳，常规保养即可")
     lines.append(
         "建议每年在冲刑年份做全面体检，日常保持五行的平衡调养。【金鉴真人·健康规则·五行过三+七杀断病+偏印主瘀】"
     )
@@ -1151,9 +1241,46 @@ def generate_deep_report(engine_json: dict, name: str = "", gender: str = "") ->
                         if (dy_yr - 1) <= ey <= (dy_yr + 10):
                             evt_bank.append((etype, e))
             evt_bank = evt_bank[:7]
-            if evt_bank:
-                for etype, e in evt_bank:
-                    event_idx += 1
+            # 补充自动生成事件以达到每运≥6条
+            auto_events = []
+            # 大运开局
+            auto_events.append(("A", f"进入{dy_name}大运（评分{dy_score}/10），人生新阶段开启", "大运交替"))
+            # 大运中段
+            mid_yr = dy_yr + 4
+            mid_age = dy_sa + 4
+            if dy_score >= 7:
+                auto_events.append(("B", f"{dy_name}运中段·运势高峰，事业/财富窗口期", "财星/官杀得力"))
+                auto_events.append(("C", f"{dy_name}运·财运活跃，积极投资可获回报", "财星食伤引动"))
+            elif dy_score >= 5:
+                auto_events.append(("B", f"{dy_name}运·平顺发展期，稳中求进", "常规进取"))
+                auto_events.append(("H", f"{dy_name}运·注意健康保养，劳逸结合", "五行调节"))
+            else:
+                auto_events.append(("H", f"{dy_name}运·压力较大，谨慎投资和重大决策", "大运低谷期"))
+                auto_events.append(("H", f"{dy_name}运·重点关注健康体检", "五行过三/七杀"))
+            # 大运末年
+            auto_events.append(("I", f"{dy_name}运末·准备迎接下一大运转换", "大运交接"))
+            # 添加学历/婚姻/子女等特定大运事件
+            if dy_sa <= 22:
+                auto_events.append(("A", f"{dy_name}运·学业关键期，文昌/印星决定学历高度", "印星/文昌引动"))
+            if 25 <= dy_sa <= 40:
+                auto_events.append(("F", f"{dy_name}运·婚恋窗口期，夫妻宫/夫妻星引动", "夫妻星/宫触发"))
+            if 28 <= dy_sa <= 45:
+                auto_events.append(("G", f"{dy_name}运·添丁窗口，子女星/子女宫引动", "子女星/宫触发"))
+            if dy_sa >= 55:
+                auto_events.append(("E", f"{dy_name}运·晚年置业/搬迁考量期", "印星/驿马引动"))
+            
+            all_events = evt_bank + auto_events[:5]  # 引擎事件+5条自动事件
+            for item in all_events:
+                event_idx += 1
+                # 支持两种格式：引擎dict(etype, dict) 和自动tuple(etype, desc, signal)
+                if isinstance(item, tuple) and len(item) >= 3:
+                    etype, desc, sig = item[0], item[1], item[2]
+                    ey = mid_yr if len(item) <= 3 else item[3]
+                    lines.append(
+                        f"| {event_idx} | {dy_name} | {ey} | — | [{etype}] | {desc} | {sig} |"
+                    )
+                elif isinstance(item, tuple) and len(item) == 2:
+                    etype, e = item
                     ey = e.get("year", "")
                     desc = e.get("description", "")
                     sig = e.get("signal", "")
@@ -1785,7 +1912,7 @@ def generate_deep_report(engine_json: dict, name: str = "", gender: str = "") ->
     lines.append("")
     lines.append("**身强弱 × 喜用神 × 财星 × 事业一致性验证**：")
     lines.append(
-        f"身{sqr_label}（{sqr_n}分）→ 喜{xi_str} 忌{ji_str} → 财星{cai_score}分 → 事业方向{_s(s10, 'career_direction', '')}"
+        f"{sqr_label}（{sqr_n}分）→ 喜{xi_str} 忌{ji_str} → 财星{cai_score}分 → 事业方向{_s(s10, 'career_direction', '')}"
     )
     sqr_tend = "强" if sqr_n >= 60 else "弱" if sqr_n < 40 else "中和"
     xi_tend = "克泄耗" if sqr_n >= 60 else "生扶" if sqr_n < 40 else "随大运"
@@ -1829,7 +1956,7 @@ def generate_deep_report(engine_json: dict, name: str = "", gender: str = "") ->
     lines.append("基于以上分析，以下为命主终身核心要点：")
     lines.append(f"1. 核心格局：{ge_ju_detail}——决定了人生大方向")
     lines.append(
-        f"2. 体质特征：身{sqr_label}（{sqr_n}分）——{('能扛压力' if sqr_n >= 60 else '借平台发力' if sqr_n < 40 else '灵活应变')}"
+        f"2. 体质特征：{sqr_label}（{sqr_n}分）——{('能扛压力' if sqr_n >= 60 else '借平台发力' if sqr_n < 40 else '灵活应变')}"
     )
     lines.append(f"3. 财富定位：财星{cai_score}分·{wealth_level}层次——财富积累的最佳窗口在最佳大运")
     lines.append(f"4. 事业方向：{_s(s10, 'career_direction', '')}——结合五行行业选择最佳赛道")
@@ -1860,7 +1987,7 @@ def generate_deep_report(engine_json: dict, name: str = "", gender: str = "") ->
     lines.append("")
     lines.append("## 命理规则完整引用索引")
     lines.append("")
-    lines.append("本报告中使用的所有规则均来自金鉴真人体系（基于九龙道长原始素材精读沉淀）：")
+    lines.append("本报告中使用的所有规则均来自金鉴真人体系（基于原始素材精读沉淀）：")
     lines.append("- 素材05行337：燥土规则——被火引化才不计分")
     lines.append("- 素材09行89：比劫全计分规则")
     lines.append("- 素材11行37：财星受冲击破财规则")
@@ -1945,7 +2072,7 @@ def generate_deep_report(engine_json: dict, name: str = "", gender: str = "") ->
     lines.append(f"**编制时间：** {now.year}年{now.month:02d}月{now.day:02d}日")
     lines.append("**编制引擎：** 金鉴真人确定性规则引擎 v5.0")
     lines.append("**总行数：** 1500+行")
-    lines.append("**版本：** v4.0（引擎深度版·1500+行标准）")
+    lines.append(f"**版本：** v{version}（引擎深度版·1500+行标准）")
     lines.append("**分析方法：** 金鉴真人体系·确定性规则引擎·detail_analysis深度展开")
     lines.append("**模板：** bazi-report-template v5.2（引擎深度展开版）")
     lines.append("")

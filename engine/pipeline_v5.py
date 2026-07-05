@@ -35,7 +35,7 @@ from misfortune_analysis import analyze_misfortune, analyze_remission
 from shen_qiang_ruo import compute_shen_qiang_ruo
 from shen_sha import compute_all_shen_sha
 from shi_shen import get_shi_shen_all_dry, get_shi_shen_for_gan
-from xing_chong_he_hua import check_all_relations
+from xing_chong_he_hua import check_all_relations, _get_kong_wang
 
 # ── 地支藏干映射 ──
 CANG_GAN_MAP = {
@@ -311,9 +311,14 @@ def run_v5(bazi: BaZi, birth_year=1980, birth_month=1, birth_day=1, qi_yun_days=
             "worst_da_yun_score": dy_scores[worst_idx][1] if worst_idx >= 0 else 0,
             "qi_yun_age": round(qy_age, 1),
             "education": edu.get("display", ""),
+            # 🚨 v5.1新增：缺失字段补充
+            "kong_wang": "、".join(_get_kong_wang(ri_zhu, bazi.day.zhi)),
+            "birth_info": f"{birth_year}年{birth_month}月{birth_day}日",
         },
         # §2 格局
-        "sec_2_ge_ju": {"main": main_ge, "detail": detail_ge, "shi_shen": get_shi_shen_all_dry(bazi)},
+        "sec_2_ge_ju": {"main": main_ge, "detail": detail_ge, "shi_shen": get_shi_shen_all_dry(bazi),
+                          "condition": f"月令{detail_ge}成立：月令本气定格局{'，天干透出' + str(all_gans[1]) + '确认' if all_gans[1] in xi else '，以月令为基准'}",
+                          "tiao_hou_detail": th},
         # §3 身强弱
         "sec_3_shen_qiang_ruo": {
             "score": sqr_score,
