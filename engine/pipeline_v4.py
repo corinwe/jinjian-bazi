@@ -75,7 +75,10 @@ def run_v4(bazi: BaZi, birth_year=1980, birth_month_lunar=1, qi_yun_days=1.1, cu
 
     edu = analyze_education(all_gans, all_zhis, ri_zhu, sqr_score, sqr_label, xi, dy_gans, dy_zhis, dy_ages)
     char = analyze_character(ri_zhu, all_gans, sqr_label, sqr_score, dz["summary"], ss.summary)
-    fam = analyze_nian_yue(bazi.year.gan, bazi.year.zhi, bazi.month.gan, bazi.month.zhi, ri_zhu, sqr_label)
+    fam = analyze_nian_yue(
+        bazi.year.gan, bazi.year.zhi, bazi.month.gan, bazi.month.zhi, ri_zhu, sqr_label,
+        gender=bazi.gender, all_gans=all_gans, all_zhis=all_zhis, xi_yong_wuxing=xi,
+    )
     mar = analyze_marriage(
         ri_zhu, bazi.day.zhi, bazi.gender, all_gans, sqr_label, sqr_score, xi, dy_gans, dy_zhis, dy_ages
     )

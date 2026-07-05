@@ -185,7 +185,10 @@ def run_v3(
     # ═══════════════════════════════════════
     # Step 14: 原生家庭
     # ═══════════════════════════════════════
-    family = analyze_nian_yue(bazi.year.gan, bazi.year.zhi, bazi.month.gan, bazi.month.zhi, ri_zhu, sqr_label)
+    family = analyze_nian_yue(
+        bazi.year.gan, bazi.year.zhi, bazi.month.gan, bazi.month.zhi, ri_zhu, sqr_label,
+        gender=bazi.gender, all_gans=all_gans, all_zhis=all_zhis, xi_yong_wuxing=xi,
+    )
 
     # ═══════════════════════════════════════
     # Step 15: 婚姻分析

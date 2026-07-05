@@ -217,7 +217,10 @@ def run_v5(bazi: BaZi, birth_year=1980, birth_month=1, birth_day=1, qi_yun_days=
     char = analyze_character(ri_zhu, all_gans, sqr_label, sqr_score, dz["summary"], ss.summary)
 
     # 原生家庭（已有模块）
-    fam = analyze_nian_yue(bazi.year.gan, bazi.year.zhi, bazi.month.gan, bazi.month.zhi, ri_zhu, sqr_label)
+    fam = analyze_nian_yue(
+        bazi.year.gan, bazi.year.zhi, bazi.month.gan, bazi.month.zhi, ri_zhu, sqr_label,
+        gender=bazi.gender, all_gans=all_gans, all_zhis=all_zhis, xi_yong_wuxing=xi,
+    )
 
     # 8大维度（dimensions_v2已删除，跳过维度评分）
     dims = {}
@@ -242,6 +245,36 @@ def run_v5(bazi: BaZi, birth_year=1980, birth_month=1, birth_day=1, qi_yun_days=
         birth_year,
         current_year,
     )
+
+    # ═══════════════════════════════
+    # 灾祸分析（单次调用，修复审计双调用问题）
+    # ═══════════════════════════════
+    _kw_zhis_str = _get_kong_wang(bazi.day.gan, bazi.day.zhi)
+    _kw_list = [c for c in _kw_zhis_str]  # "戌亥" → ["戌", "亥"]
+    _dy_dict_list = [{"gan": d.gan, "zhi": d.zhi, "start_age": d.start_age} for d in dy_list]
+    _mf = analyze_misfortune(
+        all_gans, all_zhis, ri_zhu, bazi.gender,
+        sqr_label, sqr_score,
+        bazi.year.zhi, _get_na_yin(bazi.year.gan, bazi.year.zhi),
+        current_year - birth_year,
+        da_yun_list=_dy_dict_list,
+        kong_wang_zhis=_kw_list,
+        wu_xing_energy=energy["wu_xing_energy"],
+        month_zhi=bazi.month.zhi,
+    )
+    _misfortune_ctx = {
+        "shen_sha_chong": dz["冲"],
+        "shen_sha_xing": [x["type"] for x in dz["刑"]],
+        "shen_sha_hai": dz["害"],
+        "yuan_chen": getattr(ss, "yuan_chen", ""),
+        "zai_sha": getattr(ss, "zai_sha", ""),
+        "tian_luo": getattr(ss, "tian_luo_di_wang", ""),
+        "wu_xing_over_three": [
+            {"wx": k, "count": v} for k, v in energy["wu_xing_energy"].items() if v >= 3
+        ],
+        "misfortune_full": _mf,
+        "remission_advice": analyze_remission(xi, ji, _mf["risk_level"], _mf),
+    }
 
     # ═══════════════════════════════
     # 21§完整输出
@@ -297,43 +330,7 @@ def run_v5(bazi: BaZi, birth_year=1980, birth_month=1, birth_day=1, qi_yun_days=
         # §4 喜用神
         "sec_4_xi_yong": {"xi": xi, "ji": ji, "tiao_hou": th},
         # §5 灾祸/搬迁
-        "sec_5_zai_huo": {
-            "shen_sha_chong": dz["冲"],
-            "shen_sha_xing": [x["type"] for x in dz["刑"]],
-            "shen_sha_hai": dz["害"],
-            "yuan_chen": getattr(ss, "yuan_chen", ""),
-            "zai_sha": getattr(ss, "zai_sha", ""),
-            "tian_luo": getattr(ss, "tian_luo_di_wang", ""),
-            "wu_xing_over_three": [
-                {"wx": k, "count": v} for k, v in compute_energy_profile(bazi)["wu_xing_energy"].items() if v >= 3
-            ],
-            "misfortune_full": analyze_misfortune(
-                all_gans,
-                all_zhis,
-                ri_zhu,
-                bazi.gender,
-                sqr_label,
-                sqr_score,
-                bazi.year.zhi,
-                _get_na_yin(bazi.year.gan, bazi.year.zhi),
-                current_year - birth_year,
-            ),
-            "remission_advice": analyze_remission(
-                xi,
-                ji,
-                analyze_misfortune(
-                    all_gans,
-                    all_zhis,
-                    ri_zhu,
-                    bazi.gender,
-                    sqr_label,
-                    sqr_score,
-                    bazi.year.zhi,
-                    _get_na_yin(bazi.year.gan, bazi.year.zhi),
-                    current_year - birth_year,
-                )["risk_level"],
-            ),
-        },
+        "sec_5_zai_huo": _misfortune_ctx,
         # §6 性格
         "sec_6_character": char,
         # §7 身材外貌（v2引擎）

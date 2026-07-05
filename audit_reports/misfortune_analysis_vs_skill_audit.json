@@ -1,0 +1,355 @@
+{
+  "audit_title": "深度审计：misfortune_analysis.py vs bazi-misfortune-analysis skill",
+  "audit_date": "2026-07-05",
+  "module": "engine/misfortune_analysis.py",
+  "skill": "bazi-misfortune-analysis v1.1",
+  "methodology": "逐条对照 skill 全部规则 vs 代码实现",
+  "summary": {
+    "total_rules_in_skill": 47,
+    "fully_implemented": 7,
+    "partially_implemented": 3,
+    "missing": 30,
+    "incorrect": 7,
+    "coverage_pct": "15% (7/47 fully implemented)",
+    "verdict": "CRITICAL: 灾祸引擎严重落后于 skill v1.1，大量关键规则缺失，能量计算机制完全错误"
+  },
+  "checkpoints": [
+    {
+      "id": 1,
+      "name": "牢狱灾四大神煞 — 元辰(大耗)",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "findings": [
+        "OK 基本查法表实现正确(yang_rules/yin_rules匹配skill)",
+        "OK 阴阳规则正确：阳男->阳表/阳女->阴表/阴男->阴表/阴女->阳表",
+        "MISSING: 元辰大运填实检查(仅查原局年支)",
+        "MISSING: 空亡削弱系数",
+        "MISSING: 元辰+天罗地网叠加检测",
+        "MISSING: 天乙/天德/月德化解检查"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "牢狱灾四大神煞 — 灾煞(血光横死)",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "findings": [
+        "OK 查法表正确(申子辰->午/亥卯未->酉/寅午戌->子/巳酉丑->卯)",
+        "MISSING: 能量倍数检测(被合化加强>=5倍时才触发严重灾)",
+        "MISSING: 天乙/天德/月德化解检查",
+        "MISSING: 灾煞的大运/流年触发(仅返回static查法结果)"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "牢狱灾四大神煞 — 天罗地网",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "findings": [
+        "OK 纳音五行分类正确(火/水土/金木)",
+        "BUG: 纳音匹配逻辑脆弱(nian_na_yin.startswith(s[:2])格式依赖)",
+        "MISSING: 宫位定位(skill说出现在哪一柱即应在哪个年龄段)",
+        "MISSING: 大运填实检测",
+        "MISSING: 空亡削弱检测"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "牢狱灾四大神煞 — 印星被冲/合化",
+      "status": "INCORRECT",
+      "findings": [
+        "INCORRECT: 检查的是印数量vs杀数量而非印星是否被冲或合化",
+        "只查天干十神，不查地支藏干中的印星",
+        "sha_count>=3才触发警告，但skill说一印化两个七杀已费力",
+        "MISSING: 印星被六冲/三刑/合化的实际检测",
+        "MISSING: 伤官无制的检测(印也制伤官)"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "疾病五行过三表",
+      "status": "MISSING",
+      "findings": [
+        "COMPLETELY MISSING from misfortune_analysis.py",
+        "pipeline_v5.py line 307-309有compute_energy_profile计算但未集成到模块内"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "七杀断病法(器质性病变)",
+      "status": "MISSING",
+      "findings": [
+        "COMPLETELY MISSING: 七杀宫位定位疾病"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "偏印断病法(经络淤堵)",
+      "status": "MISSING",
+      "findings": [
+        "COMPLETELY MISSING: 偏印宫位定位经络问题"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "36岁分界线",
+      "status": "CORRECT",
+      "findings": [
+        "OK age<36: x0.7",
+        "OK age 36-55: x1.0(default)",
+        "OK age>55 and <70: x1.3",
+        "OK age>=70: x2.0"
+      ]
+    },
+    {
+      "id": 9,
+      "name": "身体反射区对应家人",
+      "status": "MISSING",
+      "findings": [
+        "COMPLETELY MISSING(2026-07-04新增)"
+      ]
+    },
+    {
+      "id": 10,
+      "name": "宫位受伤理论",
+      "status": "MISSING",
+      "findings": [
+        "COMPLETELY MISSING(2026-07-04新增)"
+      ]
+    },
+    {
+      "id": 11,
+      "name": "食伤官司规则",
+      "status": "INCORRECT",
+      "findings": [
+        "INCORRECT: 伤官阈值使用3/7/15而非skill的5/10",
+        "MISSING: 食神能量检查(代码只检查伤官不检查食神)",
+        "MISSING: 食神5倍变伤官的规则",
+        "INCORRECT: 能量使用天干计数而非合化倍数"
+      ]
+    },
+    {
+      "id": 12,
+      "name": "伤官桃花灾",
+      "status": "MISSING",
+      "findings": [
+        "COMPLETELY MISSING"
+      ]
+    },
+    {
+      "id": 13,
+      "name": "终生灾祸排查(8步)",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "findings": [
+        "OK Step 1-3: 神煞查法已实现",
+        "Step 4: 仅检查印杀数量对比非真正印星保护力",
+        "Step 5-6: 仅天干计数非合化能量倍数",
+        "MISSING Step 7: 疾病专项(五行过三/七杀定位/偏印定位)",
+        "OK Step 8: 综合评级已实现(risk_level/risk_score)"
+      ]
+    },
+    {
+      "id": 14,
+      "name": "岁运并临天克地冲",
+      "status": "MISSING",
+      "findings": [
+        "COMPLETELY MISSING(2026-07-04新增)"
+      ]
+    },
+    {
+      "id": 15,
+      "name": "血刃查法表",
+      "status": "MISSING",
+      "findings": [
+        "COMPLETELY MISSING(2026-07-04新增)"
+      ]
+    },
+    {
+      "id": 16,
+      "name": "枭神夺食",
+      "status": "MISSING",
+      "findings": [
+        "仅在_energy_level_check有偏印通用能量检查",
+        "MISSING: 本命局有食神+偏印触发夺食",
+        "MISSING: 五行夺食断事(枭金夺木/枭木夺土等)",
+        "MISSING: 36岁外伤/内疾分水岭"
+      ]
+    },
+    {
+      "id": 17,
+      "name": "恶神能量倍数机制(核心缺陷)",
+      "status": "INCORRECT",
+      "findings": [
+        "CRITICAL BUG: 使用evil_types.count(et)(天干十神出现次数)作为能量基数",
+        "CRITICAL BUG: 完全不考虑合化倍数(三合/三会/六合/刑冲等)",
+        "CRITICAL BUG: 仅查天干不查地支藏干中的恶神",
+        "CRITICAL BUG: 不查大运/流年合化对恶神的加强",
+        "当前能量永远只有1-4(天干最多4个字)，不可能触发重/极重级别"
+      ]
+    },
+    {
+      "id": 18,
+      "name": "劫财能量表",
+      "status": "MISSING",
+      "findings": [
+        "evil_types检查仅含七杀/伤官/偏印不包含劫财"
+      ]
+    },
+    {
+      "id": 19,
+      "name": "化解方法(天乙/天德/月德)",
+      "status": "MISSING",
+      "findings": [
+        "MISSING: 无天乙/天德/月德检测",
+        "MISSING: 无神煞化解vs十神化解的区分"
+      ]
+    },
+    {
+      "id": 20,
+      "name": "七杀凶险组合(公众号补充)",
+      "status": "MISSING",
+      "findings": [
+        "COMPLETELY MISSING: 七杀+财/七杀+食神+枭神等"
+      ]
+    },
+    {
+      "id": 21,
+      "name": "七杀小人论(宫位)",
+      "status": "MISSING",
+      "findings": [
+        "COMPLETELY MISSING"
+      ]
+    },
+    {
+      "id": 22,
+      "name": "官杀混杂",
+      "status": "MISSING",
+      "findings": [
+        "COMPLETELY MISSING"
+      ]
+    },
+    {
+      "id": 23,
+      "name": "六十甲子限制三刑触发",
+      "status": "MISSING",
+      "findings": [
+        "COMPLETELY MISSING(2026-07-04新增)"
+      ]
+    },
+    {
+      "id": 24,
+      "name": "羊刃相关凶兆",
+      "status": "MISSING",
+      "findings": [
+        "COMPLETELY MISSING"
+      ]
+    },
+    {
+      "id": 25,
+      "name": "反吟(天克地冲)运限规则",
+      "status": "MISSING",
+      "findings": [
+        "COMPLETELY MISSING"
+      ]
+    },
+    {
+      "id": 26,
+      "name": "水火相冲血光之灾",
+      "status": "MISSING",
+      "findings": [
+        "COMPLETELY MISSING"
+      ]
+    },
+    {
+      "id": 27,
+      "name": "某星受制某星有灾",
+      "status": "MISSING",
+      "findings": [
+        "COMPLETELY MISSING"
+      ]
+    },
+    {
+      "id": 28,
+      "name": "宫位与身体部位映射",
+      "status": "MISSING",
+      "findings": [
+        "COMPLETELY MISSING"
+      ]
+    },
+    {
+      "id": 29,
+      "name": "死参数: shen_label / shen_score",
+      "status": "BUG",
+      "findings": [
+        "DEAD PARAMETERS: shen_label, shen_score 传入但从未在函数体使用",
+        "身强弱应影响灾祸判断但引擎忽略"
+      ]
+    },
+    {
+      "id": 30,
+      "name": "重复调用analyze_misfortune",
+      "status": "PERF_ISSUE",
+      "findings": [
+        "pipeline_v5.py调用两次analyze_misfortune(同参数)",
+        "第二次仅为了获取risk_level传给analyze_remission",
+        "可优化为调用一次后提取risk_level"
+      ]
+    }
+  ],
+  "code_quality_issues": [
+    {
+      "severity": "CRITICAL",
+      "issue": "能量计算机制完全错误(用天干计数代替合化倍数)",
+      "detail": "skill明确说能量倍数来自合化不是单纯的流年遇到，但代码用count=evil_types.count(et)(天干出现次数)作为能量基数。天干最多4个字永远达不到7/15/20倍阈值。",
+      "fix": "需引入xing_chong_he_hua.py的合化分析结果，计算恶神对应五行被合化后的实际倍数"
+    },
+    {
+      "severity": "CRITICAL",
+      "issue": "技能v1.1新增规则大量缺失",
+      "detail": "7个2026-07-04新增项(岁运并临天克地冲/血刃/枭神夺食分水岭/六十甲子限制/身体反射区/宫位受伤/能量补能系统)全部未实现",
+      "fix": "按skill逐条实现"
+    },
+    {
+      "severity": "HIGH",
+      "issue": "不查地支藏干十神",
+      "detail": "代码仅检查天干十神，miss了地支藏干中的七杀/伤官/枭神/劫财",
+      "fix": "需将bazi_zhis解析出藏干后再查十神"
+    },
+    {
+      "severity": "HIGH",
+      "issue": "死参数shen_label/shen_score",
+      "detail": "身强弱直接决定抗灾能力但analyze_misfortune忽略此关键参数",
+      "fix": "身弱时应灾加重身强时应灾减轻"
+    },
+    {
+      "severity": "MEDIUM",
+      "issue": "印星被冲检查过于简化",
+      "detail": "仅比印杀数量未检测印星是否真实被冲/合化",
+      "fix": "需检测印星所在柱是否被大运/流年冲或合化"
+    },
+    {
+      "severity": "LOW",
+      "issue": "pipeline_v5.py重复调用",
+      "detail": "analyze_misfortune被调用两次浪费计算",
+      "fix": "调用一次从result中提取risk_level"
+    }
+  ],
+  "recommendation": {
+    "priority": "IMMEDIATE_REWRITE",
+    "required_rewrite_scopes": [
+      "1. 完全重写能量计算机制: 引入xing_chong_he_hua合化分析计算恶神真实倍数",
+      "2. 添加地支藏干十神检查",
+      "3. 实现岁运并临天克地冲检测",
+      "4. 实现血刃查法及能量表",
+      "5. 实现枭神夺食完整逻辑",
+      "6. 实现五行过三检测",
+      "7. 实现七杀断病法和偏印断病法",
+      "8. 实现宫位受伤理论",
+      "9. 实现身体反射区对应家人",
+      "10. 实现六十甲子三刑限制",
+      "11. 整合身强弱参数到灾祸评级",
+      "12. 添加天乙/天德/月德化解检测",
+      "13. 实现劫财/血刃能量表",
+      "14. 添加七杀凶险组合检测",
+      "15. 添加反吟运限规则"
+    ],
+    "estimated_effort": "3-5个agent任务周期"
+  }
+}
