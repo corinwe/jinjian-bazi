@@ -122,43 +122,54 @@ def analyze_liu_nian_v2(
     # ── 综合评分 (0-10) ──
     score = 5.0
 
-    # 十神吉凶
-    xi_yong_ss = ["正印", "偏印", "比肩", "劫财", "食神"]
-    ji_shen_ss = ["七杀", "正官", "伤官", "正财", "偏财"]
+    # ✅ [P0-Bug-1] 用五行喜忌判定（不是十神硬编码）
+    ln_wx_gan = TIAN_GAN_WU_XING[liu_nian_gan]  # 流年天干五行
+    is_xi = ln_wx_gan in xi_yong   # 在喜用中=吉
+    is_ji = ln_wx_gan in ji_shen   # 在忌神中=凶
 
+    # 流年天干喜忌加分
+    if is_xi:
+        score += 1.5
+    elif is_ji:
+        score -= 1.5
+
+    # ✅ [P0-Bug-2] 印星加分根据实际喜用神，不硬编码水/金
     if liu_nian_shi_shen in ["正印", "偏印"]:
-        if "水" in xi_yong or "金" in xi_yong:
-            score += 2.0
-        else:
-            score += 1.0
-    elif liu_nian_shi_shen in ["比肩", "劫财"]:
-        if ri_zhu_wx in xi_yong:
-            score += 1.5
-    elif liu_nian_shi_shen in ["七杀", "正官"]:
-        if ri_zhu_wx in ji_shen:
-            score -= 2.0
-        else:
-            score -= 1.0
-    elif liu_nian_shi_shen in ["正财", "偏财"]:
-        if ri_zhu_wx in ji_shen:
-            score -= 1.0
+        yin_wx = TIAN_GAN_WU_XING[liu_nian_gan]  # 印星五行
+        if yin_wx in xi_yong:
+            score += 1.5  # 印星为喜用 → 大加分
+        elif yin_wx in ji_shen:
+            score += 0.5  # 印星为忌神 → 小幅加分（印星本身有护身作用）
 
-    # 地支关系影响
-    if "冲" in all_rels["summary"]:
-        score -= 0.8
-    if "三刑" in all_rels["summary"]:
-        score -= 1.0
-    if "三合" in all_rels["summary"]:
-        score += 1.0
-    if "六合" in all_rels["summary"]:
-        score += 0.5
+    # ✅ [P0-缺失-2] 贪合忘冲原则：流年某字同时有合和冲的关系，优先选合，不冲
+    has_any_he = bool(all_rels.get("三合") or all_rels.get("六合") or all_rels.get("半合"))
+    has_any_chong = bool(all_rels.get("冲"))
+    tan_he_wang_chong = has_any_he and has_any_chong  # 贪合忘冲启用
+
+    # 地支关系影响（贪合忘冲：有合优先，不計冲的负面）
+    if tan_he_wang_chong:
+        # 贪合忘冲 → 合的能量为主，冲被化解
+        score += 1.0  # 合带来的加分
+    else:
+        if has_any_chong:
+            # 纯冲（无合化解）→ 冲总带来变动
+            # 冲的吉凶取决于被冲的字是否喜用
+            score -= 0.5
+        if has_any_he:
+            score += 1.0
+
+    # ✅ 三刑=能量加强，不是扣分（skill §3.3明确）
+    if all_rels.get("刑"):
+        # 三刑的本质是地支藏干打架→本气加强
+        # 被加强的字喜则吉、忌则凶，不直接扣分
+        score += 0.5  # 三刑是能量加强，不扣分
 
     # 五行关系
     gan_rel = _get_wx_relation(liu_nian_wx_gan, ri_zhu_wx)
     if gan_rel == "生" or gan_rel == "被生":
-        score += 1.0
+        score += 0.5
     elif gan_rel == "克" or gan_rel == "被克":
-        score -= 1.0
+        score -= 0.5
 
     score = max(0, min(10, round(score, 1)))
 
@@ -233,6 +244,33 @@ def analyze_liu_nian_v2(
     if "冲" in dy_rels["summary"]:
         mis_conf += 0.3
         mis_desc = "大运流年相冲"
+
+    # ✅ [P0-缺失-1] 条件5: 岁运并临检测
+    # 岁运并临 = 流年干支与大运干支完全相同
+    is_sui_yun_bing_lin = (liu_nian_gan == da_yun_gan and liu_nian_zhi == da_yun_zhi)
+    if is_sui_yun_bing_lin:
+        mis_conf += 0.6  # 岁运并临→重大灾祸信号
+        # 岁运并临+天克地冲 → 不死自己死家人
+        tian_ke_di_chong = False
+        # 检查天克地冲：流年与八字某柱天干五行相克+地支六冲
+        pillar_gans = all_gans[:4]  # 年/月/日/时 的天干
+        pillar_zhis = all_zhis[:4]  # 年/月/日/时 的地支
+        ln_gan_wx = TIAN_GAN_WU_XING[liu_nian_gan]
+        for pg, pz in zip(pillar_gans, pillar_zhis):
+            pg_wx = TIAN_GAN_WU_XING[pg]
+            # 天克：流年天干五行克八字某柱天干五行
+            if WU_XING_KE.get(ln_gan_wx) == pg_wx:
+                # 地冲：流年地支六冲八字某柱地支
+                if check_chong(liu_nian_zhi, pz):
+                    tian_ke_di_chong = True
+                    break
+
+        if tian_ke_di_chong:
+            mis_conf += 0.4  # 天克地冲+岁运并临=极凶
+            mis_desc = "⚠️ 岁运并临+天克地冲→不死自己死家人"
+        else:
+            mis_desc = "⚠️ 岁运并临→该年运势极端，需谨慎"
+        mis_conf = min(1.0, mis_conf)
 
     if mis_conf >= 0.5:
         mis_conf = min(1.0, mis_conf)  # 上限100%

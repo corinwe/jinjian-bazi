@@ -1,0 +1,521 @@
+{
+  "audit_meta": {
+    "target": "/root/bazi-platform/engine/liu_nian_v2.py",
+    "skill": "bazi-liunian-analysis (v7.4)",
+    "date": "2026-07-05",
+    "auditor": "金鉴真人·subagent",
+    "version": "1.0"
+  },
+  "total_rules": 52,
+  "implemented": 9,
+  "missing": 34,
+  "bugs": 4,
+  "partial": 5,
+  "detail": [
+    {
+      "id": "R1",
+      "rule": "流年天干十神判定",
+      "skill_ref": "§12.1.0, §14.3",
+      "status": "✅ implemented",
+      "code_ref": "liu_nian_v2.py L109: get_shi_shen_for_gan(liu_nian_gan, ri_zhu)",
+      "note": "正确调用十神引擎判断流年天干十神"
+    },
+    {
+      "id": "R2",
+      "rule": "流年地支藏干分析",
+      "skill_ref": "§12.8 五行过三表",
+      "status": "⚠️ partial",
+      "code_ref": "liu_nian_v2.py L330-344: wx_count循环遍历藏干",
+      "note": "五行过三检测为简化版——用count≥3作为阈值，但skill的'五行过三表'规则更复杂（需区分主气/中气/余气权重，不是简单计数）。且只在天干流年+流年地支两个方向上检查，缺少全盘五行过三的综合判断"
+    },
+    {
+      "id": "R3",
+      "rule": "六冲检测",
+      "skill_ref": "§3.3, §12.2",
+      "status": "✅ implemented",
+      "code_ref": "xing_chong_he_hua.py L129-131: check_chong() + LIU_CHONG字典",
+      "note": "完整实现六冲检测"
+    },
+    {
+      "id": "R4",
+      "rule": "三刑检测",
+      "skill_ref": "§3.3",
+      "status": "✅ implemented",
+      "code_ref": "xing_chong_he_hua.py L134-160: check_xing() + SAN_XING字典",
+      "note": "完整实现三刑（寅巳申、丑未戌、子卯、自刑）"
+    },
+    {
+      "id": "R5",
+      "rule": "六害检测",
+      "skill_ref": "§3.3, §12.2",
+      "status": "✅ implemented",
+      "code_ref": "xing_chong_he_hua.py L163-165: check_hai() + LIU_HAI字典",
+      "note": "完整实现六害检测"
+    },
+    {
+      "id": "R6",
+      "rule": "六合检测",
+      "skill_ref": "§3.2",
+      "status": "✅ implemented",
+      "code_ref": "xing_chong_he_hua.py L168-170: check_liu_he() + LIU_HE字典",
+      "note": "完整实现六合检测"
+    },
+    {
+      "id": "R7",
+      "rule": "三合局检测",
+      "skill_ref": "§3.2",
+      "status": "✅ implemented",
+      "code_ref": "xing_chong_he_hua.py L173-179: check_san_he() + SAN_HE字典",
+      "note": "完整实现三合局检测，返回(类型, 五行, 能量)"
+    },
+    {
+      "id": "R8",
+      "rule": "半三合检测",
+      "skill_ref": "§3.2",
+      "status": "✅ implemented",
+      "code_ref": "xing_chong_he_hua.py L182-188: check_ban_he() + BAN_HE字典",
+      "note": "完整实现半三合检测"
+    },
+    {
+      "id": "R9",
+      "rule": "六破检测",
+      "skill_ref": "§3.3, §12.2",
+      "status": "⚠️ partial",
+      "code_ref": "xing_chong_he_hua.py L98-112: LIU_PO字典已定义",
+      "note": "LIU_PO字典已定义，但check_all_relations()函数中不检查六破 → 六破被定义但从不使用"
+    },
+    {
+      "id": "R10",
+      "rule": "拱合检测（申辰/寅戌/亥未/巳丑）",
+      "skill_ref": "§3.2（含2026-06-16新增完整规则）",
+      "status": "❌ missing",
+      "code_ref": "xing_chong_he_hua.py 无相关检测",
+      "note": "skill有完整拱合规则（紧邻条件、力量约三合2/3、长期效应、升级条件），但xing_chong_he_hua.py完全未实现拱合检测。liu_nian_v2.py中也不需要拱合分析"
+    },
+    {
+      "id": "R11",
+      "rule": "三会局检测（亥子丑/寅卯辰/巳午未/申酉戌）",
+      "skill_ref": "§3.2",
+      "status": "❌ missing",
+      "code_ref": "xing_chong_he_hua.py & liu_nian_v2.py 无相关检测",
+      "note": "skill中三会局(20/10倍)是最高优先级合化，但引擎中完全没有三会局检测函数和字典"
+    },
+    {
+      "id": "R12",
+      "rule": "暗合检测（子巳/寅午/亥午/寅丑）",
+      "skill_ref": "§3.2（2026-06-11新增·学术争议标注）",
+      "status": "❌ missing",
+      "code_ref": "xing_chong_he_hua.py 无相关检测",
+      "note": "skill明确标注暗合'不影响五行能量计算，只代表人际关系'，但引擎完全不支持。如果后续要支持，需谨慎（skill标注90%老师不认可）"
+    },
+    {
+      "id": "R13",
+      "rule": "能量倍数体系（速查表）",
+      "skill_ref": "§3.9 能量倍数速查表",
+      "status": "⚠️ partial / 🐛 bug",
+      "code_ref": "xing_chong_he_hua.py L115-126: NENG_LIANG字典",
+      "note": "🚨 BUG: 代码的NENG_LIANG字典值与skill严重不一致。skill明确：三合=15/7倍, 半合/六合=10/5倍, 六冲无倍数但skill有辰戌/丑未冲=10倍；代码中NENG_LIANG['三合']=1.5, NENG_LIANG['六合']=0.8, NENG_LIANG['六冲']=1.0。数值体系完全不同。且liu_nian_v2.py中也不用NENG_LIANG，有自己的评分体系"
+    },
+    {
+      "id": "R14",
+      "rule": "合化优先级规则",
+      "skill_ref": "§3.2 三会>三合>半合>六合>拱合",
+      "status": "❌ missing",
+      "code_ref": "xing_chong_he_hua.py check_all_relations()返回所有关系无优先级排序",
+      "note": "skill强调多个合化同时出现时只算优先级最高的，代码把所有关系并列返回，liu_nian_v2.py在综合评分中也无优先级处理"
+    },
+    {
+      "id": "R15",
+      "rule": "天干五合检测（甲己/乙庚/丙辛/丁壬/戊癸）",
+      "skill_ref": "§3.1",
+      "status": "❌ missing",
+      "code_ref": "liu_nian_v2.py 无任何天干五合检测",
+      "note": "skill有完整天干五合规则（隔合/遥合不算、合而不化、争合、妒合），但liu_nian_v2.py只检查地支关系，完全忽略天干合化"
+    },
+    {
+      "id": "R16",
+      "rule": "犯太岁检测（值/冲/刑/害/破）",
+      "skill_ref": "§12.2",
+      "status": "✅ implemented",
+      "code_ref": "liu_nian.py L44-68: check_fan_tai_sui() → liu_nian_v2.py L225-230调用",
+      "note": "完整实现5种犯太岁类型。但在v2中仅影响misfortune事件检测的分数加成，未独立分析"
+    },
+    {
+      "id": "R17",
+      "rule": "发财年事件检测",
+      "skill_ref": "§12.2, bazi-wealth-analysis引用",
+      "status": "✅ implemented",
+      "code_ref": "liu_nian_v2.py L171-206",
+      "note": "4条件权重累积：(1)财星流年+身强(0.4) (2)财星为喜用(0.3) (3)三合财局动态匹配(0.3)(已按2026-07-05校准修正为CAI_WUXING_MAP) (4)财库冲开(0.2) → ≥0.5触发。阈值设计合理"
+    },
+    {
+      "id": "R18",
+      "rule": "三合财局动态匹配（日主五行→财星五行）",
+      "skill_ref": "§12.2（2026-07-05审计校准）",
+      "status": "✅ implemented / 🐛 was bug, now fixed",
+      "code_ref": "liu_nian_v2.py L186-192: CAI_WUXING_MAP + 动态匹配",
+      "note": "已按2026-07-05审计校准修正！以前硬编码'火'/'金'作为财局，现在用CAI_WUXING_MAP动态映射。注意：CAI_WUXING_MAP中水→火（正确），但木→土（没有三合土局，正确的理论行为）"
+    },
+    {
+      "id": "R19",
+      "rule": "灾祸事件检测",
+      "skill_ref": "§12.8 恶神能量表, §12.2 犯太岁, bazi-misfortune-analysis",
+      "status": "⚠️ partial",
+      "code_ref": "liu_nian_v2.py L210-243",
+      "note": "实现了4个条件：(1)七杀攻身+身弱(0.5) (2)忌神+冲刑(0.3) (3)犯太岁(0.3×能量系数) (4)冲大运(0.3)。但缺失：岁运并临检测、天克地冲检测、恶神能量级别对应表（七杀1-3/3-7/10-15/20倍的不同应事）、神煞系统灾（灾煞/血刃）"
+    },
+    {
+      "id": "R20",
+      "rule": "岁运并临检测",
+      "skill_ref": "§12.8（生死劫课程）",
+      "status": "❌ missing",
+      "code_ref": "liu_nian_v2.py 无检测",
+      "note": "skill强调岁运并临+天克地冲=不死自己死家人, 有完整的灾害检查6步流程。代码完全不检测"
+    },
+    {
+      "id": "R21",
+      "rule": "结婚事件检测",
+      "skill_ref": "§12.1.2 流年合夫妻宫, bazi-marriage-analysis引用",
+      "status": "✅ implemented",
+      "code_ref": "liu_nian_v2.py L247-276",
+      "note": "3条件：(1)夫妻宫引动(冲或六合)(0.3) (2)正财/正官+适婚年龄25-45(0.3-0.4) (3)印星帮身+身弱(0.2)"
+    },
+    {
+      "id": "R22",
+      "rule": "职业事业事件检测",
+      "skill_ref": "§12.3, bazi-career-analysis引用",
+      "status": "✅ implemented",
+      "code_ref": "liu_nian_v2.py L280-303",
+      "note": "3条件：(1)官杀印星引动(0.3) (2)驿马引动(0.3) (3)冲合大运(0.3)。阈值0.4即可触发（比其他的0.5低）"
+    },
+    {
+      "id": "R23",
+      "rule": "学业事件检测",
+      "skill_ref": "§12.3, bazi-education-analysis引用",
+      "status": "✅ implemented",
+      "code_ref": "liu_nian_v2.py L308-322",
+      "note": "3条件：(1)印星+身弱(0.4) (2)文昌引动(0.3) (3)年龄15-30(0.2)"
+    },
+    {
+      "id": "R24",
+      "rule": "健康事件检测",
+      "skill_ref": "§12.8 五行过三+七杀攻身",
+      "status": "⚠️ partial",
+      "code_ref": "liu_nian_v2.py L327-355",
+      "note": "实现了五行过三检测（简化版）和七杀攻身检测。但简化版只检查流年天干/地支是否与过三的五行相同，没有skill'五行过三表'中病符/死符/丧门等神煞的联动判断"
+    },
+    {
+      "id": "R25",
+      "rule": "宫位·身体·六亲对应体系",
+      "skill_ref": "§12.3 宫位身体一扎法",
+      "status": "❌ missing",
+      "code_ref": "liu_nian_v2.py 无宫位断事",
+      "note": "🚨 CRITICAL: skill有详细宫位-六亲-身体对应表（年干=父/头、年支=母/颈肩、月干=兄/胸、月令=母/腹、日支=配偶/小腹、时干=长子/大腿、时支=次子/脚），但代码中任何事件描述都不含宫位信息。事件描述如'💰 发财窗口: 财星流年'完全没有指明是谁应事"
+    },
+    {
+      "id": "R26",
+      "rule": "流月应事方法",
+      "skill_ref": "§12.5, §12.10",
+      "status": "❌ missing",
+      "code_ref": "liu_nian_v2.py 无流月分析",
+      "note": "skill有完整的天干应事法（某月透干→该月应事）和节气交割法（节气前后3天）。v2只做到年份级别"
+    },
+    {
+      "id": "R27",
+      "rule": "贪合忘冲原则",
+      "skill_ref": "§12.4, §12.4.2",
+      "status": "❌ missing",
+      "code_ref": "liu_nian_v2.py 无实现",
+      "note": "skill明确贪合忘冲=流年某字同时有冲和合两种选择时优先合化。代码中check_all_relations只是列出所有关系，不判断优先级和化解"
+    },
+    {
+      "id": "R28",
+      "rule": "三力分工模型（本命局/大运/流年）",
+      "skill_ref": "§12.1.1",
+      "status": "✅ implemented",
+      "code_ref": "liu_nian_v2.py L6-L10: 五步逻辑链，L114-115: all_rels+dy_rels",
+      "note": "基本符合三力模型：本命局作为基础传入，大运参与关系计算，流年太岁主导应事"
+    },
+    {
+      "id": "R29",
+      "rule": "过三关断事方法",
+      "skill_ref": "§12.1.0",
+      "status": "❌ missing",
+      "code_ref": "liu_nian_v2.py _generate_summary()",
+      "note": "skill强调只说三件事且每件事精确到六亲/身体/应期/程度。_generate_summary只按分数分类吉凶+显示最高置信度事件，无过三关逻辑"
+    },
+    {
+      "id": "R30",
+      "rule": "断语四要素（六亲+身体+应期+程度）",
+      "skill_ref": "§12.0 实战断事铁律要点④",
+      "status": "❌ missing",
+      "code_ref": "liu_nian_v2.py 所有event description",
+      "note": "所有事件描述如'💰 发财窗口: 财星流年'缺六亲、缺身体部位、缺应期、缺程度。skill明确要求'错误：注意健康 ❌ 正确：父亲注意心脏血压，阴历十一月应事 ✅'"
+    },
+    {
+      "id": "R31",
+      "rule": "分时段断事（上半年/下半年分开）",
+      "skill_ref": "§12.0 要点①, §12.10.2",
+      "status": "❌ missing",
+      "code_ref": "liu_nian_v2.py 不分时段",
+      "note": "skill明确每个流年分两段（上半年天干主导70%，下半年地支主导70%），且命局状态可能切换。代码全年一个分析结果"
+    },
+    {
+      "id": "R32",
+      "rule": "流年有合的应事规则（合年宫/月令/夫妻宫/时柱）",
+      "skill_ref": "§12 公众号文章一",
+      "status": "❌ missing",
+      "code_ref": "liu_nian_v2.py 无实现",
+      "note": "skill有完整规则：合年宫→长辈身体欠安、合月令→心情郁闷、合夫妻宫→结婚或离婚、合时柱→怀胎或子女事。代码完全没有按合局所在宫位生成断语的逻辑"
+    },
+    {
+      "id": "R33",
+      "rule": "流年逢冲的应事规则（冲库/驿马/桃花/各柱）",
+      "skill_ref": "§12 公众号文章二",
+      "status": "❌ missing",
+      "code_ref": "liu_nian_v2.py 无实现",
+      "note": "skill有完整规则：冲库→库被冲开、冲驿马→车祸风险、冲桃花→情感困扰、冲年柱→隐忍莫争执、冲月柱→动心起念、冲配偶柱→婚姻变动、冲时柱→怀胎/子女事。未实现"
+    },
+    {
+      "id": "R34",
+      "rule": "流年来害的应事规则（害年宫/月柱/夫妻宫/事业柱）",
+      "skill_ref": "§12 公众号文章三",
+      "status": "❌ missing",
+      "code_ref": "liu_nian_v2.py 无实现",
+      "note": "skill有完整规则：害年宫→与长辈分开、害月柱→心情郁闷、害夫妻宫→聚少离多、害事业柱→与子女分开。未实现"
+    },
+    {
+      "id": "R35",
+      "rule": "干透干藏应事规则（主动/被动区分）",
+      "skill_ref": "§12 公众号文章四",
+      "status": "❌ missing",
+      "code_ref": "liu_nian_v2.py 无实现",
+      "note": "skill有基于身强/身弱的干透干藏完整规则（比劫透→他人劫夺vs靠自己等）。未实现"
+    },
+    {
+      "id": "R36",
+      "rule": "地支五行类象逢冲应事",
+      "skill_ref": "§12 公众号文章五",
+      "status": "❌ missing",
+      "code_ref": "liu_nian_v2.py 无实现",
+      "note": "skill：土→住宅/房地产变动、寅申巳亥→职业变化、子午卯酉→权力变化。未实现"
+    },
+    {
+      "id": "R37",
+      "rule": "运年合绊相冲5条规律",
+      "skill_ref": "§12 公众号文章六",
+      "status": "❌ missing",
+      "code_ref": "liu_nian_v2.py 无实现",
+      "note": "skill有5条规律（以绊论吉凶、实神被作用、干支一气力大、绊住后仍可作用、虚神看喜忌）。未实现"
+    },
+    {
+      "id": "R38",
+      "rule": "神煞在流年中的运用",
+      "skill_ref": "§12.8 灾煞/血刃/天乙贵人等",
+      "status": "⚠️ partial",
+      "code_ref": "liu_nian_v2.py L118-120: compute_all_shen_sha",
+      "note": "调用了神煞引擎获取完整神煞列表（天乙、文昌、驿马）。但只在学业检测用了文昌、事业检测用了驿马。skill要求的灾煞/血刃能量级别对应表、天乙贵人化解神煞系统等均未实现"
+    },
+    {
+      "id": "R39",
+      "rule": "恶神×能量级别对应表（七杀/伤官/枭印/劫财/灾煞/血刃）",
+      "skill_ref": "§12.8",
+      "status": "❌ missing",
+      "code_ref": "liu_nian_v2.py 无实现",
+      "note": "🚨 CRITICAL: skill有完整的六级恶神能量表（1-3/3-7/10-15/20倍→不同应事）。七杀1-3倍=压力罚单、20倍=横死猝死。代码完全没有这个量化框架"
+    },
+    {
+      "id": "R40",
+      "rule": "神煞系统 vs 十神系统核心界限规则",
+      "skill_ref": "§12.8（生死劫课程）",
+      "status": "❌ missing",
+      "code_ref": "liu_nian_v2.py 无实现",
+      "note": "skill明确：天乙贵人只能解神煞系统（灾煞/血刃），不能解十神系统（七杀/枭神夺食）。代码无此区分"
+    },
+    {
+      "id": "R41",
+      "rule": "大运空亡检查",
+      "skill_ref": "§3.2（2026-06-15新增）",
+      "status": "❌ missing",
+      "code_ref": "liu_nian_v2.py 无实现",
+      "note": "skill强调大运地支遇空亡→能量减半（12分→6分）。代码完全不查空亡对运势的影响"
+    },
+    {
+      "id": "R42",
+      "rule": "三合局完整度检查（虚邀三合诊断）",
+      "skill_ref": "§3.2（2026-07-02新增·老板亥卯未案例）",
+      "status": "❌ missing",
+      "code_ref": "xing_chong_he_hua.py & liu_nian_v2.py 无实现",
+      "note": "skill有完整的三合局完整度等级（完整三合/虚邀三合/半三合/拱合）和破局因素检查流程（中神空亡→最致命、六害穿伤→次致命、六冲冲走→破裂）。代码中check_san_he只要三字齐全就返回三合，不检查破局因素"
+    },
+    {
+      "id": "R43",
+      "rule": "大运定性双维度原则",
+      "skill_ref": "§12.4.2（2026-06-16新增）",
+      "status": "❌ missing",
+      "code_ref": "liu_nian_v2.py 无实现",
+      "note": "skill区分能量层面和感受层面（用神大运≠舒服大运）。代码无此区分"
+    },
+    {
+      "id": "R44",
+      "rule": "最佳大运综合判断法（五维）",
+      "skill_ref": "§3.2（2026-06-15新增）",
+      "status": "❌ missing",
+      "code_ref": "liu_nian_v2.py 无实现",
+      "note": "skill要求五维判断：表面十神→合局引化→空亡→神煞→十二长生。代码无此综合判断"
+    },
+    {
+      "id": "R45",
+      "rule": "综合评分逻辑",
+      "skill_ref": "§12.2, §14.1",
+      "status": "🐛 bug",
+      "code_ref": "liu_nian_v2.py L122-163",
+      "note": "🚨 BUG (multiple): (1)xi_yong_ss硬编码['正印','偏印','比肩','劫财','食神']，ji_shen_ss=['七杀','正官','伤官','正财','偏财']——与skill喜忌取决于身强弱的基本原则矛盾。正官/正财不一定忌，比肩/劫财不一定喜！(2)印星加分硬编码if '水' in xi_yong or '金' in xi_yong——与日主五行无关，错误。 (3)地支冲减0.8、三刑减1.0——skill说三刑是能量加强不是扣分"
+    },
+    {
+      "id": "R46",
+      "rule": "10神吉凶分类修正（身过强>60分也会破财）",
+      "skill_ref": "§12.4.2",
+      "status": "❌ missing",
+      "code_ref": "liu_nian_v2.py 无实现",
+      "note": "skill明确：身强超过60分会因过于自信而破财。代码无身过强检测"
+    },
+    {
+      "id": "R47",
+      "rule": "30年流年范围分析",
+      "skill_ref": "§12.1.0",
+      "status": "✅ implemented",
+      "code_ref": "liu_nian_v2.py L417-479: analyze_liu_nian_range()",
+      "note": "完整实现30年范围循环分析，含大运动态切换"
+    },
+    {
+      "id": "R48",
+      "rule": "流年事件提取汇总",
+      "skill_ref": "§12.1.0",
+      "status": "✅ implemented",
+      "code_ref": "liu_nian_v2.py L482-494: extract_key_events()",
+      "note": "从30年结果中提取各类型关键事件年表"
+    },
+    {
+      "id": "R49",
+      "rule": "天克地冲检测",
+      "skill_ref": "§12.8",
+      "status": "❌ missing",
+      "code_ref": "liu_nian_v2.py 无检测",
+      "note": "skill有完整的天克地冲+岁运并临联动检测规则。代码完全未实现"
+    },
+    {
+      "id": "R50",
+      "rule": "大树理论（有根/无根判断应灾轻重）",
+      "skill_ref": "ref-liunian.md §8",
+      "status": "❌ missing",
+      "code_ref": "liu_nian_v2.py 无实现",
+      "note": "skill有完整的大树理论：有真根=百年大树→应灾轻、有中气根=30年树→摇晃、无根=树苗→应灾重。代码无根气判断"
+    },
+    {
+      "id": "R51",
+      "rule": "分散原则（1冲多能量分散）",
+      "skill_ref": "ref-liunian.md §7",
+      "status": "❌ missing",
+      "code_ref": "liu_nian_v2.py 无实现",
+      "note": "skill：1个流年字冲2个八字字→各50%能量→应灾减轻。代码无能量分散判断"
+    },
+    {
+      "id": "R52",
+      "rule": "引用链：pipeline_v5.py调用正确性",
+      "skill_ref": "铁律⑥ Step 3",
+      "status": "✅ implemented",
+      "code_ref": "pipeline_v5.py L184-201",
+      "note": "pipeline_v3/v4/v5均使用analyze_liu_nian_range，参数传递完整（含sqr_label/sqri/xi/ji等）。OK"
+    }
+  ],
+  "summary": {
+    "✅ implemented": [
+      "R1 流年天干十神判定",
+      "R3 六冲检测",
+      "R4 三刑检测",
+      "R5 六害检测",
+      "R6 六合检测",
+      "R7 三合局检测",
+      "R8 半三合检测",
+      "R16 犯太岁检测",
+      "R17 发财年事件检测 (含R18修正)",
+      "R21 结婚事件检测",
+      "R22 职业事件检测",
+      "R23 学业事件检测",
+      "R28 三力分工模型",
+      "R47 30年流年范围分析",
+      "R48 流年事件提取",
+      "R52 引用链正确"
+    ],
+    "⚠️ partial (partial)": [
+      "R2 地支藏干分析（简化版）",
+      "R9 六破检测（定义了字典但未在check_all_relations中使用）",
+      "R19 灾祸检测（缺岁运并临/天克地冲/恶神能量表）",
+      "R24 健康检测（简化版五行过三）",
+      "R38 神煞运用（仅用文昌+驿马，缺灾煞/血刃）"
+    ],
+    "🐛 bugs (bugs)": [
+      "R13 能量倍数与skill严重不一致（NENG_LIANG字典数值错误）",
+      "R45 综合评分逻辑问题：十神喜忌硬编码(违反skill基本原则)、印星加分硬编码'水金'、三刑当扣分(违反skill三刑=能量加强)",
+      "R18 原先硬编码bug已修复（CAI_WUXING_MAP动态匹配）——记录为历史bug"
+    ],
+    "❌ missing (missing)": [
+      "R10 拱合检测",
+      "R11 三会局检测",
+      "R12 暗合检测",
+      "R14 合化优先级排序",
+      "R15 天干五合检测",
+      "R20 岁运并临检测",
+      "R25 宫位·身体·六亲对应（CRITICAL）",
+      "R26 流月应事方法",
+      "R27 贪合忘冲原则",
+      "R29 过三关断事方法",
+      "R30 断语四要素（CRITICAL）",
+      "R31 分时段断事",
+      "R32 流年有合宫位断语",
+      "R33 流年逢冲宫位断语",
+      "R34 流年来害宫位断语",
+      "R35 干透干藏规则",
+      "R36 地支五行类象",
+      "R37 运年合绊相冲规律",
+      "R39 恶神能量级别对应表（CRITICAL）",
+      "R40 神煞vs十神界限",
+      "R41 大运空亡检查",
+      "R42 三合局完整度检查（虚邀三合）",
+      "R43 大运定性双维度",
+      "R44 最佳大运五维判断",
+      "R46 身过强破财检测",
+      "R49 天克地冲检测",
+      "R50 大树理论",
+      "R51 分散原则",
+      "R32~R37 公众号文章规则（共6条）"
+    ]
+  },
+  "critical_issues": [
+    "1. ❌ 宫位断事完全缺失（R25）——事件描述没有'谁应事'，违反skill§12.3宫位核心原则",
+    "2. ❌ 断语四要素缺失（R30）——事件描述没有六亲+身体+应期+程度",
+    "3. ❌ 恶神能量级别对应表缺失（R39）——七杀/伤官/枭印各级能量应事无法判断",
+    "4. 🐛 综合评分逻辑错误（R45）——十神喜忌硬编码，和skill基本原则矛盾",
+    "5. ⚠️ 能量倍数体系与skill严重不一致（R13）——NENG_LIANG字典数值完全不对",
+    "6. ❌ 天干五合完全缺失（R15）——只分析地支关系不分析天干合化",
+    "7. ❌ 流月应事缺失（R26）——只能断到年份不能断到月份",
+    "8. ❌ 三会局完全缺失（R11）——三会是能量最大(20倍)的合化"
+  ],
+  "recommendations": [
+    "🔴 P0 [CRITICAL]: 重构综合评分逻辑——去掉硬编码十神喜忌，改为基于身强弱+喜用神动态判定",
+    "🔴 P0 [CRITICAL]: 实现宫位断事——事件描述加入'六亲/身体部位/应期/程度'",
+    "🔴 P0 [CRITICAL]: 实现恶神能量级别对应表——七杀/伤官/枭印各级能量应事判断",
+    "🟠 P1: 实现天干五合分析——天干合化是流年分析的重要部分",
+    "🟠 P1: 实现贪合忘冲/合化优先级——关系之间要有优先级选择",
+    "🟠 P1: 修复能量倍数体系——NENG_LIANG字典对齐skill速查表",
+    "🟠 P1: 补充xing_chong_he_hua.py——三会局、拱合、六破检测",
+    "🟢 P2: 岁运并临+天克地冲检测",
+    "🟢 P2: 大运空亡检查",
+    "🟢 P2: 三合局完整度检查（虚邀三合）",
+    "🟢 P2: 流月应事分析",
+    "🟢 P2: 分时段断事（上半年/下半年）",
+    "🟢 P2: 流年合/冲/害宫位断语（公众号规则）",
+    "🟢 P2: 大树理论+分散原则（断事能量修正）"
+  ]
+}

@@ -221,6 +221,41 @@ LIUNIAN_YUCE: dict[str, dict[str, Any]] = {
 }
 
 # =====================================================================
+# 干支疾病表22组（§11.2 干支→疾病映射）
+# =====================================================================
+# 来源：skill明确22组干支→疾病映射
+# 格式：[(天干, 地支, 疾病描述), ...]
+GAN_ZHI_DISEASE: list[tuple[str, str, str]] = [
+    ("乙", "巳", "肝炎、胆囊炎"),
+    ("甲", "午", "肝炎、黄疸性急性肝炎"),
+    ("甲", "子", "肝腹水、肾病、肝病"),
+    ("乙", "亥", "肝腹水、肾病、肝病"),
+    ("乙", "丑", "胆结石"),
+    ("乙", "未", "泥沙性胆结石"),
+    ("癸", "丑", "肾结石"),
+    ("癸", "未", "肾结石"),
+    ("壬", "申", "泌尿系统结石"),
+    ("癸", "酉", "泌尿系统结石"),
+    ("甲", "申", "肝硬化、肝肥大、胆囊壁增厚"),
+    ("乙", "酉", "肝硬化、肝肥大、胆囊壁增厚"),
+    ("庚", "寅", "肝硬化、肝肥大、胆囊壁增厚"),
+    ("辛", "卯", "肝硬化、肝肥大、胆囊壁增厚"),
+    ("丙", "子", "心脏病、眼睛问题、肾炎、血压疾病"),
+    ("壬", "午", "心脏病、眼睛问题、肾炎、血压疾病"),
+    ("丁", "亥", "心脏病、眼睛问题、肾炎、血压疾病"),
+    ("癸", "巳", "心脏病、眼睛问题、肾炎、血压疾病"),
+    ("戊", "子", "子宫肌瘤"),
+    ("丙", "午", "高血压、心肌炎"),
+    ("壬", "子", "低血压、妇科疾病、泌尿疾病"),
+    ("己", "丑", "肝胆肿瘤"),
+    ("甲", "寅", "肝部肿瘤"),
+    ("庚", "子", "怕寒怕冷、感冒咳嗽、肾虚"),
+    ("乙", "酉", "咳嗽（慢性支气管炎）"),
+    ("丁", "酉", "喉咙沙哑、呼吸道问题"),
+]
+"""§11.2 干支疾病表22组"""
+
+# =====================================================================
 # 五行颜色/方位/物品补法（§11.2 五行调和法）
 # =====================================================================
 WUXING_HARMONY: dict[str, dict[str, Any]] = {
@@ -268,6 +303,235 @@ def age_factor(age: int) -> float:
         return 1.0
     else:
         return 1.3
+
+
+# =====================================================================
+# 干支疾病表检查（§11.2）
+# =====================================================================
+
+
+def check_gan_zhi_disease(bazi_gans: list[str], bazi_zhis: list[str]) -> list[dict[str, Any]]:
+    """
+    §11.2 干支疾病表22组检查
+    遍历八字四柱的干支组合，检查是否匹配干支疾病表。
+    返回匹配列表。
+    """
+    results = []
+    pillar_positions = ["年", "月", "日", "时"]
+
+    for i, (gan, zhi) in enumerate(zip(bazi_gans, bazi_zhis)):
+        pos_name = f"{pillar_positions[i]}柱"
+        for g, z, disease in GAN_ZHI_DISEASE:
+            if gan == g and zhi == z:
+                wx_gan = GAN_WUXING.get(gan, "")
+                wx_zhi = ZHI_WUXING.get(zhi, "")
+                results.append({
+                    "类型": "干支疾病",
+                    "位置": pos_name,
+                    "天干": gan,
+                    "地支": zhi,
+                    "天干五行": wx_gan,
+                    "地支五行": wx_zhi,
+                    "疾病": disease,
+                    "诊断": f"{pos_name}天干{gan}+地支{zhi} → {disease}",
+                })
+            # 也检查藏干匹配（地支藏干 + 天干）
+            if zhi in ZANGGAN_TABLE:
+                for cang_gan, _ratio, _level in ZANGGAN_TABLE[zhi]:
+                    if cang_gan == g and gan == g:
+                        pass  # 天干匹配已在上面处理
+
+    return results
+
+
+# =====================================================================
+# 用水欠水→妇科病/肿瘤检查（§11.2）
+# =====================================================================
+
+
+def check_fuke_tumor(
+    gender: str,
+    xi_yong: list[str],
+    bazi_gans: list[str],
+    bazi_zhis: list[str],
+    wuxing_scores: dict[str, float],
+    wuxing_counts: dict[str, int],
+) -> list[dict[str, Any]]:
+    """
+    §11.2 用水欠水→妇科病/肿瘤
+    规则：
+    - 女命 + 喜用神为水(用水) + 八字全局无水(欠水) → 妇科病
+    - 火炎土燥（火土多+无水）+ 水星入墓（辰为水库但水<40分）→ 妇科生瘤
+    - 忌神为土 → 瘤肿（土主一块块的东西）
+    """
+    results = []
+    all_gans_and_benqi = []
+    for gan in bazi_gans:
+        all_gans_and_benqi.append(gan)
+    for zhi in bazi_zhis:
+        if zhi in ZANGGAN_TABLE:
+            all_gans_and_benqi.append(ZANGGAN_TABLE[zhi][0][0])
+
+    has_water_gan = any(gan in ("壬", "癸") for gan in all_gans_and_benqi)
+    has_water_zhi = any(zhi in ("亥", "子") for zhi in bazi_zhis)
+    water_score = wuxing_scores.get("水", 0)
+    fire_score = wuxing_scores.get("火", 0)
+    earth_score = wuxing_scores.get("土", 0)
+
+    # 女命 + 用水 + 欠水 → 妇科病
+    if gender == "女" and "水" in xi_yong and not has_water_gan and not has_water_zhi:
+        results.append({
+            "类型": "妇科病",
+            "规则": "女命+用水+欠水",
+            "诊断": (
+                f"女命喜用水，但八字全局无水（天干地支均无水）→ "
+                f"肾水不足，生殖系统功能弱 → 易患妇科疾病（月经不调/带下/宫寒不孕等）"
+            ),
+        })
+
+    # 火炎土燥 + 水星入墓 → 妇科生瘤
+    has_chen = "辰" in bazi_zhis
+    is_fire_earth_dry = (fire_score + earth_score) > 80 and water_score < 20
+    is_water_in_tomb = has_chen and water_score < 40
+
+    if gender == "女" and is_fire_earth_dry and is_water_in_tomb:
+        results.append({
+            "类型": "妇科生瘤",
+            "规则": "火炎土燥+水星入墓",
+            "诊断": (
+                f"火炎土燥（火{fire_score:.0f}+土{earth_score:.0f}分）无水调候，"
+                f"水星入墓（辰为水库但水仅{water_score:.0f}分<40分）→ "
+                f"火土过燥无水润泽 → 妇科生瘤（子宫肌瘤/卵巢囊肿等）"
+            ),
+        })
+    elif gender == "女" and is_fire_earth_dry and not has_water_zhi and not has_water_gan:
+        results.append({
+            "类型": "妇科生瘤",
+            "规则": "火炎土燥+全局无水",
+            "诊断": (
+                f"火炎土燥（火{fire_score:.0f}+土{earth_score:.0f}分），全局无水 → "
+                f"火土过燥 → 妇科生瘤风险高"
+            ),
+        })
+
+    # 忌神为土 → 瘤肿
+    if "土" in xi_yong:
+        pass  # 土为喜用，不是忌神
+    else:
+        # 土在喜用神列表之外且土能量强 → 可视为忌神
+        if earth_score > 50:
+            results.append({
+                "类型": "瘤肿",
+                "规则": "忌神为土",
+                "诊断": (
+                    f"土非喜用神且土能量强（{earth_score:.0f}分）→ "
+                    f"土主一块块的东西 → 易生瘤肿（肌瘤/囊肿/肿物等）"
+                ),
+            })
+
+    return results
+
+
+# =====================================================================
+# 自杀命判断（§11.2）
+# =====================================================================
+
+
+def check_suicide_tendency(
+    wuxing_counts: dict[str, int],
+    wuxing_scores: dict[str, float],
+    bazi_gans: list[str],
+    bazi_zhis: list[str],
+) -> list[dict[str, Any]]:
+    """
+    §11.2 自杀命判断
+    规则：
+    - 水太多太过（水过三+无火调候）→ 绝望→自杀倾向
+    - 火太多（火过三+无水制）→ 突然失却常性→颠狂→自我毁灭
+    """
+    results = []
+    water_count = wuxing_counts.get("水", 0)
+    fire_count = wuxing_counts.get("火", 0)
+    fire_score = wuxing_scores.get("火", 0)
+    water_score = wuxing_scores.get("水", 0)
+
+    # 检查是否有火调候（天干有丙丁）
+    has_fire_tiaohou = any(gan in ("丙", "丁") for gan in bazi_gans) or \
+                       any(zhi in ("巳", "午") for zhi in bazi_zhis)
+
+    # 水过三 + 无火调候 → 自杀倾向
+    if water_count >= 3 and not has_fire_tiaohou:
+        results.append({
+            "类型": "自杀倾向（水过）",
+            "规则": "水太多太过（水过三+无火调候）",
+            "水个数": water_count,
+            "火调候": "无",
+            "诊断": (
+                f"水太过多（{water_count}个）且无火调候 → "
+                f"水主智，水过旺至极则智慧走向绝望 → "
+                f"情绪低落/多思多虑/严重时可能产生自杀倾向"
+            ),
+        })
+
+    # 检查是否有水制火（天干有壬癸或地支有亥子）
+    has_water_control = any(gan in ("壬", "癸") for gan in bazi_gans) or \
+                        any(zhi in ("亥", "子") for zhi in bazi_zhis)
+
+    # 火过三 + 无水制 → 颠狂→自我毁灭
+    if fire_count >= 3 and not has_water_control:
+        results.append({
+            "类型": "自我毁灭（火过）",
+            "规则": "火太多（火过三+无水制）",
+            "火个数": fire_count,
+            "水制": "无",
+            "诊断": (
+                f"火太过多（{fire_count}个）且无水制 → "
+                f"火主炎上，火过旺至极则突然失却常性 → "
+                f"颠狂/冲动/严重时可能产生自我毁灭倾向"
+            ),
+        })
+
+    return results
+
+
+# =====================================================================
+# 命局太燥水少→色欲之害检查（§11.2）
+# =====================================================================
+
+
+def check_sex_harm(
+    wuxing_scores: dict[str, float],
+    wuxing_counts: dict[str, int],
+) -> list[dict[str, Any]]:
+    """
+    §11.2 命局太燥水少→色欲之害
+    规则：
+    - 命局太燥（火土多+无水或水少）+ 无论男女 → 均受色欲之害
+    """
+    results = []
+    fire_score = wuxing_scores.get("火", 0)
+    earth_score = wuxing_scores.get("土", 0)
+    water_score = wuxing_scores.get("水", 0)
+    water_count = wuxing_counts.get("水", 0)
+
+    # 命局太燥：火土能量强 + 水极少
+    if (fire_score + earth_score) > 80 and (water_score < 20 or water_count <= 1):
+        results.append({
+            "类型": "色欲之害",
+            "规则": "命局太燥水少",
+            "火能量": round(fire_score, 1),
+            "土能量": round(earth_score, 1),
+            "水能量": round(water_score, 1),
+            "诊断": (
+                f"命局太燥（火{fire_score:.0f}+土{earth_score:.0f}分），"
+                f"水少（{water_score:.0f}分）→ "
+                f"无论男女，均受色欲之害 → "
+                f"心火燥动，肾水不足制火 → 欲望强烈难以自制 → "
+                f"易因色欲引发健康问题（肾虚/生殖系统疾病）"
+            ),
+        })
+
+    return results
 
 
 # =====================================================================
@@ -1403,6 +1667,10 @@ def generate_disease_summary(
     mu_special: dict,
     age: int,
     shen_label: str = "",
+    gan_zhi_disease: list | None = None,
+    fuke_tumor: list | None = None,
+    suicide_tendency: list | None = None,
+    sex_harm: list | None = None,
 ) -> dict[str, Any]:
     """
     整合所有分析结果，生成最终疾病断语
@@ -1459,6 +1727,26 @@ def generate_disease_summary(
         issues.append(f"【木特殊】{mu_special.get('身高判断', '')}")
         issues.append(f"【木特殊】{mu_special.get('酒量判断', '')}")
 
+    # ========== 新增：干支疾病 ==========
+    if gan_zhi_disease:
+        for item in gan_zhi_disease:
+            issues.append(f"【干支疾病】{item.get('诊断', '')}")
+
+    # ========== 新增：妇科病/肿瘤 ==========
+    if fuke_tumor:
+        for item in fuke_tumor:
+            issues.append(f"【{item.get('类型', '')}】{item.get('诊断', '')}")
+
+    # ========== 新增：自杀倾向 ==========
+    if suicide_tendency:
+        for item in suicide_tendency:
+            issues.append(f"【{item.get('类型', '')}】{item.get('诊断', '')}")
+
+    # ========== 新增：色欲之害 ==========
+    if sex_harm:
+        for item in sex_harm:
+            issues.append(f"【{item.get('类型', '')}】{item.get('诊断', '')}")
+
     # 年龄系数修正
     if factor != 1.0:
         issues.append(f"【年龄修正】{age}岁，系数×{factor}（{'36岁前减30%' if age < 36 else '56岁后加30%'})")
@@ -1502,6 +1790,7 @@ def analyze_health_full(
     shen_score: float = 50.0,
     xi_yong: list[str] | None = None,
     age: int = 35,
+    gender: str = "",
 ) -> dict[str, Any]:
     """
     八字健康心理全面分析引擎 — 主入口
@@ -1514,6 +1803,7 @@ def analyze_health_full(
         shen_score: 身强弱评分（0-100）
         xi_yong: 喜用神列表，如 ["火", "土"]
         age: 命主年龄（默认35），用于年龄系数
+        gender: 性别（"男"/"女"），用于妇科病/自杀等专项判断
 
     返回：
         dict 包含完整健康分析结果
@@ -1577,6 +1867,27 @@ def analyze_health_full(
     # 这里传入空字符串表示需要外部提供，目前提供通用方法
     liunian_prediction = {}  # 需要外部传入当前流年干支
 
+    # ========== 新增检查：干支疾病表22组 ==========
+    # §11.2
+    gan_zhi_disease = check_gan_zhi_disease(bazi_gans, bazi_zhis)
+
+    # ========== 新增检查：妇科病/肿瘤 ==========
+    # §11.2 用水欠水→妇科病/肿瘤
+    fuke_tumor = check_fuke_tumor(
+        gender, xi_yong, bazi_gans, bazi_zhis,
+        wuxing_scores, wuxing_counts,
+    )
+
+    # ========== 新增检查：自杀倾向 ==========
+    # §11.2
+    suicide_tendency = check_suicide_tendency(
+        wuxing_counts, wuxing_scores, bazi_gans, bazi_zhis,
+    )
+
+    # ========== 新增检查：色欲之害 ==========
+    # §11.2 命局太燥水少→色欲之害
+    sex_harm = check_sex_harm(wuxing_scores, wuxing_counts)
+
     # Step 11: 情绪五脏检查
     # §15.6
     emotion_results = check_emotion_health(wuxing_scores)
@@ -1613,6 +1924,10 @@ def analyze_health_full(
         mu_special,
         age,
         shen_label,
+        gan_zhi_disease=gan_zhi_disease,
+        fuke_tumor=fuke_tumor,
+        suicide_tendency=suicide_tendency,
+        sex_harm=sex_harm,
     )
 
     # =================================================================
@@ -1645,6 +1960,10 @@ def analyze_health_full(
             "枭神夺食": xiaoshen,
             "两旺断病": liangwang,
             "日干弱专项检查": rigian_weak,
+            "干支疾病": gan_zhi_disease,
+            "妇科病/肿瘤": fuke_tumor,
+            "自杀倾向": suicide_tendency,
+            "色欲之害": sex_harm,
         },
         "五行流通": wuxing_cycle,
         "配偶健康": spouse_health,
