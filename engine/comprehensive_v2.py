@@ -14,7 +14,6 @@ from __future__ import annotations
 from career_v2 import analyze_career_full as analyze_career_advanced
 from children_v2 import analyze_children_full as analyze_children_advanced
 from constants import DI_ZHI_CANG_GAN, TIAN_GAN_WU_XING, BaZi
-from education import analyze_education as analyze_education_full
 from health_v2 import analyze_health_full as analyze_health_advanced
 from shi_shen import get_shi_shen_for_cang_gan, get_shi_shen_for_gan
 from wealth_v2 import analyze_wealth_full as analyze_wealth_advanced
@@ -1003,14 +1002,7 @@ def run_comprehensive_engine(
         ri_zhu, all_gans, all_zhis, shen_label, shen_score, cai_detail.total, xi_yong, dy_list_with_score
     )
 
-    # 教育分析（九龙道长原始理论 v2.3）
-    da_yun_gans = [dy.get("gan", "") for dy in dy_list_with_score]
-    da_yun_zhis_from_list = [dy.get("zhi", "") for dy in dy_list_with_score]
-    da_yun_start_ages = [dy.get("start_age", 0) for dy in dy_list_with_score]
-    education = analyze_education_full(
-        all_gans, all_zhis, ri_zhu, shen_score, shen_label, xi_yong,
-        da_yun_gans, da_yun_zhis_from_list, da_yun_start_ages,
-    )
+    # 教育分析（九龙道长原始理论 v2.3 — 来自pipeline_v5传入）
 
     # 外貌分析
     appearance = analyze_appearance(ri_zhu, shen_label, shen_score, all_gans, all_zhis, ge_ju_main)
@@ -1082,7 +1074,7 @@ def run_comprehensive_engine(
         "sec_6_career": career,
         "sec_8_wealth_full": wealth,
         "sec_7_appearance": appearance,
-        "sec_5_education": education,
+        "sec_5_education": education_result,
         "sec_9_property": property_analysis,
         "sec_13_children": _map_children(children),
         "sec_14_health": _map_health(health),

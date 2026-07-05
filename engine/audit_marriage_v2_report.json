@@ -1,0 +1,186 @@
+{
+  "audit_info": {
+    "module": "marriage_v2.py",
+    "file_path": "/root/bazi-platform/engine/marriage_v2.py",
+    "total_lines": 518,
+    "skill_ref": "bazi-marriage-analysis v1.5 (2026-07-05)",
+    "audit_date": "2026-07-05",
+    "auditor": "金鉴真人·SubAgent",
+    "rules_total": 15
+  },
+
+  "rules": [
+    {
+      "id": 1,
+      "rule": "配偶星定位：男正财=妻，女正官=夫，替代规则",
+      "status": "✅",
+      "code_location": "_get_pei_ou_xing() lines 69-108",
+      "details": "完整实现。男命先查找正财，无正财则偏财替代；女命先查找正官，无正官则七杀替代。包含has_primary标记和detail描述。替代规则完整。"
+    },
+    {
+      "id": 2,
+      "rule": "夫妻宫十神断婚姻",
+      "status": "✅",
+      "code_location": "FUFU_GONG_MALE/FEMALE lines 22-46, _analyze_fufu_gong() lines 132-162",
+      "details": "完整实现。FUFU_GONG_MALE和FUFU_GONG_FEMALE各10个十神均覆盖，与skill原始表一致。_analyze_fufu_gong取日支本气十神做判定。"
+    },
+    {
+      "id": 3,
+      "rule": "夫妻宫原始100分评分体系（三刑-100/六冲-70/六害-30/六破-20/十神扣分/配偶星入本位+30/配偶星存在+15）",
+      "status": "✅",
+      "code_location": "_calculate_marriage_quality() lines 242-341",
+      "details": "完整实现。基础分100分→三刑-100→六冲-70/个→六害-30/个→六破-20/个→男比肩-10/劫财-20→女食神-10/伤官-20→正财/正官入日支+30→有配偶星+15→得分<50离婚。同时提供quality_score_100(原始分)+quality_score(10分映射)+quality_display(展示格式)三种输出。"
+    },
+    {
+      "id": 4,
+      "rule": "四大结婚信号（正财官透干/合夫妻宫/冲夫妻宫/桃花年）",
+      "status": "✅",
+      "code_location": "_calculate_marriage_windows() lines 344-415",
+      "details": "完整实现。信号1正财/正官透干+5分（⭐⭐⭐⭐⭐）；信号2合夫妻宫+4分（⭐⭐⭐⭐）；信号3冲夫妻宫+3分（⭐⭐⭐）；信号4桃花年+2分（⭐⭐）。按总分排序。附加喜用大运+1分。标签分为🏆最佳窗口≥7/✅次佳窗口≥5/⚠️一般窗口≥4。"
+    },
+    {
+      "id": 5,
+      "rule": "配偶相貌（子午卯酉漂亮/寅申巳亥一般/辰戌丑未敦厚）",
+      "status": "✅",
+      "code_location": "_analyze_fufu_gong() lines 150-156, ZI_WU_MAO_YOU/YIN_SHEN_SI_HAI/CHEN_XU_CHOU_WEI lines 49-51",
+      "details": "完整实现。三个dict分别覆盖4个地支，_analyze_fufu_gong按日支查表返回appearance字段。"
+    },
+    {
+      "id": 6,
+      "rule": "官杀混杂检查（正官≥3且不透干→家暴风险）",
+      "status": "✅",
+      "code_location": "_check_guan_sha_hun_za() lines 165-196",
+      "details": "完整实现。女命专项检查。统计天干+地支藏干正官总数。正官≥3且无一透干→risk_level='高风险'，detail含家暴警告。正官≥2条输出'感情较复杂'。不透干逻辑（guan_sha_tou_gan flag）处理正确。"
+    },
+    {
+      "id": 7,
+      "rule": "时支冲日支检查",
+      "status": "✅",
+      "code_location": "_check_shi_zhi_chong_ri_zhi() lines 199-214",
+      "details": "完整实现。取all_zhis[2]=日支、all_zhis[3]=时支，调用check_chong()判定。has_chong+detail含结构化矛盾描述。"
+    },
+    {
+      "id": 8,
+      "rule": "时支藏正财→晚年再婚信号",
+      "status": "✅",
+      "code_location": "_check_wan_nian_zai_hun() lines 217-239",
+      "details": "完整实现。男命查时支藏干正财→晚年再婚；女命查时支藏干正官/七杀→晚年再婚/偏缘。含藏干层级(h本气/中气/余气)标注。"
+    },
+    {
+      "id": 9,
+      "rule": "婆媳关系（财克印）",
+      "status": "✅",
+      "code_location": "analyze_marriage() lines 460-471",
+      "details": "完整实现。男命专项。统计天干正财vs正印+偏印数量：妻强势(cai>yin)/母强势(yin>cai)/能量相当三种场景。"
+    },
+    {
+      "id": 10,
+      "rule": "桃花年检测",
+      "status": "✅",
+      "code_location": "TAO_HUA dict lines 61-66, _calculate_marriage_windows() lines 393-396",
+      "details": "完整实现。TAO_HUA字典覆盖12地支正确（申子辰→酉/亥卯未→子/寅午戌→卯/巳酉丑→午）。结婚窗口中以年支查桃花，dz=桃花时+2分。"
+    },
+    {
+      "id": 11,
+      "rule": "女命配偶宫五行断性功能（仅土和水有原始依据）",
+      "status": "⚠️",
+      "code_location": "_analyze_fufu_gong() line 159-160, analyze_marriage() line 485",
+      "details": "部分实现。五行走储存在fufu['spouse_wx']中，traits中输出'五行偏{xx}'。但skill明确要求：土→'配偶肾功能偏弱（土克水）'，水→'肾功能强'的性功能断语完全缺失。2026-07-05校准已删除火/金/木（杜撰），但遗漏了补充土和水的原始规则。修复建议：在analyze_marriage()中，女性命主且配偶宫五行=土/水时，添加性功能分析。"
+    },
+    {
+      "id": 12,
+      "rule": "婚姻评分一致性（夫妻评分交叉校验+刑冲扣分按格局喜忌判断）",
+      "status": "⚠️",
+      "code_location": "_calculate_marriage_quality() lines 242-341",
+      "details": "部分实现+有Bug。问题①：_calculate_marriage_quality接收shen_label,shen_score,xi_yong三个参数但全部未使用。skill'夫妻评分一致性铁律'明确要求：'刑冲扣分需按格局喜忌判断（喜用刑冲=动力，忌凶刑冲=扣分）'。当前代码无论喜忌都扣分，这会导致评分偏差。问题②：夫妻评分交叉校验（差值≤1.5分）需要双方八字数据，marriage_v2.py单人无法实现，需上层(pipeline/report)处理。修复建议：_calculate_marriage_quality中根据xi_yong判断刑冲的喜忌属性，喜用刑冲不扣分或加分，忌凶刑冲才扣分。"
+    },
+    {
+      "id": 13,
+      "rule": "36命格情感类12条",
+      "status": "❌",
+      "code_location": "未实现",
+      "details": "完全缺失。skill中§XX节定义了12条情感命格：1最易早恋、2最易晚婚、3最易遇桃花运、4最易有桃花劫、5最易奉子成婚、6最易争夫争妻、7最旺夫、8最克夫、9最疼妻、10最克妻、11最忠诚爱情、12最易成小三。其中多条只需单人八字数据即可判断（如#5奉子成婚=日主紧贴天干相合；#6争夫争妻=比劫重重+财/官旺）。修复建议：在analyze_marriage()中增加_analyze_36_ming_ge()函数，逐条实现。"
+    },
+    {
+      "id": 14,
+      "rule": "合婚六大原则（日元关系/年柱属相/五行互补/伤官劫财/夫妻宫/大运同步性）",
+      "status": "❌",
+      "code_location": "未实现",
+      "details": "未实现。但此为合理缺失——合婚需要双方八字对比，marriage_v2.py是单人分析模块，无法完成。需在上层(pipeline_v5.py或专门合婚模块)实现七大步骤。"
+    },
+    {
+      "id": 15,
+      "rule": "大运同步性检查",
+      "status": "❌",
+      "code_location": "未实现",
+      "details": "未实现。同样为合理缺失——大运同步性需要双方八字的大运对比，marriage_v2.py单人无法完成。需在上层实现。"
+    }
+  ],
+
+  "bugs": [
+    {
+      "id": "BUG-1",
+      "severity": "中",
+      "location": "_calculate_marriage_quality() lines 267-277",
+      "description": "三刑检查范围过宽。check_xing(bazi_zhis)检查全局八字三刑，但skill规则为'夫妻宫三刑→-100'。当三刑不涉及日支（如年=寅、月=巳、时=申构成的寅巳申三刑，但日支=子未参与），仍会扣除100分。",
+      "fix": "在扣分前添加验证：确认三刑中的至少一个地支是日支（ri_zhi）。示例：\n# 确认三刑涉及夫妻宫\nxing_zhis = set()\nif '寅' in bazi_zhis and '巳' in bazi_zhis and '申' in bazi_zhis:\n    xing_zhis = {'寅','巳','申'}\nelif '丑' in bazi_zhis and '未' in bazi_zhis and '戌' in bazi_zhis:\n    xing_zhis = {'丑','未','戌'}\nif ri_zhi in xing_zhis:\n    score -= 100  # 仅当三刑涉及夫妻宫才扣分"
+    },
+    {
+      "id": "BUG-2",
+      "severity": "中",
+      "location": "_calculate_marriage_quality() lines 243-244, 450, 351",
+      "description": "格局喜忌参数未用于刑冲扣分判定。_calculate_marriage_quality()接收shen_label, shen_score, xi_yong但全部未使用。skill要求'刑冲扣分需按格局喜忌判断（喜用刑冲=动力，忌凶刑冲=扣分）'。当前代码无视喜忌一律扣分。_calculate_marriage_windows()的shen_label参数同样未使用。",
+      "fix": "在_calculate_marriage_quality()中，对刑冲破害扣分处添加喜忌判断。例如：若日支为喜用且受刑冲，不扣分或扣分减半。需要传递xi_yong列表，并在扣分逻辑中添加：\nif ri_zhi_wx in xi_yong:\n    # 喜用神被刑冲＝激发动力，不扣分或少扣\n    deduct = deduct * 0.5  # 或0\nelse:\n    # 忌凶被刑冲＝大扣分\n    deduct = full_deduct"
+    },
+    {
+      "id": "BUG-3",
+      "severity": "低",
+      "location": "_calculate_marriage_quality() lines 263-264",
+      "description": "死代码。all_zhis_for_check变量被创建（[z for z in bazi_zhis if z != ri_zhi] 然后 .append(ri_zhi)），但整个变量从未被使用——后续所有检查都直接使用bazi_zhis。",
+      "fix": "删除lines 263-264的死代码。"
+    },
+    {
+      "id": "BUG-4",
+      "severity": "低",
+      "location": "_calculate_marriage_windows() line 351 (签名), _calculate_marriage_quality() lines 243-244 (签名)",
+      "description": "未使用参数。_calculate_marriage_windows的shen_label参数、_calculate_marriage_quality的shen_label/shen_score/xi_yong参数在函数体内均未使用，但被analyze_marriage传递。",
+      "fix": "若短期内不需要这些参数，从函数签名移除。但建议按BUG-2修复方案，实际使用xi_yong参数进行喜忌判断。"
+    }
+  ],
+
+  "missing_features": [
+    {
+      "id": "MISS-1",
+      "priority": "高",
+      "feature": "女命配偶宫五行断性功能（土和水）",
+      "skill_location": "技能·第四步·配偶宫五行断性功能",
+      "details": "marriage_v2.py记录了spouse_wx但不做性功能分析。需要在analyze_marriage()或_analyze_fufu_gong()中补充：女性命主且日支五行=土→'配偶肾功能偏弱（土克水）'；日支五行=水→'肾功能强'。仅保留原始依据的土和水。"
+    },
+    {
+      "id": "MISS-2",
+      "priority": "中",
+      "feature": "36命格情感类12条",
+      "skill_location": "技能·§XX 36种命格·情感类",
+      "details": "12条规则全部缺失。至少以下7条仅需单人八字即可实现：\n#1 最易早恋（年月干财/官+身财两停/身官通气）\n#2 最易晚婚（比旺食弱无财/比旺伤旺无财）\n#5 最易奉子成婚（日主紧贴天干相合）\n#6 最易争夫争妻（比劫重重+财/官旺）\n#9 最疼妻（身旺+食伤生正财）\n#11 最忠诚爱情（日坐正财且与财合/日坐正官且与官合）\n#12 最易成小三（正财透年干+月干见比劫/正官透年干+月干见比劫）"
+    },
+    {
+      "id": "MISS-3",
+      "priority": "低",
+      "feature": "夫妻评分交叉校验",
+      "skill_location": "技能·第十二步·夫妻婚姻评分一致性校验",
+      "details": "需要双方八字数据和双方婚姻评分对比。非marriage_v2.py职责，但需确认上层(pipeline_v5.py或comprehensive_v2.py)是否实现了交叉校验逻辑。"
+    }
+  ],
+
+  "summary": {
+    "total_rules": 15,
+    "implemented": 10,
+    "with_bugs": 2,
+    "partial": 1,
+    "missing_in_module": 2,
+    "missing_but_acceptable": 2,
+    "code_quality_issues": 2,
+    "overall_score": "75% (10/15 rule完全实现，但存在刑冲扣分不按喜忌的重大偏差)",
+    "detail_analysis": "=== marriage_v2.py vs bazi-marriage-analysis skill 深度审计报告 ===\n\n【总体评估】marriage_v2.py (518行) 核心框架完整，10/15 skill规则已实现。2026-07-05校准中修复了signal_detail key名不一致Bug，删除了GONG_WX_SEX杜撰内容。但仍有以下关键问题：\n\n🔴 高优Bug：\n① 三刑检查范围过宽（BUG-1）：全局三刑检查未确认是否涉及日支\n② 刑冲扣分不按喜忌（BUG-2）：_calculate_marriage_quality接收xi_yong但不使用，违背skill铁律'喜用刑冲=动力，忌凶刑冲=扣分'\n\n🟡 中优缺失：\n③ 配偶宫五行断性功能（MISS-1）：spouse_wx已存储但未做土/水性功能分析\n④ 36命格情感类12条（MISS-2）：完全未实现，其中7条可单人判断\n\n🟢 代码质量：\n- 死代码all_zhis_for_check（lines 263-264）\n- 未使用参数shen_label/shen_score/xi_yong（3处签名）\n\n【建议修复优先级】\nP0: BUG-2（刑冲扣分按喜忌判断）+ BUG-1（三刑检查限定日支）\nP1: MISS-1（配偶宫五行性功能分析-土和水）\nP2: MISS-2（36命格情感类-单人可判的7条）\nP3: 代码清理（BUG-3死代码+BUG-4未使用参数）"
+  }
+}
