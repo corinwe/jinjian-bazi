@@ -350,7 +350,7 @@ def _build_step_details(year_check, six_steps, nian_check, wen_chang, dy_gans, d
         details.append("年柱无印→学业基因偏弱")
     if nian_check.get("shi_shen") == "伤官":
         details.append("年干伤官→少年叛逆，非学历导向【素材12行517】")
-    if wen_chang.get("exist"):
+    if wen_chang.get("has"):
         details.append(f"文昌在局（{wen_chang.get('detail', '')}）→学业助力✅")
     else:
         details.append("原局无文昌→需大运文昌补救")
@@ -378,7 +378,7 @@ def _build_school_reasoning(year_check, six_steps, wen_chang, label, nian_check)
         parts.append("≤1项通过→职校/初中学历")
     if year_check.get("has_yin"):
         parts.append("年柱有印保底")
-    if wen_chang.get("exist"):
+    if wen_chang.get("has"):
         parts.append("文昌加持")
     if nian_check.get("shi_shen") == "伤官":
         parts.append("但年干伤官拉低学历上限")

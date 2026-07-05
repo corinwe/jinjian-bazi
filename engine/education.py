@@ -21,7 +21,7 @@
 from __future__ import annotations
 
 from shen_sha import get_wen_chang
-from shi_shen import get_shi_shen_for_gan, is_tou_gan
+from shi_shen import get_shi_shen_for_gan
 
 # ── 文昌贵人表 ──
 WEN_CHANG_MAP = {
@@ -55,10 +55,6 @@ def analyze_education(
     返回: 学历等级+六步排查详细
     """
     # ── Step 1: 印星情况 ──
-    has_yin = (
-        is_tou_gan("", BaZi.__new__(BaZi), "正印") or is_tou_gan("", BaZi.__new__(BaZi), "偏印") if False else False
-    )
-    # 简化: 检查天干是否有正印/偏印
     yin_score = 0
     yin_detail = ""
     for g in bazi_gans:
