@@ -382,10 +382,15 @@ def check_wuxing_over_three(counts: dict[str, int]) -> list[dict[str, Any]]:
     return results
 
 
-def check_wuxing_energy_imbalance(scores: dict[str, float]) -> list[dict[str, Any]]:
+def check_wuxing_energy_imbalance(
+    scores: dict[str, float], shen_label: str = ""
+) -> list[dict[str, Any]]:
     """
     §11.2 核心原理：五行能量评分
     >60分=太强  40-50分=最佳  <20分=太弱
+    身强弱联动分析（原始理论）：
+    - 身强水旺无火调候 → 心血管高危
+    - 身弱火旺无水救 → 心血管高危
     """
     results = []
     for wx, score in scores.items():
@@ -402,25 +407,77 @@ def check_wuxing_energy_imbalance(scores: dict[str, float]) -> list[dict[str, An
             detail = f"{wx}能量{score:.0f}分 → 平衡状态，不易得病"
 
         results.append({"五行": wx, "分数": round(score, 1), "状态": status, "诊断": detail})
+
+    # ========== 身强弱联动分析（§11.2 / WEAK_SYSTEMS表） ==========
+    fire_score = scores.get("火", 0)
+    water_score = scores.get("水", 0)
+
+    if shen_label == "身强" and water_score > 50 and fire_score < 20:
+        # 身强水旺无火调候 → 心血管高危
+        results.append({
+            "五行": "心血管🚨",
+            "分数": round(water_score, 1),
+            "状态": "高危预警",
+            "诊断": (
+                f"【身强弱联动】身强水旺({water_score:.0f}分)无火调候({fire_score:.0f}分) → "
+                "水旺克火，心肾不交 → 心血管高危（高血压/心脑血管/失眠）"
+            ),
+            "来源": "§11.2 WEAK_SYSTEMS 心血管高危特征",
+        })
+    elif shen_label == "身弱" and fire_score > 50 and water_score < 20:
+        # 身弱火旺无水救 → 心血管高危
+        results.append({
+            "五行": "心血管🚨",
+            "分数": round(fire_score, 1),
+            "状态": "高危预警",
+            "诊断": (
+                f"【身强弱联动】身弱火旺({fire_score:.0f}分)无水救({water_score:.0f}分) → "
+                "火过亢反吸水，心肾不交 → 心血管高危（心悸/失眠/血压波动）"
+            ),
+            "来源": "§11.2 WEAK_SYSTEMS 心血管高危特征",
+        })
+
     return results
 
 
-def check_dry_wet_balance(scores: dict[str, float]) -> dict[str, Any]:
+def check_dry_wet_balance(scores: dict[str, float], shen_label: str = "") -> dict[str, Any]:
     """
     §11.2 燥湿平衡（疾病诊断的关键视角）
     疾病诊断自动化工作流 第5步
     火 > 水 + 20分 → 燥热体质
     水 > 火 + 20分 → 寒性体质
+    身强弱联动分析（原始理论）：
+    - 身强燥热 → 火旺克金，肺/呼吸道受损
+    - 身弱燥热 → 水火失衡更严重
+    - 身强寒湿 → 尚能抵抗
+    - 身弱寒湿 → 免疫力低下，重点关注
     """
     fire = scores.get("火", 0)
     water = scores.get("水", 0)
-    result: dict[str, Any] = {"火能量": round(fire, 1), "水能量": round(water, 1), "差值": round(fire - water, 1)}
+    result: dict[str, Any] = {
+        "火能量": round(fire, 1),
+        "水能量": round(water, 1),
+        "差值": round(fire - water, 1),
+        "身强弱": shen_label or "未知",
+    }
     if fire - water > 20:
         result["体质"] = "燥热体质"
-        result["诊断"] = "燥热体质 → 炎症/血热/高血压/糖尿病/痛风风险"
+        base_diag = "燥热体质 → 炎症/血热/高血压/糖尿病/痛风风险"
+        if shen_label == "身强":
+            result["诊断"] = base_diag + "；身强燥热 → 火旺克金，肺/呼吸道系统更易受损"
+        elif shen_label == "身弱":
+            result["诊断"] = base_diag + "；身弱燥热 → 水火失衡加剧，心力负担重"
+        else:
+            result["诊断"] = base_diag
     elif water - fire > 20:
         result["体质"] = "寒性体质"
-        result["诊断"] = "寒性体质 → 畏寒/血瘀/代谢慢"
+        base_diag = "寒性体质 → 畏寒/血瘀/代谢慢"
+        if shen_label == "身强":
+            result["诊断"] = base_diag + "；身强寒湿 → 体质尚可抵抗，但需注意血液循环"
+        elif shen_label == "身弱":
+            result["诊断"] = base_diag + "；身弱寒湿 → 免疫力低下，需重点关注肾阳不足"
+        else:
+            result["诊断"] = base_diag
     else:
         result["体质"] = "相对平衡"
         result["诊断"] = "燥湿相对平衡"
@@ -1245,11 +1302,15 @@ def check_rigan_weakness(ri_zhu: str, scores: dict[str, float]) -> dict[str, Any
 
 
 def assess_severity(
-    wuxing_over_three: list, qisha_results: list, chong_results: list, gongwei_results: list
+    wuxing_over_three: list, qisha_results: list, chong_results: list, gongwei_results: list,
+    shen_label: str = "",
 ) -> dict[str, Any]:
     """
     §15.2 严重程度分级
     §12步 疾病断语严重程度
+    身强弱修正（原始理论）：
+    - 身弱 → 耐受力差，同样病症更严重 → +1分
+    - 身强 → 抵抗力好，不加分
     """
     severity_score = 0
 
@@ -1286,6 +1347,15 @@ def assess_severity(
         else:
             severity_score += 1
 
+    # ========== 身强弱修正 ==========
+    # 身弱 → 耐受力差，同样病症严重度提升一级
+    shen_penalty = 0
+    if shen_label == "身弱":
+        shen_penalty = 1
+        severity_score += 1
+    elif shen_label == "身强":
+        shen_penalty = 0  # 抵抗力好，不加分
+
     # 映射到等级
     if severity_score >= 8:
         level = "重度"
@@ -1304,6 +1374,7 @@ def assess_severity(
         "综合评分": severity_score,
         "严重级别": level,
         "详细描述": detail,
+        "身强弱修正": f"身{shen_label} → {'严重度+1（耐受力差）' if shen_penalty else '不加分（抵抗力好）'}" if shen_label else "未启用身强弱修正",
         "各级映射": {
             "无": {"范围": "0-2分", "描述": "正常生活"},
             "轻度": {"范围": "3-4分", "描述": "注意调养"},
@@ -1331,9 +1402,11 @@ def generate_disease_summary(
     severity: dict,
     mu_special: dict,
     age: int,
+    shen_label: str = "",
 ) -> dict[str, Any]:
     """
     整合所有分析结果，生成最终疾病断语
+    包含身强弱对健康结论的影响
     """
     factor = age_factor(age)
 
@@ -1391,12 +1464,21 @@ def generate_disease_summary(
         issues.append(f"【年龄修正】{age}岁，系数×{factor}（{'36岁前减30%' if age < 36 else '56岁后加30%'})")
 
     # 综合断语
+    body_context = ""
+    if shen_label:
+        body_context = f"（身{shen_label}"
+        if shen_label == "身弱":
+            body_context += "→耐受力差，同样健康风险更需重视"
+        elif shen_label == "身强":
+            body_context += "→抵抗力好，同样风险可控性更高"
+        body_context += "）"
+
     if severity.get("综合评分", 0) >= 5:
-        conclusion = f"健康风险较高（综合评分{severity['综合评分']}分/年龄系数{factor}），{severity['详细描述']}"
+        conclusion = f"健康风险较高（综合评分{severity['综合评分']}分/年龄系数{factor}）{body_context}，{severity['详细描述']}"
     elif severity.get("综合评分", 0) >= 3:
-        conclusion = f"存在健康隐患（综合评分{severity['综合评分']}分/年龄系数{factor}），{severity['详细描述']}"
+        conclusion = f"存在健康隐患（综合评分{severity['综合评分']}分/年龄系数{factor}）{body_context}，{severity['详细描述']}"
     else:
-        conclusion = f"健康状况总体良好（综合评分{severity['综合评分']}分/年龄系数{factor}），{severity['详细描述']}"
+        conclusion = f"健康状况总体良好（综合评分{severity['综合评分']}分/年龄系数{factor}）{body_context}，{severity['详细描述']}"
 
     return {
         "年龄系数": factor,
@@ -1451,7 +1533,7 @@ def analyze_health_full(
     wuxing_over_three = check_wuxing_over_three(wuxing_counts)
 
     # §11.2 五行能量不平衡检查
-    energy_imbalance = check_wuxing_energy_imbalance(wuxing_scores)
+    energy_imbalance = check_wuxing_energy_imbalance(wuxing_scores, shen_label)
 
     # Step 3: 七杀定位（实疾）
     # §11.2 七杀断病法
@@ -1463,7 +1545,7 @@ def analyze_health_full(
 
     # Step 5: 燥湿平衡判断
     # §11.2 燥湿平衡
-    dry_wet = check_dry_wet_balance(wuxing_scores)
+    dry_wet = check_dry_wet_balance(wuxing_scores, shen_label)
 
     # Step 6: 特殊排查 — 木的特殊对应
     # §11.2 木的特殊对应
@@ -1507,7 +1589,7 @@ def analyze_health_full(
     rigian_weak = check_rigan_weakness(ri_zhu, wuxing_scores)
 
     # 严重程度综合评估
-    severity = assess_severity(wuxing_over_three, qisha_results, liuchong_results, gongwei_injury)
+    severity = assess_severity(wuxing_over_three, qisha_results, liuchong_results, gongwei_injury, shen_label)
 
     # 五行调和法建议
     deficient_wuxing = [wx for wx in ["木", "火", "土", "金", "水"] if wuxing_scores.get(wx, 0) < 10]
@@ -1530,6 +1612,7 @@ def analyze_health_full(
         severity,
         mu_special,
         age,
+        shen_label,
     )
 
     # =================================================================

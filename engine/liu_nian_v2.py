@@ -181,9 +181,13 @@ def analyze_liu_nian_v2(
         wealth_conf += 0.3
         wealth_desc = "喜用财星流年"
 
-    # 条件3: 三合财局
+    # 条件3: 三合财局（动态判断财星五行）
+    # 日主五行→财星五行
+    CAI_WUXING_MAP = {"木": "土", "火": "金", "土": "水", "金": "火", "水": "火"}
+    ri_cai_wx = CAI_WUXING_MAP.get(ri_zhu_wx, "")
     for he in all_rels["三合"]:
-        if "火" in he["type"] or "金" in he["type"]:  # 财局
+        he_wx = he.get("wx", "")
+        if he_wx and ri_cai_wx and he_wx == ri_cai_wx:
             wealth_conf += 0.3
             wealth_desc = f"{he['type']}财局"
 
