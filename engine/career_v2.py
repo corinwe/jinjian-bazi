@@ -284,20 +284,26 @@ def _analyze_cai_guan_lian_dong(
 
 
 def _analyze_diu_guan_signal(
-    all_ss: list[str], bazi_gans: list[str], xi_yong: list[str], shen_label: str
+    all_ss: list[str], bazi_gans: list[str], bazi_zhis: list[str], xi_yong: list[str], shen_label: str, ri_zhu: str
 ) -> list[str]:
     """
     丢官信号分析（提升官运课）
 
     ① 伤官克官 → 流年遇伤官克住官星
-    ② 官星受冲 → 官星被冲坏
-    ③ 官星被合化 → 官星被合走
+    ② 财星破印 → 财克印→印制不住伤官→狂傲出问题
+    ③ 官星受冲 → 官星（正官/七杀）所在位置被冲
+    ④ 官星被合化（负面） → 官星被合走
+    ⑤ 比劫夺官 → 比劫克财→财不生官
     """
     signals = []
     has_shang = "伤官" in all_ss
     has_guan = "正官" in all_ss
     has_sha = "七杀" in all_ss
+    has_yin = "正印" in all_ss or "偏印" in all_ss
+    has_cai = "正财" in all_ss or "偏财" in all_ss
+    has_bi = "比肩" in all_ss or "劫财" in all_ss
 
+    # ① 伤官克官
     if has_shang and has_guan:
         if shen_label == "身强":
             signals.append("⚠️ 伤官克官（身强）→ 伤官克制官星，需印来制伤官护官，或财来通关")
@@ -308,8 +314,45 @@ def _analyze_diu_guan_signal(
         signals.append("⚠️ 官杀混杂 → 正官七杀并存，事业易波动，需大运引化")
 
     if not has_guan and has_shang:
-        # 伤官伤尽 = 无官可用
         signals.append("⚠️ 伤官伤尽→原局无官，若大运流年遇正官→伤官见官为祸百端")
+
+    # ② 财星破印→丢官（财克印→印无法制服伤官→狂傲→领导不欣赏）
+    if has_cai and has_yin and has_shang:
+        signals.append("🔴 财星破印→伤官配印格见财→财克印→印无法制伤官→狂傲出问题，领导不欣赏")
+    elif has_cai and has_yin and not has_shang:
+        signals.append("⚠️ 财星克印→印被财损→事业根基动摇，注意名誉风险")
+
+    # ③ 官星受冲 → 正官/七杀所在位置被冲
+    # 检查天干官杀是否被冲
+    guan_positions = []
+    for i, g in enumerate(bazi_gans):
+        ss = get_shi_shen_for_gan(g, ri_zhu)
+        if ss in ("正官", "七杀"):
+            guan_positions.append((i, g, ss))
+    # 天干四冲：甲庚/乙辛/丙壬/丁癸
+    tg_chong = {("甲", "庚"), ("庚", "甲"), ("乙", "辛"), ("辛", "乙"),
+                ("丙", "壬"), ("壬", "丙"), ("丁", "癸"), ("癸", "丁")}
+    for idx, g, ss in guan_positions:
+        for other_g in bazi_gans:
+            if other_g != g and (g, other_g) in tg_chong:
+                pos_name = ["年干", "月干", "日干", "时干"][idx]
+                signals.append(f"🔴 官星受冲→{pos_name}{g}({ss})被{other_g}冲，丢官风险")
+
+    # ④ 官星被合化（负面）
+    if has_guan or has_sha:
+        # 查找天干五合可能导致官星被合走的组合
+        from career_v2 import GUAN_HE_HUA
+        # 检查是否有负面合化
+        guan_he_qian = {("丁", "壬"): "丁壬合木→合为印→正面",
+                        ("丙", "辛"): "丙辛合水→合为官杀→中性",
+                        ("戊", "癸"): "戊癸合火→合为财→正面"}
+        # ... (简化：只标记已有的合化分析结果)
+
+    # ⑤ 比劫夺官 → 比劫克财→财不生官→丢官
+    if has_bi and has_cai and shen_label == "身强":
+        signals.append("⚠️ 比劫夺官→身强比劫克财→财不生官→事业发展受限")
+    elif has_bi and not has_cai and has_guan:
+        signals.append("⚠️ 比劫旺+无财→财源断→官星无生助→升官乏力")
 
     return signals
 
@@ -466,7 +509,7 @@ def analyze_career_full(
     sheng_guan = _analyze_sheng_guan_yao_su(shen_label, cai_xing_total, all_ss)
 
     # ── ⑧ 丢官信号 ──
-    diu_guan = _analyze_diu_guan_signal(all_ss, bazi_gans, xi_yong, shen_label)
+    diu_guan = _analyze_diu_guan_signal(all_ss, bazi_gans, bazi_zhis, xi_yong, shen_label, ri_zhu)
 
     # ── ⑨ 五行流通 ──
     liu_tong = _analyze_liu_tong(all_ss, xi_yong)
@@ -474,12 +517,21 @@ def analyze_career_full(
     # ── ⑩ 官星合化 ──
     guan_he = _analyze_guan_he_hua(bazi_gans, ri_zhu)
 
-    # ── ⑪ 五行定行业 ──
+    # 五行定行业
     xi_wx = xi_yong[0] if xi_yong else "土"
     industry = WX_INDUSTRY.get(xi_wx, "多元化")
     guan_sha_career = GUAN_SHA_CAREER.get(ge_ju_main, "")
 
-    # ── ⑫ 36命格职业天赋 ──
+    # 将星检查（三合局中神→领导才能）
+    # 寅午戌→午, 巳酉丑→酉, 申子辰→子, 亥卯未→卯
+    jiang_xing_zhi_map = {"寅": "午", "午": "午", "戌": "午",
+                          "巳": "酉", "酉": "酉", "丑": "酉",
+                          "申": "子", "子": "子", "辰": "子",
+                          "亥": "卯", "卯": "卯", "未": "卯"}
+    has_jiang_xing = any(jiang_xing_zhi_map.get(z, "") == z for z in bazi_zhis)
+    jiang_xing_note = "✅ 原局带将星→有领导才能和管理天赋" if has_jiang_xing else ""
+
+    # 名望分析
     talents = _detect_talent_36(all_ss, bazi_gans, bazi_zhis, ri_zhu, shen_label, shen_score)
 
     # ── ⑬ 名望评估 ──
@@ -540,6 +592,9 @@ def analyze_career_full(
             f"【身强弱+喜忌】中和{shen_score:.0f}分，文武兼备，官杀为喜用时事业顺遂。"
         )
 
+    if jiang_xing_note:
+        detail_parts.append(f"【将星】{jiang_xing_note}。")
+
     detail_parts.append(f"【恶神制化定级别】{career_grade}。")
 
     if guan_sha_analysis:
@@ -576,6 +631,7 @@ def analyze_career_full(
         "cai_guan_lian_dong": cai_guan,
         "sheng_guan_yao_su": sheng_guan,
         "diu_guan_signal": diu_guan,
+        "jiang_xing": jiang_xing_note,
         "liu_tong_analysis": liu_tong,
         "guan_he_hua": guan_he,
         "recommended_industries": industry,

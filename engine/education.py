@@ -86,8 +86,13 @@ def _nian_gan_shi_shen_check(nian_gan: str, ri_zhu: str) -> dict:
     return result
 
 
-def _check_year_pillar_yin(year_gan: str, year_zhi: str, ri_zhu: str) -> dict:
-    """年柱有印三档法（第0层）"""
+def _check_year_pillar_yin(year_gan: str, year_zhi: str, ri_zhu: str, da_yun_zhis: list[str] | None = None) -> dict:
+    """年柱有印三档法（第0层）
+    三档:
+      ① 好（好/好偏弱）: 年干印透or年支藏印
+      ② 中等: 年柱无印但12岁前大运有文昌→补救
+      ③ 一般: 年柱无印且无文昌补救
+    """
     result = {"has_yin": False, "level": "一般", "yin_score": 0.0, "detail": ""}
     gan_ss = get_shi_shen_for_gan(year_gan, ri_zhu)
     if gan_ss in ("正印", "偏印"):
@@ -109,6 +114,14 @@ def _check_year_pillar_yin(year_gan: str, year_zhi: str, ri_zhu: str) -> dict:
             result["detail"] = f"年支{year_zhi}藏{cg}={ss}({level_name}·{quality})✅" + ("" if score >= 2 else "但偏弱")
             return result
     result["detail"] = "年柱无印❌"
+    # 第②档：年柱无印但12岁前大运有文昌→中等
+    if da_yun_zhis and result["level"] == "一般":
+        target_zhi = WEN_CHANG_MAP.get(year_gan, "")
+        if target_zhi and target_zhi in da_yun_zhis[:2]:  # 前两步大运(≈20年)
+            result["has_yin"] = False
+            result["level"] = "中等"
+            result["yin_score"] = 4.0  # 文昌补印4分
+            result["detail"] = f"年柱无印但大运有文昌({target_zhi})→中等补救✅"
     return result
 
 
@@ -361,9 +374,17 @@ def _determine_degree(
     # 判定逻辑
     # ==========================================
 
+    # ── 博士等级（25-30岁窗口+月令印强+文昌强+大运持续补印）──
+    phd_condition = (
+        yin_in_phd and checks_passed >= 4 and wen_chang["has"]
+        and (shen_score >= 60 or (40 <= shen_score < 60 and yin_in_basic))
+    )
+
     # ── 身强（≥60分）：印为忌凶，印运=学非所用 ──
     if shen_score >= 60:
-        if checks_passed >= 4 and wen_chang["has"]:
+        if phd_condition:
+            level, degree = "👑 博士（顶尖）", "博士"
+        elif checks_passed >= 4 and wen_chang["has"]:
             level, degree = "👑 顶尖（清北/常春藤）", "硕士及以上"
         elif checks_passed >= 3:
             if yin_in_basic:
@@ -379,7 +400,9 @@ def _determine_degree(
 
     # ── 中和（40-60分）：有印更好无印也能学 ──
     elif shen_score >= 40:
-        if yin_in_basic and checks_passed >= 4 and wen_chang["has"]:
+        if phd_condition:
+            level, degree = "👑 博士（顶尖）", "博士"
+        elif yin_in_basic and checks_passed >= 4 and wen_chang["has"]:
             level, degree = "🥇 985顶级大学", "硕士及以上"
         elif yin_in_basic and checks_passed >= 3:
             level, degree = "🥇 985顶级大学", "本科"
@@ -429,7 +452,7 @@ def analyze_education(
     da_yun_gans: list[str], da_yun_zhis: list[str], da_yun_start_ages: list[float],
 ) -> dict:
     """学历分析完整体系 v2.3 — 九龙道长原始理论"""
-    year_check = _check_year_pillar_yin(bazi_gans[0], bazi_zhis[0], ri_zhu)
+    year_check = _check_year_pillar_yin(bazi_gans[0], bazi_zhis[0], ri_zhu, da_yun_zhis)
     nian_check = _nian_gan_shi_shen_check(bazi_gans[0], ri_zhu)
     wen_chang = _check_wen_chang(bazi_gans[0], bazi_zhis, da_yun_zhis)
 
