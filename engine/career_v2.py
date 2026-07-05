@@ -1,5 +1,5 @@
 """
-金鉴真人·事业分析引擎 v3.0 — 确定性规则完整版（财官联动+全面规则）
+金鉴真人·事业分析引擎 v3.1 — 确定性规则完整版（财官联动+全面规则）
 基于bazi-career-analysis v3.0
 
 规则体系：
@@ -12,7 +12,8 @@
   升官三要素（身强+财旺+官旺）
   五行流通（能量流向定事业性质）
   官星合化（丁壬合等）
-  丢官信号（伤官克官/官星受冲/官星被合化）
+  丢官信号（伤官克官/官星受冲/官星被合化/比劫夺官）
+  开官库（官星能量≥40分可开）
 
 所有判定以【身强弱+喜忌神】为基础
 """
@@ -20,7 +21,7 @@
 from __future__ import annotations
 
 from constants import TIAN_GAN_WU_XING
-from shi_shen import get_shi_shen_for_gan
+from shi_shen import get_shi_shen_for_cang_gan, get_shi_shen_for_gan
 
 # ── 正八格事业方向 ──
 GE_JU_DIRECTION = {
@@ -338,15 +339,38 @@ def _analyze_diu_guan_signal(
                 pos_name = ["年干", "月干", "日干", "时干"][idx]
                 signals.append(f"🔴 官星受冲→{pos_name}{g}({ss})被{other_g}冲，丢官风险")
 
-    # ④ 官星被合化（负面）
+    # ④ 官星被合化（负面）→ 官星被合走，官运消失
     if has_guan or has_sha:
-        # 查找天干五合可能导致官星被合走的组合
-        from career_v2 import GUAN_HE_HUA
-        # 检查是否有负面合化
-        guan_he_qian = {("丁", "壬"): "丁壬合木→合为印→正面",
-                        ("丙", "辛"): "丙辛合水→合为官杀→中性",
-                        ("戊", "癸"): "戊癸合火→合为财→正面"}
-        # ... (简化：只标记已有的合化分析结果)
+        # 天干五合映射：合化后的五行
+        _WU_HE_WU_XING = {
+            ("甲", "己"): "土", ("己", "甲"): "土",
+            ("乙", "庚"): "金", ("庚", "乙"): "金",
+            ("丙", "辛"): "水", ("辛", "丙"): "水",
+            ("丁", "壬"): "木", ("壬", "丁"): "木",
+            ("戊", "癸"): "火", ("癸", "戊"): "火",
+        }
+    
+        # 检查每个天干是否为官杀，且被合化
+        for i, g in enumerate(bazi_gans):
+            ss = get_shi_shen_for_gan(g, ri_zhu)
+            if ss not in ("正官", "七杀"):
+                continue
+            for j, other_g in enumerate(bazi_gans):
+                if i == j:
+                    continue
+                key = (g, other_g)
+                if key in _WU_HE_WU_XING:
+                    he_wx = _WU_HE_WU_XING[key]
+                    pos_name = ["年", "月", "日", "时"][i]
+                    # 合化出的五行与官杀原本五行不同 → 官杀被合走
+                    ri_wx = TIAN_GAN_WU_XING[ri_zhu]
+                    guan_sha_wx = TIAN_GAN_WU_XING.get(g, "")
+                    if he_wx != guan_sha_wx:
+                        severity = "🔴 严重" if shen_label == "身弱" else "⚠️ "
+                        signals.append(
+                            f"{severity} 官星被合化→{pos_name}干{g}({ss})与{other_g}合化为{he_wx}→"
+                            f"官杀五行被改变，官运消失"
+                        )
 
     # ⑤ 比劫夺官 → 比劫克财→财不生官→丢官
     if has_bi and has_cai and shen_label == "身强":
@@ -355,6 +379,100 @@ def _analyze_diu_guan_signal(
         signals.append("⚠️ 比劫旺+无财→财源断→官星无生助→升官乏力")
 
     return signals
+
+
+# ── 官杀库映射表（日主五行→官杀库地支→方位）──
+_GUAN_KU_MAP = {
+    "木": {"ku": "丑", "position": "东北", "color": "白/金", "symbol": "牛"},
+    "火": {"ku": "辰", "position": "东南", "color": "蓝/黑", "symbol": "龙"},
+    "土": {"ku": "未", "position": "西南", "color": "绿/青", "symbol": "羊"},
+    "金": {"ku": "戌", "position": "西北", "color": "红/紫", "symbol": "狗"},
+    "水": {"ku": "戌", "position": "西北", "color": "红/紫", "symbol": "狗"},
+}
+
+
+def _analyze_kai_guan_ku(
+    all_ss: list[str], bazi_zhis: list[str], bazi_gans: list[str],
+    ri_zhu: str, shen_label: str, xi_yong: list[str],
+) -> list[str]:
+    """
+    开官库分析（提升官运课·全新规则）
+
+    规则：
+      官星（正官/七杀）能量≥40分 → 可开官库
+      官星在月令→天生≥40分
+      官杀库查表：木→丑/火→辰/土→未/金→戌/水→戌
+
+    返回开官库建议列表
+    """
+    results = []
+
+    has_guan = "正官" in all_ss
+    has_sha = "七杀" in all_ss
+    has_guan_sha = has_guan or has_sha
+
+    if not has_guan_sha:
+        return ["原局无官杀→开官库效果有限，建议先补官杀能量再布官库"]
+
+    # 1) 官星得令检查（月令本气是否为官杀→天生≥40分）
+    yue_zhi = bazi_zhis[1] if len(bazi_zhis) >= 4 else ""
+    from constants import DI_ZHI_CANG_GAN
+    yue_cangs = DI_ZHI_CANG_GAN.get(yue_zhi, [])
+    yue_ben_qi = yue_cangs[0][0] if yue_cangs else ""
+    yue_ben_qi_ss = get_shi_shen_for_cang_gan(yue_ben_qi, ri_zhu) if yue_ben_qi else ""
+    guan_de_ling = yue_ben_qi_ss in ("正官", "七杀")
+
+    # 2) 天干透官杀 → 显性官星
+    gan_guan_count = sum(1 for g in bazi_gans if get_shi_shen_for_gan(g, ri_zhu) in ("正官", "七杀"))
+
+    # 3) 查官杀库
+    ri_wx_name = TIAN_GAN_WU_XING.get(ri_zhu, "")
+    ku_info = _GUAN_KU_MAP.get(ri_wx_name, {})
+    guan_ku_zhi = ku_info.get("ku", "")
+    ku_position = ku_info.get("position", "")
+
+    # 检查原局是否有官杀库
+    has_guan_ku = guan_ku_zhi and guan_ku_zhi in bazi_zhis
+    guan_ku_positions = []
+    if has_guan_ku and guan_ku_zhi:
+        position_names = ["年支", "月支", "日支", "时支"]
+        for i, z in enumerate(bazi_zhis):
+            if z == guan_ku_zhi:
+                guan_ku_positions.append(position_names[i])
+
+    # 4) 综合结论
+    if guan_de_ling or gan_guan_count >= 1:
+        # 官杀有一定能量，可开官库
+        if has_guan_ku:
+            pos_str = "、".join(guan_ku_positions)
+            results.append(
+                f"✅ 可开官库→官杀{'得令' if guan_de_ling else '透干'}，能量≥40分✅"
+                f" 官杀库在{pos_str}({guan_ku_zhi}→{ku_position}方位)"
+            )
+            if shen_label == "身强":
+                results.append(
+                    f"💡 开库方法：在住宅{ku_position}方位放置{ku_info['color']}色保险柜/"
+                    f"储物箱，内放{ku_info['symbol']}生肖饰品，选择{ku_info['symbol']}日"
+                    f"的丑时(1-3点)摆放→冲开官库能量"
+                )
+            elif shen_label == "身弱":
+                results.append(
+                    f"💡 先补印比帮身（使身变强）→再开官库：{ku_position}方位"
+                    f"放{ku_info['color']}色物品+{ku_info['symbol']}饰品"
+                )
+        else:
+            results.append(
+                f"⚠️ 官杀有能量({gan_guan_count}官透+{'得令' if guan_de_ling else '非月令'})"
+                f" 但原局无官杀库({guan_ku_zhi}不在四柱中)"
+                f"→可通过大运借库或人工布库（{ku_position}方位布{ku_info['color']}色官库）"
+            )
+    else:
+        results.append(
+            "❌ 官杀能量不足（未得令+不透干）→先补官杀能量（补印/补财/能量牌）"
+            "到40分以上再开官库"
+        )
+
+    return results
 
 
 def _analyze_sheng_guan_yao_su(
@@ -487,15 +605,19 @@ def analyze_career_full(
     has_guan = "正官" in all_ss
 
     if is_wei:
-        career_grade = "一级·伟人格"
+        career_grade = "一级·伟人格👑"
     elif has_sha and (has_yin or has_shi) and shen_label in ("身强", "中和"):
-        career_grade = "二级·上等·恶神有制"
+        career_grade = "二级·上等·恶神有制🌟"
     elif has_guan and has_yin and shen_label == "身强":
-        career_grade = "三级·中等偏上·官印相生"
+        career_grade = "三级·中等偏上·官印相生🥈"
     elif has_guan and shen_label == "身强":
-        career_grade = "四级·中等·正官得用"
+        career_grade = "四级·中等·正官得用🏠"
     elif has_yin and shen_label == "身弱":
-        career_grade = "四级·中等·身弱得印"
+        career_grade = "四级·中等·身弱得印🏠"
+    elif shen_label == "身弱" and has_sha and not has_yin:
+        career_grade = "五级·中等偏下·身弱杀无制🥉"
+    elif shen_label == "身弱" and has_guan and not has_yin:
+        career_grade = "五级·中等偏下·身弱官无制🥉"
     else:
         career_grade = "五级·下等"
 
@@ -510,6 +632,9 @@ def analyze_career_full(
 
     # ── ⑧ 丢官信号 ──
     diu_guan = _analyze_diu_guan_signal(all_ss, bazi_gans, bazi_zhis, xi_yong, shen_label, ri_zhu)
+
+    # ── ⑧b 开官库分析 ──
+    kai_guan_ku = _analyze_kai_guan_ku(all_ss, bazi_zhis, bazi_gans, ri_zhu, shen_label, xi_yong)
 
     # ── ⑨ 五行流通 ──
     liu_tong = _analyze_liu_tong(all_ss, xi_yong)
@@ -605,6 +730,8 @@ def analyze_career_full(
         detail_parts.append(f"【升官三要素】{'；'.join(sheng_guan)}。")
     if diu_guan:
         detail_parts.append(f"【丢官信号】{'；'.join(diu_guan)}。")
+    if kai_guan_ku:
+        detail_parts.append(f"【开官库】{'；'.join(kai_guan_ku)}。")
     if liu_tong:
         detail_parts.append(f"【五行流通】{'；'.join(liu_tong)}。")
     if guan_he:
@@ -631,6 +758,7 @@ def analyze_career_full(
         "cai_guan_lian_dong": cai_guan,
         "sheng_guan_yao_su": sheng_guan,
         "diu_guan_signal": diu_guan,
+        "kai_guan_ku": kai_guan_ku,
         "jiang_xing": jiang_xing_note,
         "liu_tong_analysis": liu_tong,
         "guan_he_hua": guan_he,
