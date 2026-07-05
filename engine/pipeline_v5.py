@@ -25,7 +25,7 @@ from constants import TIAN_GAN_WU_XING, BaZi, Pillar
 from da_yun import compute_da_yun, compute_da_yun_scores
 
 # dimensions_v2已删除（审计标记 2026-06-29: 自创评分体系），DEFAULT_DIMENSIONS不再使用
-from education_v2 import analyze_education
+from education import analyze_education
 from energy import compute_energy_profile
 from family import analyze_nian_yue
 from ge_ju import determine_ge_ju, determine_xi_yong_shen, get_tiao_hou_yong_shen

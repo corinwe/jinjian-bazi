@@ -271,13 +271,13 @@ def test_special_rules():
     # C4: 大运步数=8
     for person in FAMILY:
         p = person["bazi"]
-        dy_list, qy_age, qy_year = compute_da_yun(p, person["birth_year"], 1.1)
+        dy_list, qy_age, qy_year = compute_da_yun(p, person["birth_year"], qi_yun_days=1.1)
         assert_eq(len(dy_list), 8, f"{person['name']}大运8步")
 
     # C5: 大运步数检查（DEFAULT_DIMENSIONS已删除，跳过维度评分验证）
     for person in FAMILY:
         p = person["bazi"]
-        dy_list, qy_age, qy_year = compute_da_yun(p, person["birth_year"], 1.1)
+        dy_list, qy_age, qy_year = compute_da_yun(p, person["birth_year"], qi_yun_days=1.1)
         check(f"C5{person['name']}大运{len(dy_list)}步", len(dy_list) == 8)
 
     # C6: 日支财库检测
@@ -306,7 +306,7 @@ def test_api_compat():
     assert_eq(result.get("meta", {}).get("version"), "5.0", "v5版本号")
 
     # run_pipeline → 旧接口格式
-    pipe_result = run_pipeline("家主", "男", "庚", "申", "癸", "未", "辛", "亥", "辛", "卯", 1979, 7, 1.1)
+    pipe_result = run_pipeline("家主", "男", "庚", "申", "癸", "未", "辛", "亥", "辛", "卯", 1979, 7, 1, 1.1)
     assert_eq(pipe_result.get("success", True), True, "run_pipeline返回success")
     assert_eq("paipan" in pipe_result, True, "含paipan")
     assert_eq("analysis" in pipe_result, True, "含analysis")
@@ -435,7 +435,7 @@ def test_wealth_liunian():
         xi_yong = determine_xi_yong_shen(p) if hasattr(p, "xi_yong") else [sqr_label]
 
         # 构造大运列表
-        dy_list, qy_age, qy_year = compute_da_yun(p, person["birth_year"], 1.1)
+        dy_list, qy_age, qy_year = compute_da_yun(p, person["birth_year"], qi_yun_days=1.1)
 
         try:
             wf = analyze_wealth_full(
@@ -475,7 +475,7 @@ def test_wealth_liunian():
     zhu_mu = FAMILY[1]["bazi"]
     sqr_score, sqr_label, _ = compute_shen_qiang_ruo(zhu_mu)
     cai = compute_cai_xing(zhu_mu)
-    dy_list, _, _ = compute_da_yun(zhu_mu, FAMILY[1]["birth_year"], 1.1)
+    dy_list, _, _ = compute_da_yun(zhu_mu, FAMILY[1]["birth_year"], qi_yun_days=1.1)
     wf = analyze_wealth_full(
         ri_zhu=zhu_mu.day.gan,
         bazi_gans=[zhu_mu.year.gan, zhu_mu.month.gan, zhu_mu.day.gan, zhu_mu.hour.gan],

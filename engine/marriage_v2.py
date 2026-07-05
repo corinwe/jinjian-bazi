@@ -175,7 +175,7 @@ def _calculate_marriage_windows(
     xi_yong: list[str],
     da_yun_gans: list[str],
     da_yun_zhis: list[str],
-    da_yun_start_ages: list[int],
+    da_yun_start_ages: list[float],
 ) -> list:
     """结婚窗口分析 — 四大信号强度排序"""
     windows = []
@@ -321,7 +321,7 @@ def analyze_marriage(
     xi_yong: list[str],
     da_yun_gans: list[str],
     da_yun_zhis: list[str],
-    da_yun_start_ages: list[int],
+    da_yun_start_ages: list[float],
 ) -> dict:
     """
     婚姻完整分析 v2.0
