@@ -16,6 +16,8 @@
 
 from __future__ import annotations
 
+from constants import DI_ZHI, TIAN_GAN
+
 # ── 六冲 ──
 LIU_CHONG = {
     "子": "午",
@@ -111,6 +113,46 @@ LIU_PO = {
     ("未", "戌"): "戌未破",
 }
 
+# ── 天干五合 ──
+TIAN_GAN_HE = {
+    ("甲", "己"): "土", ("己", "甲"): "土",
+    ("乙", "庚"): "金", ("庚", "乙"): "金",
+    ("丙", "辛"): "水", ("辛", "丙"): "水",
+    ("丁", "壬"): "木", ("壬", "丁"): "木",
+    ("戊", "癸"): "火", ("癸", "戊"): "火",
+}
+
+# ── 三会局 ──
+SAN_HUI = {
+    ("寅", "卯", "辰"): "木",
+    ("巳", "午", "未"): "火",
+    ("申", "酉", "戌"): "金",
+    ("亥", "子", "丑"): "水",
+}
+
+# ── 拱合 ──
+GONG_HE = {
+    ("亥", "未"): ("卯", "木"),
+    ("寅", "戌"): ("午", "火"),
+    ("巳", "丑"): ("酉", "金"),
+    ("申", "辰"): ("子", "水"),
+    ("亥", "卯"): ("未", "木"),
+    ("寅", "午"): ("戌", "火"),
+    ("巳", "酉"): ("丑", "金"),
+    ("申", "子"): ("辰", "水"),
+    ("卯", "未"): ("亥", "木"),
+    ("午", "戌"): ("寅", "火"),
+    ("酉", "丑"): ("巳", "金"),
+    ("子", "辰"): ("申", "水"),
+}
+
+# ── 暗合 ──
+AN_HE = {
+    ("子", "巳"): "水", ("巳", "子"): "水",
+    ("寅", "午"): "火", ("午", "寅"): "火",
+    ("亥", "午"): "木", ("午", "亥"): "木",
+}
+
 # 刑冲合化能量系数
 # 来源：bazi-liunian-analysis §3.9 能量倍数速查表
 # 注：有引化/无引化的区分未在此版本实现，取有引化倍数为标准值
@@ -126,6 +168,8 @@ NENG_LIANG = {
     "半合": 10.0,  # 半合=10倍（有引化）/5倍（无引化）
     "拱合": 10.0,  # 拱合=10倍（有引化）/5倍（无引化）
     "暗合": 0.5,   # 暗合不改变五行能量，仅代表人际关系
+    "天干五合": 10.0,  # 天干五合=10倍
+    "三会": 20.0,  # 三会=20倍
 }
 
 
@@ -173,12 +217,38 @@ def check_liu_he(zhi1: str, zhi2: str) -> str | None:
     return LIU_HE.get((zhi1, zhi2))
 
 
-def check_san_he(zhi_list: list[str]) -> list[tuple[str, str, float]]:
-    """检查三合局 返回[(合局类型, 五行, 能量系数)]"""
+def check_san_he(zhi_list: list[str], kong_wang_zhis: list[str] | None = None) -> list[tuple[str, str, float]]:
+    """检查三合局 返回[(合局类型, 五行, 能量系数)]
+
+    三合局完整度等级（R42）:
+      - 完整三合（三字齐全+中神无破）→ energy=15
+      - 虚邀三合（三字齐全但中神空亡）→ energy=7
+      - 半三合（两字）→ energy=5
+      - 拱合（两字缺中神）→ energy=3
+    """
+    if kong_wang_zhis is None:
+        kong_wang_zhis = []
+
+    # 三合局中神映射（中间那个地支）
+    ZHONG_SHEN_MAP = {
+        ("申", "子", "辰"): "子",
+        ("亥", "卯", "未"): "卯",
+        ("寅", "午", "戌"): "午",
+        ("巳", "酉", "丑"): "酉",
+    }
+
     results = []
     for trio, wx in SAN_HE.items():
         if all(z in zhi_list for z in trio):
-            results.append((f"{''.join(trio)}三合{wx}局", wx, NENG_LIANG["三合"]))
+            # 三字齐全 → 检查中神空亡
+            zhong_shen = ZHONG_SHEN_MAP.get(trio, "")
+            if zhong_shen and zhong_shen in kong_wang_zhis:
+                # 虚邀三合：中神空亡，能量减半
+                results.append((f"{''.join(trio)}虚邀三合{wx}局", wx, 7.0))
+            else:
+                # 完整三合：中神无破
+                results.append((f"{''.join(trio)}三合{wx}局", wx, 15.0))
+
     return results
 
 
@@ -191,11 +261,89 @@ def check_ban_he(zhi_list: list[str]) -> list[tuple[str, str, float]]:
     return results
 
 
-def check_all_relations(zhi_list: list[str]) -> dict:
+def check_tian_gan_he(gan1: str, gan2: str) -> tuple[bool, str]:
+    """检查两个天干是否五合，返回(是否合, 合化五行)"""
+    result = TIAN_GAN_HE.get((gan1, gan2))
+    if result:
+        return True, result
+    return False, ""
+
+
+def check_all_tian_gan_he(gans: list[str]) -> list[dict]:
+    """检查八字四天干中所有五合关系，返回列表"""
+    results = []
+    for i in range(len(gans)):
+        for j in range(i + 1, len(gans)):
+            matched, wx = check_tian_gan_he(gans[i], gans[j])
+            if matched:
+                results.append({
+                    "type": "天干五合", "positions": (i, j),
+                    "gans": (gans[i], gans[j]), "wx": wx
+                })
+    return results
+
+
+def check_san_hui(zhis: list[str]) -> list[dict]:
+    """检查八字中是否有三会局"""
+    results = []
+    for trio, wx in SAN_HUI.items():
+        if all(z in zhis for z in trio):
+            results.append({"type": f"{''.join(trio)}三会{wx}局", "wx": wx, "energy": NENG_LIANG["三会"]})
+    return results
+
+
+def check_gong_he(zhis: list[str]) -> list[dict]:
+    """检查八字中是否有拱合关系"""
+    results = []
+    for (z1, z2), (mid, wx) in GONG_HE.items():
+        if z1 in zhis and z2 in zhis:
+            results.append({"type": f"{z1}{z2}拱{mid}合{wx}", "wx": wx, "missing": mid, "energy": NENG_LIANG["拱合"]})
+    return results
+
+
+def check_an_he(zhis: list[str]) -> list[dict]:
+    """检查八字中是否有暗合关系"""
+    results = []
+    for i in range(len(zhis)):
+        for j in range(i + 1, len(zhis)):
+            wx = AN_HE.get((zhis[i], zhis[j]))
+            if wx:
+                results.append({"type": f"{zhis[i]}{zhis[j]}暗合{wx}", "wx": wx, "energy": NENG_LIANG["暗合"]})
+    return results
+
+
+def _get_kong_wang(day_gan: str, day_zhi: str) -> list[str]:
+    """获取日柱对应的空亡地支列表。
+
+    旬空规则：
+      甲子旬→戌亥空, 甲戌旬→申酉空, 甲申旬→午未空,
+      甲午旬→辰巳空, 甲辰旬→寅卯空, 甲寅旬→子丑空
+    """
+    gi = TIAN_GAN.index(day_gan)
+    zi = DI_ZHI.index(day_zhi)
+    xun_idx = 0
+    for idx in range(60):
+        if idx % 10 == gi and idx % 12 == zi:
+            xun_idx = idx // 10
+            break
+    KONG_WANG_MAP = {
+        0: ["戌", "亥"],  # 甲子旬
+        1: ["申", "酉"],  # 甲戌旬
+        2: ["午", "未"],  # 甲申旬
+        3: ["辰", "巳"],  # 甲午旬
+        4: ["寅", "卯"],  # 甲辰旬
+        5: ["子", "丑"],  # 甲寅旬
+    }
+    return KONG_WANG_MAP.get(xun_idx, [])
+
+
+def check_all_relations(zhi_list: list[str], kong_wang_zhis: list[str] | None = None) -> dict:
     """
     全面检查地支关系
     返回结构化结果
     """
+    if kong_wang_zhis is None:
+        kong_wang_zhis = []
     result = {"冲": [], "刑": [], "害": [], "六合": [], "三合": [], "半合": [], "summary": ""}
 
     # 六冲
@@ -223,7 +371,7 @@ def check_all_relations(zhi_list: list[str]) -> dict:
                 result["六合"].append(f"{zhi_list[i]}{zhi_list[j]}合{he}")
 
     # 三合
-    for he_type, wx, energy in check_san_he(zhi_list):
+    for he_type, wx, energy in check_san_he(zhi_list, kong_wang_zhis):
         result["三合"].append({"type": he_type, "wx": wx, "energy": energy})
 
     # 半合
@@ -249,6 +397,102 @@ def check_all_relations(zhi_list: list[str]) -> dict:
     return result
 
 
+def check_all_relations_v2(zhi_list: list[str], gan_list: list[str] | None = None, kong_wang_zhis: list[str] | None = None) -> dict:
+    """
+    全面检查地支+天干关系 v2
+    新增: 天干五合/三会/拱合/暗合 + 合化优先级
+
+    合化优先级（只保留最高）:
+      三会(20倍) > 三合(15倍) > 半合/六合(10倍) > 拱合(10倍) > 暗合(0.5倍)
+    """
+    # 先跑v1获取基础数据
+    result = check_all_relations(zhi_list, kong_wang_zhis)
+
+    # 天干五合
+    if gan_list:
+        result["天干五合"] = check_all_tian_gan_he(gan_list)
+    else:
+        result["天干五合"] = []
+
+    # 三会
+    result["三会"] = check_san_hui(zhi_list)
+
+    # 拱合
+    result["拱合"] = check_gong_he(zhi_list)
+
+    # 暗合
+    result["暗合"] = check_an_he(zhi_list)
+
+    # ── 合化优先级（只保留最高优先级） ──
+    # 收集所有合化关系
+    all_he = []
+
+    # 三会 优先级 4 (最高)
+    for h in result["三会"]:
+        all_he.append(("三会", h, 4))
+
+    # 三合 优先级 3
+    for h in result["三合"]:
+        all_he.append(("三合", h, 3))
+
+    # 六合 优先级 2
+    for h in result["六合"]:
+        all_he.append(("六合", h, 2))
+
+    # 半合 优先级 2
+    for h in result["半合"]:
+        all_he.append(("半合", h, 2))
+
+    # 拱合 优先级 2
+    for h in result["拱合"]:
+        all_he.append(("拱合", h, 2))
+
+    # 暗合 优先级 1 (最低)
+    for h in result["暗合"]:
+        all_he.append(("暗合", h, 1))
+
+    if all_he:
+        # 按优先级降序排列
+        all_he.sort(key=lambda x: x[2], reverse=True)
+        max_priority = all_he[0][2]
+        # 只保留最高优先级的
+        kept = [item for item in all_he if item[2] == max_priority]
+        result["highest_priority"] = {
+            "level": max_priority,
+            "label": {4: "三会", 3: "三合", 2: "六合/半合/拱合", 1: "暗合"}.get(max_priority, ""),
+            "items": [{"category": cat, "detail": h} for cat, h, _ in kept],
+        }
+    else:
+        result["highest_priority"] = None
+
+    # 更新summary
+    parts = []
+    if result["冲"]:
+        parts.append(f"冲: {','.join(result['冲'])}")
+    if result["刑"]:
+        parts.append(f"刑: {','.join(r['type'] for r in result['刑'])}")
+    if result["害"]:
+        parts.append(f"害: {','.join(result['害'])}")
+    if result["六合"]:
+        parts.append(f"六合: {','.join(result['六合'])}")
+    if result["三合"]:
+        parts.append(f"三合: {','.join(r['type'] for r in result['三合'])}")
+    if result["半合"]:
+        parts.append(f"半合: {','.join(r['type'] for r in result['半合'])}")
+    if result["三会"]:
+        parts.append(f"三会: {','.join(r['type'] for r in result['三会'])}")
+    if result["拱合"]:
+        parts.append(f"拱合: {','.join(r['type'] for r in result['拱合'])}")
+    if result["暗合"]:
+        parts.append(f"暗合: {','.join(r['type'] for r in result['暗合'])}")
+    if result["天干五合"]:
+        he_strs = [f'{r["gans"][0]}{r["gans"][1]}合{r["wx"]}' for r in result["天干五合"]]
+        parts.append(f"天干五合: {','.join(he_strs)}")
+    result["summary"] = " | ".join(parts) if parts else "无特殊关系"
+
+    return result
+
+
 def get_zhi_list_from_bazi(bazi_str: str) -> list[str]:
     """从八字字符串提取地支列表"""
     parts = bazi_str.split()
@@ -260,4 +504,18 @@ if __name__ == "__main__":
     test_zhi = ["申", "巳", "午", "寅"]  # 子源八字地支
     result = check_all_relations(test_zhi)
     print(f"地支: {test_zhi}")
-    print(f"关系: {result['summary']}")
+    print(f"关系(v1): {result['summary']}")
+
+    # 测试 v2（含天干）
+    test_gan = ["甲", "己", "丙", "辛"]
+    result_v2 = check_all_relations_v2(test_zhi, test_gan)
+    print(f"\n天干: {test_gan}")
+    print(f"关系(v2): {result_v2['summary']}")
+    if result_v2["天干五合"]:
+        for h in result_v2["天干五合"]:
+            print(f"  天干五合: {h['gans'][0]}{h['gans'][1]}合{h['wx']}")
+    if result_v2["三会"]:
+        for h in result_v2["三会"]:
+            print(f"  三会: {h['type']}")
+    if result_v2["highest_priority"]:
+        print(f"  最高优先级: {result_v2['highest_priority']['label']} (level {result_v2['highest_priority']['level']})")
