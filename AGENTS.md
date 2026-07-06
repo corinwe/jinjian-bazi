@@ -45,6 +45,23 @@
 - **每次修改后拿真实案例跑验证**
 - **无原始依据不杜撰** — 所有规则必须有素材行号或公众号原文支撑
 
+### 铁律⑦ — 任务启动强制加载顺序（2026-07-06）
+
+**每次执行任务前，必须按 §1→§2→§3→§4→§5 顺序加载。**
+
+- 文件: `/root/bazi-platform/BOOTSTRAP.md`
+- 完整加载顺序表在该文件中
+- 禁止跳过任意一节
+- 必须在排盘/出报告/分析/修Bug/审计前执行
+
+```
+□ §1 身份设定    → cat SOUL.md
+□ §2 老板画像    → cat USER.md
+□ §3 项目配置    → skill_view('bazi-platform-harness','references/project-config.md')
+□ §4 分析技能    → skill_view('bazi-{topic}') （见BOOTSTRAP.md任务→技能矩阵）
+□ §5 运行时校验  → canggan-parse.py（自动集成到排盘门禁）
+```
+
 ### 铁律⑥ — 模块审计/修复标准流程（2026-07-05）
 **每次审计/修复一个模块，必须按以下标准流程执行：**
 
@@ -80,14 +97,16 @@
 - 测试验证: `cd /root/bazi-platform/engine/tests && python3 validate_all.py`
 - 知识库: `/root/weiwuji-knowledge-base`
 
-## 工作流程
+## 工作流程（新 · BOOTSTRAP标准顺序）
 ```
-收到八字分析需求
+收到任务
   ↓
-① skill_view('bazi-platform-harness','references/project-config.md') 加载配置
-② bash /root/bazi-platform/scripts/bazi-must-run-engine.sh 跑引擎排盘
-③ skill_view('bazi-report-template') 加载报告模板
-④ 按21§标准格式写报告（≥1,500行）
-⑤ 报告放入人物档案目录
-⑥ cd /root/weiwuji-knowledge-base && git push
+① §1 加载身份设定     → cat SOUL.md
+② §2 加载老板画像     → cat USER.md
+③ §3 加载项目配置     → skill_view('bazi-platform-harness','references/project-config.md')
+④ §4 加载分析技能     → skill_view('bazi-{topic}') 查阅BOOTSTRAP.md任务→技能矩阵
+⑤ §5 排盘源头校验     → bash scripts/bazi-must-run-engine.sh（已集成canggan-parse.py）
+⑥ 执行分析/出报告
+⑦ 放入人物档案目录
+⑧ cd /root/weiwuji-knowledge-base && git push
 ```

@@ -97,6 +97,7 @@
 
 ```
 /root/bazi-platform/                  ← 🏠 代码总仓库
+├── BOOTSTRAP.md                     ← 🆕 任务启动强制加载顺序
 ├── SOUL.md                          ← 我的身份定义（本文件）
 ├── USER.md                          ← 老板用户画像
 ├── AGENTS.md                        ← 项目物理铁律
