@@ -1,14 +1,18 @@
 # 金鉴真人·八字排盘平台
 
-## 🔥 项目铁律（本文件在工作目录下自动加载）
+## 🔥 项目铁律
 
-### Hermes自动加载机制（不需要手动读）
+### Hermes实际加载机制（源码验证 · `or`链）
 ```
-SOUL.md  ← profile根目录 · 自动加载     → 系统级身份+铁律
-USER.md  ← memories/USER.md · 自动注入  → 老板画像+原则+教训
-MEMORY.md ← memories/ · 自动注入         → 持久记忆
-本文件    ← 当前工作目录 · 自动触发       → 项目级SOP ↓
-Skills   ← skill_view()按需加载          → 任务对应技能
+⚠️ 项目级上下文只加载1个，优先级依次：
+
+  优先① .hermes.md / HERMES.md  ← 从CWD往上走到git root（递归搜索）
+  优先② AGENTS.md ← 本文件        ← 只在CWD找（不往上走！）
+  兜底③ CLAUDE.md / .cursorrules
+
+找到第一个就停，后面的根本不进。
+当前无.hermes.md/HERMES.md在任何层级 → 本文件成功加载。
+如果将来有人创建了.hermes.md → 本文件永不再加载。
 ```
 
 ### 铁律① — 排盘必须跑引擎（禁止手算）
