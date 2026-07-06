@@ -1,6 +1,8 @@
 # 金鉴真人·八字排盘平台
 
 ## 🔥 物理铁律（每次进入项目自动加载）
+- **SOUL.md**: `/root/bazi-platform/SOUL.md` — 我的身份定义+核心原则+铁律+行事风格
+- **USER.md**: `/root/bazi-platform/USER.md` — 老板画像+原则+风格+核心教训
 - 完整铁律列表保存于: `/root/bazi-platform/.hermes/config/credentials.md`
 - 包含铁律①排盘跑引擎 ②知识库路径 ③不依赖记忆 ④报告格式 ⑤财富规则 ⑥学习协议
 - 每次进入项目必须先加载: `skill_view('bazi-platform-harness','references/project-config.md')`
