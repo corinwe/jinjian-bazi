@@ -12,6 +12,8 @@
 
 from __future__ import annotations
 
+import math
+
 from constants import DI_ZHI, DI_ZHI_WU_XING, TIAN_GAN, TIAN_GAN_WU_XING, BaZi, DaYun
 
 # ── 节气日期（简化版·只用于测试）──
@@ -173,9 +175,12 @@ def compute_da_yun(bazi: BaZi, birth_year: int = 1980, birth_month: int = 1, bir
             gan_ = prev_gan(month_gan, day_step)
             zhi_ = prev_zhi(month_zhi, day_step)
 
-        # 填充大运年龄（基于浮点数qi_yun_age，不截断！）
-        start_age = round(qi_yun_age + step * 10, 1)
-        end_age = round(qi_yun_age + (step + 1) * 10, 1)
+        # 填充大运年龄（九龙道长向上取整规则）
+        # 起运年龄向上取整为起始岁数，每步管10年
+        # 例: 0.33→1, 第一步1~10岁, 第二步11~20岁
+        base = math.ceil(qi_yun_age)
+        start_age = base + step * 10
+        end_age = base + (step + 1) * 10 - 1
 
         # ── 大运起算年份（基于浮点偏移，不用int截断）──
         # 原始规则: "一天为四个月" → qi_yun_age是浮点年数
