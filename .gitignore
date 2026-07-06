@@ -1,44 +1,58 @@
-# Python
+# ═══════════════════════════════════════════════
+# 金鉴真人 · Git忽略规则
+# ═══════════════════════════════════════════════
+
+# Hermes Profile 系统文件（不追踪）
+auth.*
+backups/
+bin/
+cache/
+channel_directory.json
+cron/
+.env
+feishu_*
+gateway.*
+home/
+hooks/
+image_cache/
+logs/
+lsp/
+models_dev_cache.json
+pairing/
+plans/
+platforms/
+plugins/
+processes.json
+sandboxes/
+sessions/
+skins/
+state.db*
+STATE.md
+tmp/
+.update_check
+verification_evidence.db
+webui_state/
+workspace/
+永维基音频库/
+audio_cache/
+*.lock
+
+# Python 编译文件
 __pycache__/
-*.py[cod]
-*.egg-info/
-dist/
-build/
-.venv/
-venv/
+*.pyc
+.coverage
+*.db
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
+# 系统文件
 .DS_Store
 Thumbs.db
 
-# 环境/密钥
-.env
-*.pem
-*.key
+# 不忽略（显式追踪的内容）：
+# projects/bazi-platform/  ← bazi代码
+# SOUL.md config.yaml HERMES.md  ← 身份+配置
+# skills/  ← 命理分析技能
+# memories/USER.md  ← 用户画像
+# .gitignore
 
-# 数据库（生产）
-database/bazi.db
-database/bazi.db-shm
-database/bazi.db-wal
-
-# 部署
-.deploy-history
-
-# 测试缓存
-.pytest_cache/
-.coverage
-htmlcov/
-coverage.xml
-
-# 日志
-*.log
-/tmp/
-
-# 前端
-node_modules/
+# Profile配置文件（含密钥）
+config.yaml
