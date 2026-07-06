@@ -96,6 +96,10 @@ result['_gate_verified'] = True
 result['_gate_timestamp'] = '$(date -u +%Y-%m-%dT%H:%M:%SZ)'
 result['_gate_rule'] = '铁律①: 排盘必须跑引擎，禁止手算（2026-06-29固化）'
 
+# 保存排盘JSON到临时文件（供下游校验使用）
+with open('/tmp/bazi_last_result.json','w') as f:
+    json.dump(result, f, ensure_ascii=False)
+
 # 第2步：构建 BaZi 对象并运行完整引擎评分
 bazi = BaZi(
     year=Pillar(result['year_pillar']['gan'], result['year_pillar']['zhi']),
@@ -123,7 +127,7 @@ print(json.dumps(result, ensure_ascii=False, indent=2))
 print('')
 print('📚 文昌检查: ' + wc_status)
 print('   ' + wc_detail)
-print('⚙️  引擎评分: 身强弱=' + str(result['engine_scores']['shen_qiang_ruo']['score']) + '分 → ' + result['engine_scores']['shen_qiang_ruo']['label'])
+print('⚙️  引擎评分: 身强弱=' + str(result['engine_scores']['shen_qiang_ruo']['score']) + '分 -> ' + result['engine_scores']['shen_qiang_ruo']['label'])
 " 2>&1
 
     EXIT_CODE=$?
@@ -154,6 +158,12 @@ echo ""
 echo "✅ 门禁通过 — 排盘数据来自引擎，非手算"
 echo "⚠️  后续分析必须基于上述引擎输出，不可自行重算日柱"
 echo ""
+
+# ── 藏干十神源头校验（有具体时辰时） ──
+if [ -n "$HOUR" ] && [ -f "/tmp/bazi_last_result.json" ]; then
+    echo "━━━ 藏干十神校验 ━━━"
+    python3 /root/bazi-platform/scripts/canggan-parse.py /tmp/bazi_last_result.json 2>&1
+fi
 
 # ── 文昌贵人详细检查（-w 标志）──
 if [ "$WEN_CHANG_CHECK" = "1" ] && [ -n "$HOUR" ]; then
