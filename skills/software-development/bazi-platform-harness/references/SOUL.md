@@ -79,7 +79,7 @@
 | 藏干校验 | `/root/bazi-platform/scripts/canggan-parse.py` |
 | 四柱校验 | `/root/bazi-platform/scripts/pillar-verify.py` |
 | 报告校验 | `/root/bazi-platform/scripts/verify_report.py` |
-| AGENTS.md(项目) | `/root/bazi-platform/AGENTS.md` |
-| AGENTS.md(知识库) | `/root/weiwuji-knowledge-base/AGENTS.md` |
+| HERMES.md(项目) | `/root/bazi-platform/HERMES.md` |
+| HERMES.md(知识库) | 知识库移除了，统一在bazi-platform/HERMES.md |
 | 四柱分析skill | 加载 `skill_view('bazi-four-pillars-analysis')` |
 | 工程总调度skill | 加载 `skill_view('bazi-platform-harness')` |

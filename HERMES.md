@@ -1,19 +1,10 @@
-# 金鉴真人·八字排盘平台
+# ═══════════════════════════════════════════════
+# 金鉴真人 · 八字排盘平台 HERMES.md
+# bazi项目级：约束 · 原则要求 · SOP
+# HERMES.md 优先级高于 AGENTS.md（or链第1位）
+# ═══════════════════════════════════════════════
 
 ## 🔥 项目铁律
-
-### Hermes实际加载机制（源码验证 · `or`链）
-```
-⚠️ 项目级上下文只加载1个，优先级依次：
-
-  优先① .hermes.md / HERMES.md  ← 从CWD往上走到git root（递归搜索）
-  优先② AGENTS.md ← 本文件        ← 只在CWD找（不往上走！）
-  兜底③ CLAUDE.md / .cursorrules
-
-找到第一个就停，后面的根本不进。
-当前无.hermes.md/HERMES.md在任何层级 → 本文件成功加载。
-如果将来有人创建了.hermes.md → 本文件永不再加载。
-```
 
 ### 铁律① — 排盘必须跑引擎（禁止手算）
 - 来源: 2026-06-29 梦的日柱算错教训（壬戌→癸亥）
@@ -25,21 +16,29 @@
 - 人物报告存放: `/root/weiwuji-knowledge-base/07-国学哲学/八字命格/02-人物档案/{序号}-{姓名}/`
 - 编码规则: 序号为当前目录最大号+1
 - GitHub: `git@github.com:corinwe/weiwuji-knowledge-base.git`
-- 命令: `cd /root/weiwuji-knowledge-base && git add -A && git commit -m "消息" && git push`
+- 推库命令: `cd /root/weiwuji-knowledge-base && git add -A && git commit -m "消息" && git push`
+- 技能引用版配置: `skill_view('bazi-platform-harness','references/project-config.md')`
 
-### 铁律③ — 所有规则不能依赖LLM记忆
-- 本文件是所有物理规则的来源之一
-- 项目配置完整版: `/root/bazi-platform/.hermes/config/credentials.md`
-- 技能引用版: `skill_view('bazi-platform-harness','references/project-config.md')`
-- 每次分析前必须加载上述config文件，不靠回忆
-
-### 铁律④ — 报告必须按标准格式输出（21§）
-- 来源: `bazi-report-template v5.2` 标准模板
+### 铁律③ — 报告必须按标准格式输出（21§）
+- 来源: `skill_view('bazi-report-template')` → bazi-report-template v5.2
 - 强制: 每次出报告前先 `skill_view('bazi-report-template')`
 - 格式: 21§板块齐全，§1 25字段四段式，深度≥1,500行
 - 禁止自创格式、禁止跳过模板直接输出
 
-### 铁律⑤ — 原始理论验证原则（2026-07-05 · 学业模块走弯路教训）
+### 铁律④ — 排盘源头校验（2026-07-06）
+- 排盘脚本 `bazi-must-run-engine.sh` 自动调 `canggan-parse.py`
+- 排盘时就标出「藏干十神易混淆项」（如辛+午=七杀⚠️）
+- 源头防错，不等分析结束
+
+### 铁律⑤ — 分析结论发布前校验（2026-07-06）
+- 跑 `python3 /root/bazi-platform/scripts/pillar-verify.py`
+- 5关: 五鼠遁 → 藏干十神 → 结构优先级 → 全局冲刑 → 最优性
+
+### 铁律⑥ — 车库测试门禁（任何修改后必跑）
+- 全量验证: `cd /root/bazi-platform/engine/tests && python3 validate_all.py`
+- 排盘验证: `bash /root/bazi-platform/scripts/bazi-must-run-engine.sh`
+
+### 铁律⑦ — 原始理论验证原则（2026-07-05 · 学业模块走弯路教训）
 - **老板提点 → 先查原始理论验证，不能照单全收**
   - 老板语音输入可能有错字/口水话，需要自行识别
   - 老板提点一个"点"，必须延伸到"面"和"体系"（正反面全看）
@@ -52,7 +51,7 @@
 - **每次修改后拿真实案例跑验证**
 - **无原始依据不杜撰** — 所有规则必须有素材行号或公众号原文支撑
 
-### 铁律⑥ — 模块审计/修复标准流程（2026-07-05）
+### 铁律⑧ — 模块审计/修复标准流程（2026-07-05）
 **每次审计/修复一个模块，必须按以下标准流程执行：**
 
 **Step 1 — 规则审计（对照原始理论逐条验证）**
@@ -81,19 +80,31 @@
   □ 拿真实案例验证输出合理
   □ 确认排盘脚本(bazi-must-run-engine.sh)能正确引用新版
 
-## 核心路径
-- 引擎目录: `/root/bazi-platform/engine/`
-- 排盘门禁: `/root/bazi-platform/scripts/bazi-must-run-engine.sh`
-- 测试验证: `cd /root/bazi-platform/engine/tests && python3 validate_all.py`
-- 知识库: `/root/weiwuji-knowledge-base`
+---
 
-## 工作流程
+## 📍 核心路径
+
+| 资源 | 路径 |
+|:-----|:------|
+| 引擎目录 | `/root/bazi-platform/engine/` |
+| 排盘门禁脚本 | `/root/bazi-platform/scripts/bazi-must-run-engine.sh` |
+| 排盘源头校验 | `/root/bazi-platform/scripts/canggan-parse.py`（自动集成） |
+| 四柱5关校验 | `/root/bazi-platform/scripts/pillar-verify.py` |
+| 测试验证 | `cd /root/bazi-platform/engine/tests && python3 validate_all.py` |
+| 项目配置 | `skill_view('bazi-platform-harness','references/project-config.md')` |
+| 知识库 | `/root/weiwuji-knowledge-base` |
+| 人物档案 | `/root/weiwuji-knowledge-base/07-国学哲学/八字命格/02-人物档案/{序号}-{姓名}/` |
+| skills | `/root/bazi-platform/skills/`（26个技能） |
+
+---
+
+## 🔄 工作流程
 
 ```
 收到任务
   ↓
-① 信任Hermes已自动加载：SOUL.md + USER.md + MEMORY.md + 本文件
-② 按需加载技能：skill_view('bazi-{topic}-analysis')（任务→技能矩阵见§1）
+① 系统级已就绪：SOUL.md + USER.md + MEMORY.md（Hermes自动加载）
+② 按需加载技能：skill_view('bazi-{topic}-analysis')（看任务→技能矩阵）
 ③ 加载项目配置：skill_view('bazi-platform-harness','references/project-config.md')
 ④ 排盘源头校验：bash /root/bazi-platform/scripts/bazi-must-run-engine.sh（已集成canggan-parse.py）
 ⑤ 执行分析/出报告（报告前加载 skill_view('bazi-report-template')）
@@ -102,7 +113,9 @@
 ⑧ cd /root/weiwuji-knowledge-base && git push
 ```
 
-## §1 — 任务→技能矩阵（技能加载参考）
+---
+
+## 📋 任务→技能矩阵
 
 | 任务 | 必须加载 | 可选加载 |
 |:-----|:---------|:---------|
@@ -121,3 +134,8 @@
 | **出报告** | `bazi-report-template` | 对应事象技能 |
 | **校准/审计** | `bazi-calibration` | 对应模块技能 |
 | **全量验证** | `bazi-validate-all` | `bazi-auto-verify` |
+
+---
+
+**本文件版本：v1.0 · 2026-07-06 · 取代AGENTS.md**
+**加载机制：HERMES.md 是 or 链最高优先级，当前无.hermes.md挡路 → 本文件成功加载。**

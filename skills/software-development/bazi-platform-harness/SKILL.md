@@ -1,6 +1,6 @@
 ---
 name: bazi-platform-harness
-description: 🚨 八字排盘平台·工程化落地总调度Harness。v7.4新增铁律㉑Hermes自动加载机制修正(SOUL.md→profile根目录·USER.md→memories·AGENTS.md→工作目录自动触发，不再手动加载。删冗余的BOOTSTRAG.md/preflight.sh)。v7.2新增铁律⑲排盘源头藏干十神校验+铁律⑳四柱分析5关校验。v7.1新增铁律⑱(2026-07-05 generate_deep_report空paipan → bazi_string解析固化)。当老板说「开发/设计/写代码/测试/验证/部署/改功能/加模块/修Bug」时强制加载。整合所有工程技能为一条自动化流水线。
+description: 🚨 八字排盘平台·工程化落地总调度Harness。v7.5新增HERMES.md取代AGENTS.md（or链最高优先级），SOUL.md只保留系统级铁律，bazi项目级全进HERMES.md。
 category: software-development
 tags: [八字, 排盘, 工程化, 校验, 流水线]
 ---
@@ -31,7 +31,7 @@ tags: [八字, 排盘, 工程化, 校验, 流水线]
 | ⑫ 旧版归档 | 归档后须运行引擎抓ImportError | 2026-07-05 |
 | **⑲ 排盘源头校验** | **bazi-must-run-engine.sh自动调canggan-parse.py标易混淆⚠️** | **2026-07-06** |
 | **⑳ 四柱分析校验** | **pillar-verify.py 5关校验，结论发布前强制跑** | **2026-07-06** |
-| **㉑ SOUL/USER持久化** | **SOUL.md+USER.md写入磁盘，跨会话可用。AGENTS.md已引用。备用路径：knowledge-base/04-金鉴真人体系/** | **2026-07-06** |
+| **㉑ 加载机制** | **SOUL.md(系统级)+HERMES.md(项目级)已分离。HERMES.md取代AGENTS.md（or链最高优先级）** | **2026-07-06** |
 
 ---
 

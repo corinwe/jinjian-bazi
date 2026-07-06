@@ -21,7 +21,7 @@
 | 🧩 E2E测试 | test_e2e.py 16/16通过 (前端→API→引擎→报告→农历) |
 | 🗜️ 一键加固 | setup-devops.sh (安装+配置+验证) |
 | 🔄 一键回滚 | rollback.sh (支持指定commit/版本数/查看历史) |
-| ✅ 部署前检查 | 见AGENTS.md铁律 |
+| ✅ 部署前检查 | 见HERMES.md铁律 |
 | 🔐 安全扫描 | bandit (pre-commit中) |
 
 ### ❌ 仍需完成
@@ -59,7 +59,7 @@
 | 子项 | 文件 | 状态 |
 |:-----|:-----|:----:|
 | E2E端到端测试 (16项) | `engine/tests/test_e2e.py` | ✅ **16/16通过** |
-| 部署前检查 | 见AGENTS.md | ✅ |
+| 部署前检查 | 见HERMES.md | ✅ |
 | 服务在线验证 | `/ping` `/health` 前端 | ✅ |
 
 ## ⚠️ 中文项目ruff pitfall

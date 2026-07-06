@@ -118,15 +118,11 @@
   5. 最优性校验：是否有更好的候选被遗漏
 - 来源: 2026-07-06 跨模型答案对比发现方法论缺陷
 
-### 铁律㉑ — Hermes自动加载机制（2026-07-06 更新）
-不再手动加载。Hermes自动注入：
-```
-SOUL.md    → /root/.hermes/profiles/jinjian-zhenren/SOUL.md（profile根目录·自动加载）
-USER.md    → /root/.hermes/profiles/jinjian-zhenren/memories/USER.md（自动注入）
-AGENTS.md  → 当前工作目录自动触发
-Skills     → skill_view()按需加载
-```
-- skill内备用了references/SOUL.md和references/USER.md作为参考副本
+### 铁律㉑ — 分层加载机制（2026-07-06 更新）
+两条独立线：
+**系统级（自动加载）**：SOUL.md → profile根目录 · USER.md → memories · MEMORY.md → memories
+**项目级（or链第1优先级）**：HERMES.md → 当前工作目录（取代AGENTS.md）
+- skill内references/SOUL.md和references/USER.md为参考副本
 
 ## 测试命令速查
 | 测试 | 命令 |
@@ -137,7 +133,7 @@ Skills     → skill_view()按需加载
 | E2E测试(16项) | `python3 engine/tests/test_e2e.py --remote` |
 | 全量验证(26项) | `cd engine && python3 tests/validate_all.py` |
 | **四柱校验(5关)** | **`python3 /root/bazi-platform/scripts/pillar-verify.py`** |
-| 部署前检查 | 见AGENTS.md |
+| 部署前检查 | 见HERMES.md |
 
 ## DevOps工具
 | 工具 | 命令 |
