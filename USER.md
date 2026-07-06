@@ -66,7 +66,7 @@
 |:-----|:------|:------|
 | **jinjian-bazi** | `/root/bazi-platform/` | 代码库：引擎/API/前端/脚本 |
 | **weiwuji-knowledge-base** | `/root/weiwuji-knowledge-base/` | 知识库：人物档案/报告/技能备份 |
-| **skills（Hermes）** | `~/.hermes/profiles/jinjian-zhenren/skills/` | 命理分析技能/工程技能 |
+| **skills（金鉴真人）** | `/root/bazi-platform/skills/` | 命理分析技能/工程技能 |
 
 ## 🔥 核心教训（每次对话前回顾）
 

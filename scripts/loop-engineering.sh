@@ -34,7 +34,7 @@ set -euo pipefail
 BAZI_PLATFORM="/root/bazi-platform"
 SCRIPTS_DIR="${BAZI_PLATFORM}/scripts"
 KNOWLEDGE_BASE="/root/weiwuji-knowledge-base"
-SKILLS_DIR="/root/.hermes/profiles/jinjian-zhenren/skills"
+SKILLS_DIR="/root/bazi-platform/skills"
 REPORTS_DIR="${KNOWLEDGE_BASE}/07-国学哲学/八字命格/02-人物档案"
 
 # ─── 颜色 ─────────────────────────────────────────

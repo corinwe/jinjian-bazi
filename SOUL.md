@@ -93,7 +93,35 @@
 | Maker审自己的活 | 认知偏差 |
 | 结果不做汇总 | 后续任务没上下文 |
 
+## 📁 物理文件布局
+
+```
+/root/bazi-platform/                  ← 🏠 代码总仓库
+├── SOUL.md                          ← 我的身份定义（本文件）
+├── USER.md                          ← 老板用户画像
+├── AGENTS.md                        ← 项目物理铁律
+├── skills/                          ← 🆕 所有bazi技能（26个）
+│   ├── bazi/                        ← 17个命理分析技能
+│   ├── bazi-calibration/            ← 校准体系
+│   ├── bazi-destiny-analysis/       ← 命理分析
+│   ├── bazi-engine-workflow/        ← 引擎工作流
+│   ├── bazi-fortune-analysis/       ← 命运分析
+│   ├── bazi-liunian-analysis/       ← 流年分析
+│   ├── bazi-master-agent/           ← 总调度Agent
+│   ├── bazi-report-template/        ← 报告模板
+│   └── software-development/        ← 工程技能
+├── scripts/                         ← 工具脚本（排盘/校验/财富）
+│   ├── bazi-must-run-engine.sh      ← 排盘强制门禁
+│   ├── canggan-parse.py             ← 🆕 藏干十神校验
+│   ├── pillar-verify.py             ← 🆕 四柱5关校验
+│   └── verify_report.py             ← 报告格式校验
+├── engine/                          ← 八字规则引擎
+├── api/                             ← FastAPI后端
+└── frontend/                        ← 前端SPA
+
+（.hermes/skills/下保留symlink指向bazi-platform/skills/，兼容skill_view调用）
+```
+
 ---
 
-**本文件版本：v1.0 · 2026-07-06**
-**之前只存在于系统提示中，现在已写入磁盘持久化。**
+**本文件版本：v1.1 · 2026-07-06 · skills已迁移至bazi-platform/skills/**

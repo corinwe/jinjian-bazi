@@ -1,0 +1,173 @@
+# 财富体系·自动验证规则清单 v2.0
+# 核心原则：Maker用的规则全集 = Checker验证的规则全集
+# Checker引擎读取此文件，逐条验证报告内容 vs skill规则一致性
+# 每条规则对应skill中一个§，与Maker使用的规则1:1
+
+rules:
+  - rule: "§👑 能量链条"
+    maker_uses: true
+    checker_must_verify: true
+    checks:
+      - id: "chain_three_nodes"
+        desc: "报告必须有比劫→食伤→财三个环节数值"
+        severity: "error"
+
+  - rule: "§0 发财公式"
+    maker_uses: true
+    checker_must_verify: true
+    checks:
+      - id: "formula_both_conditions"
+        desc: "同时检查身强(40-60)和财旺(≥40)是否满足"
+        severity: "error"
+
+  - rule: "§1 六种状态"
+    maker_uses: true
+    checker_must_verify: true
+    checks:
+      - id: "state_matched"
+        desc: "报告必须匹配§1六种状态之一"
+        severity: "error"
+
+  - rule: "§2 财富五级"
+    maker_uses: true
+    checker_must_verify: true
+    checks:
+      - id: "level_jufu_dafu_diff"
+        desc: "巨富vs大富区别=大运配合/刑冲"
+        severity: "error"
+      - id: "level_ku_self"
+        desc: "日时柱有库=自己库,年月有库=祖上库"
+        severity: "error"
+
+  - rule: "§3 从弱格"
+    maker_uses: true
+    checker_must_verify: true
+    checks:
+      - id: "ruo_ge_check"
+        desc: "从弱格0分→50分定格，财星全为喜用"
+        severity: "warning"
+
+  - rule: "§4 食伤=财根"
+    maker_uses: true
+    checker_must_verify: true
+    checks:
+      - id: "food_shen_as_root"
+        desc: "有食伤→财根稳；无食伤→财根不稳"
+        severity: "warning"
+
+  - rule: "§5 财星评分"
+    maker_uses: true
+    checker_must_verify: true
+    checks:
+      - id: "caixing_5element"
+        desc: "财星五行=日主所克五行"
+        severity: "error"
+      - id: "caixing_position"
+        desc: "位置基础分：年干8/年支4/月干12/月令40/日支12/时干12/时支12"
+        severity: "error"
+      - id: "caixing_zanggan"
+        desc: "藏干本气100% 中气60% 余气30%"
+        severity: "error"
+      - id: "caixing_s1_s8_consistent"
+        desc: "§1总览财星分=§8财星评分=引擎财星分"
+        severity: "error"
+
+  - rule: "§6 修正因子"
+    maker_uses: true
+    checker_must_verify: true
+    checks:
+      - id: "weike_discount"
+        desc: "财星受围克计算，2-3个克制=打折30-50%"
+        severity: "warning"
+      - id: "shen_over_60"
+        desc: "身强>60分→反克财，等级-1档"
+        severity: "warning"
+
+  - rule: "§7 发财五法"
+    maker_uses: true
+    checker_must_verify: true
+    checks:
+      - id: "five_methods"
+        desc: "5种发财方法全部逐条判定"
+        severity: "error"
+      - id: "method2_ku_location"
+        desc: "遇库则发:日时柱有库=自己库"
+        severity: "error"
+      - id: "method3_wugui"
+        desc: "五鬼运财:月令后退5位"
+        severity: "warning"
+
+  - rule: "§10 墓库体系"
+    maker_uses: true
+    checker_must_verify: true
+    checks:
+      - id: "muku_all_5_types"
+        desc: "全量检查5种墓库(比劫/财才/官杀/印枭/食伤)，一一对照§10.1表"
+        severity: "error"
+      - id: "muku_40_rule"
+        desc: "≥40分=库, <40分=墓"
+        severity: "error"
+      - id: "muku_wu_dual"
+        desc: "戌同时出现在多列，不能偏废（庚辛金印库=戌非丑，壬癸水官杀库=戌非未）"
+        severity: "error"
+      - id: "muku_position"
+        desc: "日时柱有库=自己的库；年月有库=祖上/家族库"
+        severity: "warning"
+
+  - rule: "§12 五层动态法"
+    maker_uses: true
+    checker_must_verify: true
+    checks:
+      - id: "five_layers"
+        desc: "1定基础→2围克折扣→3财库→4大运→5综合"
+        severity: "error"
+      - id: "no_static_tags"
+        desc: "禁止静态标签('身强财弱=中富')，必须用动态条件"
+        severity: "error"
+
+  - rule: "§13 流年分析"
+    maker_uses: true
+    checker_must_verify: true
+    checks:
+      - id: "dayun_chong_yue"
+        desc: "大运地支冲月支=开财库(容易遗漏！)"
+        severity: "error"
+      - id: "liunian_table"
+        desc: "有未来15年逐流年分析"
+        severity: "warning"
+
+  - rule: "§14 大富五要素"
+    maker_uses: true
+    checker_must_verify: true
+    checks:
+      - id: "five_elements"
+        desc: "身强+财旺+食神旺+禄神+财库五要素检查"
+        severity: "warning"
+
+  - rule: "§16 合作伙伴"
+    maker_uses: true
+    checker_must_verify: true
+    checks:
+      - id: "partner_split"
+        desc: "身强vs身弱合作模式分开写"
+        severity: "error"
+      - id: "partner_strong_3"
+        desc: "身强3模式(财/官杀/食伤)"
+        severity: "warning"
+      - id: "partner_weak_2"
+        desc: "身弱2模式(比劫/印)"
+        severity: "warning"
+
+  - rule: "§17 破财5条"
+    maker_uses: true
+    checker_must_verify: true
+    checks:
+      - id: "pocai_5"
+        desc: "5种破财条件全部逐条检查"
+        severity: "error"
+      - id: "pocai_c3_strength"
+        desc: "条件③身强遇比劫=破财/身弱遇比劫=可合作"
+        severity: "error"
+      - id: "pocai_c5_40"
+        desc: "条件⑤遇墓需与40分法则一致"
+        severity: "error"

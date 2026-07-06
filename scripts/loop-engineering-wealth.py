@@ -28,7 +28,7 @@ from datetime import datetime
 # ─── 常量配置 ─────────────────────────────────────
 BAZI_PLATFORM = "/root/bazi-platform"
 SCRIPTS_DIR = f"{BAZI_PLATFORM}/scripts"
-SKILL_DIR = "/root/.hermes/profiles/jinjian-zhenren/skills/bazi/bazi-wealth-analysis"
+SKILL_DIR = "/root/bazi-platform/skills/bazi/bazi-wealth-analysis"
 SKILL_FILE = f"{SKILL_DIR}/SKILL.md"
 KNOWLEDGE_BASE = "/root/weiwuji-knowledge-base"
 REPORTS_BASE = f"{KNOWLEDGE_BASE}/07-国学哲学/八字命格/02-人物档案"
