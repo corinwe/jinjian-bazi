@@ -83,6 +83,12 @@
 - 老板提点 → 先查九龙道长原始理论验证，不能照单全收
 - 无原始依据不杜撰
 
+### 铁律⑨ — 任务前强制加载检查
+- **每次新任务开始第一步** → `bash /root/bazi-platform/scripts/preflight.sh`
+- 确保 SOUL.md / USER.md / AGENTS.md / BOOTSTRAP.md 全部就绪
+- 不跑 preflight = 跳过上下文加载 = 不合格
+- 检查通过后按BOOTSTRAP.md标准顺序逐节加载（§1→§2→§3→§4→§5）
+
 ## ⛔ 反模式
 
 | 反模式 | 说明 |
