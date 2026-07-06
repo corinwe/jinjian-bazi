@@ -118,12 +118,15 @@
   5. 最优性校验：是否有更好的候选被遗漏
 - 来源: 2026-07-06 跨模型答案对比发现方法论缺陷
 
-### 铁律㉑ — SOUL.md/USER.md 文件持久化（2026-07-06 新增）
-- SOUL.md: `/root/bazi-platform/SOUL.md` — 身份定义+原则+铁律+分工
-- USER.md: `/root/bazi-platform/USER.md` — 老板画像+原则+风格+教训
-- 之前只存在于系统提示和memory中，跨会话丢失
-- 2026-07-06 老板问「SOUL.md在哪里？」，发现无磁盘文件
-- AGENTS.md已更新引用，知识库已备份
+### 铁律㉑ — Hermes自动加载机制（2026-07-06 更新）
+不再手动加载。Hermes自动注入：
+```
+SOUL.md    → /root/.hermes/profiles/jinjian-zhenren/SOUL.md（profile根目录·自动加载）
+USER.md    → /root/.hermes/profiles/jinjian-zhenren/memories/USER.md（自动注入）
+AGENTS.md  → 当前工作目录自动触发
+Skills     → skill_view()按需加载
+```
+- skill内备用了references/SOUL.md和references/USER.md作为参考副本
 
 ## 测试命令速查
 | 测试 | 命令 |
@@ -134,7 +137,7 @@
 | E2E测试(16项) | `python3 engine/tests/test_e2e.py --remote` |
 | 全量验证(26项) | `cd engine && python3 tests/validate_all.py` |
 | **四柱校验(5关)** | **`python3 /root/bazi-platform/scripts/pillar-verify.py`** |
-| 部署前检查(15项) | `./preflight.sh` |
+| 部署前检查 | 见AGENTS.md |
 
 ## DevOps工具
 | 工具 | 命令 |
@@ -161,6 +164,5 @@
 ├── setup-devops.sh      # 一键加固脚本
 ├── setup-deploy.sh      # 部署配置助手
 ├── rollback.sh          # 回滚脚本
-├── preflight.sh         # 部署前检查
 └── .hermes/config/credentials.md  # 完整凭据
 ```

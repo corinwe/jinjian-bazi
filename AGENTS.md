@@ -1,12 +1,15 @@
 # 金鉴真人·八字排盘平台
 
-## 🔥 物理铁律（每次进入项目自动加载）
-- **SOUL.md**: `/root/bazi-platform/SOUL.md` — 我的身份定义+核心原则+铁律+行事风格
-- **USER.md**: `/root/bazi-platform/USER.md` — 老板画像+原则+风格+核心教训
-- 完整铁律列表保存于: `/root/bazi-platform/.hermes/config/credentials.md`
-- 包含铁律①排盘跑引擎 ②知识库路径 ③不依赖记忆 ④报告格式 ⑤财富规则 ⑥学习协议
-- 每次进入项目必须先加载: `skill_view('bazi-platform-harness','references/project-config.md')`
-- 收到老板新知识（文档/音频/视频/链接/图片）时，先加载: `skill_view('learning-protocol')`
+## 🔥 项目铁律（本文件在工作目录下自动加载）
+
+### Hermes自动加载机制（不需要手动读）
+```
+SOUL.md  ← profile根目录 · 自动加载     → 系统级身份+铁律
+USER.md  ← memories/USER.md · 自动注入  → 老板画像+原则+教训
+MEMORY.md ← memories/ · 自动注入         → 持久记忆
+本文件    ← 当前工作目录 · 自动触发       → 项目级SOP ↓
+Skills   ← skill_view()按需加载          → 任务对应技能
+```
 
 ### 铁律① — 排盘必须跑引擎（禁止手算）
 - 来源: 2026-06-29 梦的日柱算错教训（壬戌→癸亥）
@@ -45,23 +48,6 @@
 - **每次修改后拿真实案例跑验证**
 - **无原始依据不杜撰** — 所有规则必须有素材行号或公众号原文支撑
 
-### 铁律⑦ — 任务启动强制加载顺序（2026-07-06）
-
-**每次执行任务前，必须按 §1→§2→§3→§4→§5 顺序加载。**
-
-- 文件: `/root/bazi-platform/BOOTSTRAP.md`
-- 完整加载顺序表在该文件中
-- 禁止跳过任意一节
-- 必须在排盘/出报告/分析/修Bug/审计前执行
-
-```
-□ §1 身份设定    → cat SOUL.md
-□ §2 老板画像    → cat USER.md
-□ §3 项目配置    → skill_view('bazi-platform-harness','references/project-config.md')
-□ §4 分析技能    → skill_view('bazi-{topic}') （见BOOTSTRAP.md任务→技能矩阵）
-□ §5 运行时校验  → canggan-parse.py（自动集成到排盘门禁）
-```
-
 ### 铁律⑥ — 模块审计/修复标准流程（2026-07-05）
 **每次审计/修复一个模块，必须按以下标准流程执行：**
 
@@ -97,16 +83,37 @@
 - 测试验证: `cd /root/bazi-platform/engine/tests && python3 validate_all.py`
 - 知识库: `/root/weiwuji-knowledge-base`
 
-## 工作流程（新 · BOOTSTRAP标准顺序）
+## 工作流程
+
 ```
 收到任务
   ↓
-① §1 加载身份设定     → cat SOUL.md
-② §2 加载老板画像     → cat USER.md
-③ §3 加载项目配置     → skill_view('bazi-platform-harness','references/project-config.md')
-④ §4 加载分析技能     → skill_view('bazi-{topic}') 查阅BOOTSTRAP.md任务→技能矩阵
-⑤ §5 排盘源头校验     → bash scripts/bazi-must-run-engine.sh（已集成canggan-parse.py）
-⑥ 执行分析/出报告
+① 信任Hermes已自动加载：SOUL.md + USER.md + MEMORY.md + 本文件
+② 按需加载技能：skill_view('bazi-{topic}-analysis')（任务→技能矩阵见§1）
+③ 加载项目配置：skill_view('bazi-platform-harness','references/project-config.md')
+④ 排盘源头校验：bash /root/bazi-platform/scripts/bazi-must-run-engine.sh（已集成canggan-parse.py）
+⑤ 执行分析/出报告（报告前加载 skill_view('bazi-report-template')）
+⑥ 发布前校验：python3 /root/bazi-platform/scripts/pillar-verify.py
 ⑦ 放入人物档案目录
 ⑧ cd /root/weiwuji-knowledge-base && git push
 ```
+
+## §1 — 任务→技能矩阵（技能加载参考）
+
+| 任务 | 必须加载 | 可选加载 |
+|:-----|:---------|:---------|
+| **排盘/基础分析** | `bazi-foundation-analysis` | `bazi-auto-verify` |
+| **财富分析** | `bazi-wealth-analysis` | `bazi-foundation-analysis` |
+| **事业分析** | `bazi-career-analysis` | `bazi-wealth-analysis` |
+| **婚姻分析** | `bazi-marriage-analysis` | `bazi-foundation-analysis` |
+| **学业分析** | `bazi-education-analysis` | `bazi-foundation-analysis` |
+| **健康/疾病** | `bazi-health-psychology` | `bazi-misfortune-analysis` |
+| **子女分析** | `bazi-children-analysis` | `bazi-foundation-analysis` |
+| **灾祸分析** | `bazi-misfortune-analysis` | `bazi-liunian-analysis` |
+| **化解方法** | `bazi-remission-methods` | `bazi-foundation-analysis` |
+| **流年分析** | `bazi-liunian-analysis` | `bazi-foundation-analysis` |
+| **买房置业** | `bazi-house-buying` | `bazi-wealth-analysis` |
+| **四柱反推** | `bazi-four-pillars-analysis` | — |
+| **出报告** | `bazi-report-template` | 对应事象技能 |
+| **校准/审计** | `bazi-calibration` | 对应模块技能 |
+| **全量验证** | `bazi-validate-all` | `bazi-auto-verify` |

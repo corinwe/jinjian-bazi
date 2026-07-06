@@ -1,6 +1,6 @@
 ---
 name: bazi-platform-harness
-description: 🚨 八字排盘平台·工程化落地总调度Harness。v7.3新增铁律㉑SOUL.md/USER.md文件持久化(2026-07-06 角色+用户画像写入磁盘跨会话可用)+新增references/SOUL.md+references/USER.md。v7.2新增铁律⑲排盘源头藏干十神校验+铁律⑳四柱分析5关校验。v7.1新增铁律⑱(2026-07-05 generate_deep_report空paipan → bazi_string解析固化)。当老板说「开发/设计/写代码/测试/验证/部署/改功能/加模块/修Bug」时强制加载。整合所有工程技能为一条自动化流水线。
+description: 🚨 八字排盘平台·工程化落地总调度Harness。v7.4新增铁律㉑Hermes自动加载机制修正(SOUL.md→profile根目录·USER.md→memories·AGENTS.md→工作目录自动触发，不再手动加载。删冗余的BOOTSTRAG.md/preflight.sh)。v7.2新增铁律⑲排盘源头藏干十神校验+铁律⑳四柱分析5关校验。v7.1新增铁律⑱(2026-07-05 generate_deep_report空paipan → bazi_string解析固化)。当老板说「开发/设计/写代码/测试/验证/部署/改功能/加模块/修Bug」时强制加载。整合所有工程技能为一条自动化流水线。
 category: software-development
 tags: [八字, 排盘, 工程化, 校验, 流水线]
 ---
@@ -63,8 +63,8 @@ tags: [八字, 排盘, 工程化, 校验, 流水线]
 ## ⚠️ 加载本技能时必须做的
 
 1. `skill_view('bazi-platform-harness', 'references/project-config.md')` → 加载完整配置
-2. `skill_view('bazi-platform-harness', 'references/SOUL.md')` → 加载身份设定
-3. `skill_view('bazi-platform-harness', 'references/USER.md')` → 加载老板画像
+2. `skill_view('bazi-platform-harness', 'references/SOUL.md')`⚠️ = 加载本skill参考副本，SOUL.md的实际自动加载版本在profile根目录
+3. `skill_view('bazi-platform-harness', 'references/USER.md')`⚠️ = 同上，USER.md实际自动注入在memories/USER.md
 4. 排盘前: 确认`/tmp/bazi_last_result.json`已更新（由bazi-must-run-engine.sh生成）
 5. 发布报告前: 跑`verify_report.py`确认格式通过
 6. 四柱分析结论发布前: 跑`pillar-verify.py`确认5关全过
