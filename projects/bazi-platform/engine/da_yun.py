@@ -177,8 +177,30 @@ def compute_da_yun(bazi: BaZi, birth_year: int = 1980, birth_month: int = 1, bir
         start_age = round(qi_yun_age + step * 10, 1)
         end_age = round(qi_yun_age + (step + 1) * 10, 1)
 
-        # 起运年份 = 出生年 + 起运年龄(取整)
-        start_year = birth_year + int(qi_yun_age + step * 10)
+        # ── 大运起算年份（基于浮点偏移，不用int截断）──
+        # 原始规则: "一天为四个月" → qi_yun_age是浮点年数
+        # 大运起算 = 出生 + qi_yun_age年 + step*10年
+        # 用浮点年份偏移代替int()截断，精确到月份
+        start_age_float = qi_yun_age + step * 10
+        start_age_int = int(start_age_float)
+        start_month_offset = int(round((start_age_float - start_age_int) * 12))
+
+        # 从出生月偏移
+        effective_month = birth_month + start_month_offset
+        year_carry = 0
+        while effective_month > 12:
+            effective_month -= 12
+            year_carry += 1
+
+        # 如果偏移后在下半年(≥7月), 大运已过该年核心区间
+        # 大运主要覆盖下一个完整年度开始的10年
+        start_year = birth_year + start_age_int + year_carry
+        # 如果在第4季度(10~12月)起运, 该年只占尾巴, 跳到下一年
+        if effective_month >= 10:
+            start_year += 1
+
+        # 计算结束年份 = 起始年 + 10 - 1（因为大运管10年）
+        end_year = start_year + 9
 
         da_yun_list.append(
             DaYun(
@@ -190,7 +212,7 @@ def compute_da_yun(bazi: BaZi, birth_year: int = 1980, birth_month: int = 1, bir
             )
         )
 
-    # ── 起运年份计算 ──
+    # ── 起运年份计算（与各步大运的浮点偏移算法一致）──
     # 规则: 出生年 + 起运年龄的整数部分, 小数>=0.5则进1
     qi_yun_age_int = int(qi_yun_age)
     qi_yun_age_frac = qi_yun_age - qi_yun_age_int
@@ -199,7 +221,9 @@ def compute_da_yun(bazi: BaZi, birth_year: int = 1980, birth_month: int = 1, bir
         qi_yun_year += 1
 
     # 如果起运年>出生年但第一步大运start_year=出生年, 保持一致性
-    # 例如: 1980年出生, 0.37岁起运, 第一步大运从1980年开始(0.37~10.37岁)
+    # 👆 旧逻辑（int截断）. 新逻辑改用浮点月份偏移+Q4进位:
+    # 0.33岁=4个月→出生月+4=Q4(12月)→进位→start_year=出生年+1
+    # 不再依赖int(qi_yun_age)取整，而是精确到月份的浮点偏移
 
     return da_yun_list, qi_yun_age, qi_yun_year
 
