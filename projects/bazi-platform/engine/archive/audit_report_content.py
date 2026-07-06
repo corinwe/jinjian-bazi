@@ -4,7 +4,7 @@
 import json
 import sys
 
-sys.path.insert(0, "/root/bazi-platform/engine")
+sys.path.insert(0, "/root/.hermes/profiles/jinjian-zhenren/projects/bazi-platform/engine")
 from comprehensive_v2 import ComprehensiveAnalysis
 
 # 用实际引擎生成完整分析（家主八字）

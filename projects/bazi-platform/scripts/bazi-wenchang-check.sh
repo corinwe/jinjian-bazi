@@ -4,7 +4,7 @@
 # 检查八字命局中是否有文昌贵人，以及是否需要补文昌
 # ═══════════════════════════════════════════════════════════
 
-ENGINE_DIR="/root/bazi-platform/engine"
+ENGINE_DIR="/root/.hermes/profiles/jinjian-zhenren/projects/bazi-platform/engine"
 
 echo "════════════════════════════════════════"
 echo "📚 金鉴真人 · 文昌贵人检查"

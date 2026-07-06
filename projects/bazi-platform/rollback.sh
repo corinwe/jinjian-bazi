@@ -16,7 +16,7 @@ NC='\033[0m'
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 HISTORY_FILE="$SCRIPT_DIR/.deploy-history"
-BAZI_DIR="/root/bazi-platform"
+BAZI_DIR="/root/.hermes/profiles/jinjian-zhenren/projects/bazi-platform"
 
 # ── 查看部署历史 ──
 if [ "${1:-}" = "--list" ] || [ "${1:-}" = "-l" ]; then

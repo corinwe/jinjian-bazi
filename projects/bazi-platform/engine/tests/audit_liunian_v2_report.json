@@ -1,6 +1,6 @@
 {
   "audit_meta": {
-    "target": "/root/bazi-platform/engine/liu_nian_v2.py",
+    "target": "/root/.hermes/profiles/jinjian-zhenren/projects/bazi-platform/engine/liu_nian_v2.py",
     "skill": "bazi-liunian-analysis (v7.4)",
     "date": "2026-07-05",
     "auditor": "金鉴真人·subagent",

@@ -3,7 +3,7 @@
 
 import sys
 
-sys.path.insert(0, "/root/bazi-platform/engine")
+sys.path.insert(0, "/root/.hermes/profiles/jinjian-zhenren/projects/bazi-platform/engine")
 
 from paipan import get_full_paipan, check_wen_chang, WEN_CHANG_MAP
 

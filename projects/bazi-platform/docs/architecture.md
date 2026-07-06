@@ -283,7 +283,7 @@ POST   /api/v1/engine/debug         # 调试模式（输出完整JSON）
 ## 五、目录结构（最终版）
 
 ```
-/root/bazi-platform/
+projects/bazi-platform/
 ├── database/                   # 数据层
 │   ├── schema.sql              # 数据库建表SQL
 │   ├── connection.py           # 数据库连接管理

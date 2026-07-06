@@ -31,10 +31,10 @@
 set -euo pipefail
 
 # ─── 配置 ─────────────────────────────────────────
-BAZI_PLATFORM="/root/bazi-platform"
+BAZI_PLATFORM="/root/.hermes/profiles/jinjian-zhenren/projects/bazi-platform"
 SCRIPTS_DIR="${BAZI_PLATFORM}/scripts"
 KNOWLEDGE_BASE="/root/weiwuji-knowledge-base"
-SKILLS_DIR="/root/bazi-platform/skills"
+SKILLS_DIR="/root/.hermes/profiles/jinjian-zhenren/projects/bazi-platform/skills"
 REPORTS_DIR="${KNOWLEDGE_BASE}/07-国学哲学/八字命格/02-人物档案"
 
 # ─── 颜色 ─────────────────────────────────────────

@@ -1,7 +1,7 @@
 # family.py 六亲模块深度审计报告
 
 **审计时间：** 2026-07-05
-**审计文件：** `/root/bazi-platform/engine/family.py` (103行)
+**审计文件：** `projects/bazi-platform/engine/family.py` (103行)
 **审计标准：** `bazi-foundation-analysis` §第八步·六亲分析框架 + `bazi-marriage-analysis` §第八步·六亲分析框架
 **引用链：** `pipeline_v5.py:220` → `analyze_nian_yue(year_gan, year_zhi, month_gan, month_zhi, ri_zhu, sqr_label)`
 

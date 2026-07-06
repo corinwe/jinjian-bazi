@@ -8,7 +8,7 @@
 
 import sys, json, traceback
 
-sys.path.insert(0, "/root/bazi-platform/engine")
+sys.path.insert(0, "/root/.hermes/profiles/jinjian-zhenren/projects/bazi-platform/engine")
 
 from constants import BaZi, Pillar, TIAN_GAN_WU_XING, DaYun
 from shen_qiang_ruo import compute_shen_qiang_ruo

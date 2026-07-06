@@ -5,8 +5,8 @@
 # 铁律来源: credentials.md → 铁律①（2026-06-29固化）
 # ═══════════════════════════════════════════════════════════
 
-ENGINE_DIR="/root/bazi-platform/engine"
-CONFIG_FILE="/root/bazi-platform/.hermes/config/credentials.md"
+ENGINE_DIR="/root/.hermes/profiles/jinjian-zhenren/projects/bazi-platform/engine"
+CONFIG_FILE="/root/.hermes/profiles/jinjian-zhenren/projects/bazi-platform/.hermes/config/credentials.md"
 
 echo "════════════════════════════════════════"
 echo "🔒 金鉴真人 · 排盘强制门禁"
@@ -162,7 +162,7 @@ echo ""
 # ── 藏干十神源头校验（有具体时辰时） ──
 if [ -n "$HOUR" ] && [ -f "/tmp/bazi_last_result.json" ]; then
     echo "━━━ 藏干十神校验 ━━━"
-    python3 /root/bazi-platform/scripts/canggan-parse.py /tmp/bazi_last_result.json 2>&1
+    python3 /root/.hermes/profiles/jinjian-zhenren/projects/bazi-platform/scripts/canggan-parse.py /tmp/bazi_last_result.json 2>&1
 fi
 
 # ── 文昌贵人详细检查（-w 标志）──

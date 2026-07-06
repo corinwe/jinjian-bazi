@@ -1,6 +1,6 @@
 {
   "audit_id": "20260705-cai-xing-deep-audit",
-  "target": "/root/bazi-platform/engine/cai_xing.py",
+  "target": "/root/.hermes/profiles/jinjian-zhenren/projects/bazi-platform/engine/cai_xing.py",
   "auditor": "subagent",
   "timestamp": "2026-07-05",
   "reference_skill": "bazi-wealth-analysis",

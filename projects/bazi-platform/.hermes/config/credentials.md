@@ -24,12 +24,12 @@
 
 ## 部署
 
-- 项目路径: /root/bazi-platform/
+- 项目路径: projects/bazi-platform/
 - API端口: 8000
 - 服务地址: http://43.162.90.39:8000/
 - API文档: http://43.162.90.39:8000/docs
-- 启动命令: cd /root/bazi-platform && python3 -m uvicorn api.main:app --host 0.0.0.0 --port 8000 --log-level warning
-- 一键启动: cd /root/bazi-platform && ./run.sh
+- 启动命令: cd /root/.hermes/profiles/jinjian-zhenren/projects/bazi-platform && python3 -m uvicorn api.main:app --host 0.0.0.0 --port 8000 --log-level warning
+- 一键启动: cd /root/.hermes/profiles/jinjian-zhenren/projects/bazi-platform && ./run.sh
 
 ## 知识库（人物档案存放）
 
@@ -86,7 +86,7 @@ GitHub: git@github.com:corinwe/weiwuji-knowledge-base.git
 ## 项目结构
 
 ```
-/root/bazi-platform/
+projects/bazi-platform/
 ├── engine/           # 规则引擎（12,437行Python，36模块）
 │   ├── paipan.py         # 排盘
 │   ├── shen_qiang_ruo.py # 身强弱计算
@@ -125,10 +125,10 @@ GitHub: git@github.com:corinwe/weiwuji-knowledge-base.git
 
 ## 验证流水线
 
-- 全量验证: `cd /root/bazi-platform/engine/tests && python3 validate_all.py`
-- **四柱校验**: **`python3 /root/bazi-platform/scripts/pillar-verify.py`** （分析结论发布前强制跑）
-- 引擎测试: `cd /root/bazi-platform/engine && python3 tests/test_full_suite.py`
-- 导入验证: `cd /root/bazi-platform/engine && python3 tests/test_imports.py`
+- 全量验证: `cd projects/bazi-platform/engine/tests && python3 validate_all.py`
+- **四柱校验**: **`python3 projects/bazi-platform/scripts/pillar-verify.py`** （分析结论发布前强制跑）
+- 引擎测试: `cd projects/bazi-platform/engine && python3 tests/test_full_suite.py`
+- 导入验证: `cd projects/bazi-platform/engine && python3 tests/test_imports.py`
 
 ### 26项验证覆盖
 1-4: 引擎320测试 + 排盘正确性(身强弱/财星/paipan)

@@ -8,7 +8,7 @@ loop-engineering-wealth.py — 财富体系·自动化学习循环引擎 v1.0
   Phase 3 — APPLY:  更新skill → 扫描所有受影响报告 → 批量更新 → 推库
 
 【用法】作为Hermes task dispatch的目标，或直接运行：
-  python3 /root/bazi-platform/scripts/loop-engineering-wealth.py \
+  python3 /root/.hermes/profiles/jinjian-zhenren/projects/bazi-platform/scripts/loop-engineering-wealth.py \
     --phase cycle \
     --rules-file /tmp/wealth_changelog.json \
     --reports "家主,主母,子源,立"
@@ -26,9 +26,9 @@ import sys
 from datetime import datetime
 
 # ─── 常量配置 ─────────────────────────────────────
-BAZI_PLATFORM = "/root/bazi-platform"
+BAZI_PLATFORM = "/root/.hermes/profiles/jinjian-zhenren/projects/bazi-platform"
 SCRIPTS_DIR = f"{BAZI_PLATFORM}/scripts"
-SKILL_DIR = "/root/bazi-platform/skills/bazi/bazi-wealth-analysis"
+SKILL_DIR = "/root/.hermes/profiles/jinjian-zhenren/projects/bazi-platform/skills/bazi/bazi-wealth-analysis"
 SKILL_FILE = f"{SKILL_DIR}/SKILL.md"
 KNOWLEDGE_BASE = "/root/weiwuji-knowledge-base"
 REPORTS_BASE = f"{KNOWLEDGE_BASE}/07-国学哲学/八字命格/02-人物档案"

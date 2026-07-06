@@ -41,7 +41,7 @@
 ### 开发环境
 
 ```bash
-cd /root/bazi-platform
+cd /root/.hermes/profiles/jinjian-zhenren/projects/bazi-platform
 ./run.sh
 ```
 

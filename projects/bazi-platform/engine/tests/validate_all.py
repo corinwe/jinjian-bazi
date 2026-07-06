@@ -16,7 +16,7 @@
 import subprocess, json, sys, os, re, datetime
 from pathlib import Path
 
-ENGINE_DIR = "/root/bazi-platform/engine"
+ENGINE_DIR = "/root/.hermes/profiles/jinjian-zhenren/projects/bazi-platform/engine"
 sys.path.insert(0, ENGINE_DIR)
 
 PASS = 0

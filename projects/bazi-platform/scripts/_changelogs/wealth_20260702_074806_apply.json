@@ -1,5 +1,5 @@
 {
-  "changelog": "/root/bazi-platform/scripts/_changelogs/wealth_20260702_074806.json",
+  "changelog": "/root/.hermes/profiles/jinjian-zhenren/projects/bazi-platform/scripts/_changelogs/wealth_20260702_074806.json",
   "instructions": [
     {
       "type": "update_skill",

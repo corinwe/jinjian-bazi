@@ -37,7 +37,7 @@ for k in sorted(r.keys()):
 
 print()
 # 检查前端index.html显示哪些§
-with open("/root/bazi-platform/frontend/index.html", "r") as f:
+with open("/root/.hermes/profiles/jinjian-zhenren/projects/bazi-platform/frontend/index.html", "r") as f:
     html = f.read()
 
 keywords = {
@@ -81,7 +81,7 @@ for p in ["year", "month", "day", "hour"]:
 
 print()
 print("=== 农历转换验证 ===")
-sys.path.insert(0, "/root/bazi-platform/engine")
+sys.path.insert(0, "/root/.hermes/profiles/jinjian-zhenren/projects/bazi-platform/engine")
 from lunar import lunar_to_solar
 
 tests = [(1980, 5, 15), (1979, 7, 15), (2011, 4, 25)]

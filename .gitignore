@@ -56,3 +56,8 @@ Thumbs.db
 
 # Profile配置文件（含密钥）
 config.yaml
+
+# 显式排除所有Hermes系统文件
+gateway_state.json
+memories/MEMORY.md
+preflight.sh

@@ -1,7 +1,7 @@
 # 深度审计报告：character.py 性格模块
 
 **审计时间：** 2026-07-05
-**审计文件：** `/root/bazi-platform/engine/character.py`
+**审计文件：** `projects/bazi-platform/engine/character.py`
 **对比基准：** `bazi-foundation-analysis` (v2.20)
 **引用链：** `pipeline_v5.py` L217 → `analyze_character()`
 

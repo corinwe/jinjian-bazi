@@ -8,7 +8,7 @@
 
 ### 铁律① — 排盘必须跑引擎（禁止手算）
 - 来源: 2026-06-29 梦的日柱算错教训（壬戌→癸亥）
-- 强制命令: `bash /root/bazi-platform/scripts/bazi-must-run-engine.sh -n <姓名> -g <性别> -y <年> -m <月> -d <日> -h <时>`
+- 强制命令: `bash projects/bazi-platform/scripts/bazi-must-run-engine.sh -n <姓名> -g <性别> -y <年> -m <月> -d <日> -h <时>`
 - 验证: 排盘输出必须与 engine/paipan.py 计算结果一致，禁止自行计算公式
 - 执行时机: **任何八字分析前**，先跑这个脚本获取引擎数据
 
@@ -31,12 +31,12 @@
 - 源头防错，不等分析结束
 
 ### 铁律⑤ — 分析结论发布前校验（2026-07-06）
-- 跑 `python3 /root/bazi-platform/scripts/pillar-verify.py`
+- 跑 `python3 projects/bazi-platform/scripts/pillar-verify.py`
 - 5关: 五鼠遁 → 藏干十神 → 结构优先级 → 全局冲刑 → 最优性
 
 ### 铁律⑥ — 车库测试门禁（任何修改后必跑）
-- 全量验证: `cd /root/bazi-platform/engine/tests && python3 validate_all.py`
-- 排盘验证: `bash /root/bazi-platform/scripts/bazi-must-run-engine.sh`
+- 全量验证: `cd projects/bazi-platform/engine/tests && python3 validate_all.py`
+- 排盘验证: `bash projects/bazi-platform/scripts/bazi-must-run-engine.sh`
 
 ### 铁律⑦ — 原始理论验证原则（2026-07-05 · 学业模块走弯路教训）
 - **老板提点 → 先查原始理论验证，不能照单全收**
@@ -86,15 +86,15 @@
 
 | 资源 | 路径 |
 |:-----|:------|
-| 引擎目录 | `/root/bazi-platform/engine/` |
-| 排盘门禁脚本 | `/root/bazi-platform/scripts/bazi-must-run-engine.sh` |
-| 排盘源头校验 | `/root/bazi-platform/scripts/canggan-parse.py`（自动集成） |
-| 四柱5关校验 | `/root/bazi-platform/scripts/pillar-verify.py` |
-| 测试验证 | `cd /root/bazi-platform/engine/tests && python3 validate_all.py` |
+| 引擎目录 | `projects/bazi-platform/engine/` |
+| 排盘门禁脚本 | `projects/bazi-platform/scripts/bazi-must-run-engine.sh` |
+| 排盘源头校验 | `projects/bazi-platform/scripts/canggan-parse.py`（自动集成） |
+| 四柱5关校验 | `projects/bazi-platform/scripts/pillar-verify.py` |
+| 测试验证 | `cd projects/bazi-platform/engine/tests && python3 validate_all.py` |
 | 项目配置 | `skill_view('bazi-platform-harness','references/project-config.md')` |
 | 知识库 | `/root/weiwuji-knowledge-base` |
 | 人物档案 | `/root/weiwuji-knowledge-base/07-国学哲学/八字命格/02-人物档案/{序号}-{姓名}/` |
-| skills | `/root/bazi-platform/skills/`（26个技能） |
+| skills | `projects/bazi-platform/skills/`（26个技能） |
 
 ---
 
@@ -106,9 +106,9 @@
 ① 系统级已就绪：SOUL.md + USER.md + MEMORY.md（Hermes自动加载）
 ② 按需加载技能：skill_view('bazi-{topic}-analysis')（看任务→技能矩阵）
 ③ 加载项目配置：skill_view('bazi-platform-harness','references/project-config.md')
-④ 排盘源头校验：bash /root/bazi-platform/scripts/bazi-must-run-engine.sh（已集成canggan-parse.py）
+④ 排盘源头校验：bash projects/bazi-platform/scripts/bazi-must-run-engine.sh（已集成canggan-parse.py）
 ⑤ 执行分析/出报告（报告前加载 skill_view('bazi-report-template')）
-⑥ 发布前校验：python3 /root/bazi-platform/scripts/pillar-verify.py
+⑥ 发布前校验：python3 projects/bazi-platform/scripts/pillar-verify.py
 ⑦ 放入人物档案目录
 ⑧ cd /root/weiwuji-knowledge-base && git push
 ```
