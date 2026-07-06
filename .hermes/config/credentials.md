@@ -126,6 +126,7 @@ GitHub: git@github.com:corinwe/weiwuji-knowledge-base.git
 ## 验证流水线
 
 - 全量验证: `cd /root/bazi-platform/engine/tests && python3 validate_all.py`
+- **四柱校验**: **`python3 /root/bazi-platform/scripts/pillar-verify.py`** （分析结论发布前强制跑）
 - 引擎测试: `cd /root/bazi-platform/engine && python3 tests/test_full_suite.py`
 - 导入验证: `cd /root/bazi-platform/engine && python3 tests/test_imports.py`
 
