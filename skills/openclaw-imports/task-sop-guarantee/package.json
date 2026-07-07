@@ -1,0 +1,44 @@
+{
+  "name": "task-sop-guarantee",
+  "displayName": "任务执行保证系统",
+  "version": "1.0.0",
+  "description": "强制化任务追踪与验证系统，确保任务不丢失、100% 按 SOP 执行",
+  "author": "Corin Wei",
+  "license": "MIT",
+  "homepage": "https://github.com/corinwe/offerpath",
+  "keywords": [
+    "task",
+    "sop",
+    "guarantee",
+    "verification",
+    "tracking"
+  ],
+  "openclaw": {
+    "minVersion": "2026.3.13",
+    "emoji": "✅",
+    "requires": {
+      "bins": ["bash", "curl", "jq"]
+    },
+    "install": [
+      {
+        "id": "scripts",
+        "kind": "copy",
+        "source": "./scripts",
+        "target": "./scripts",
+        "label": "安装任务管理脚本"
+      }
+    ]
+  },
+  "scripts": {
+    "init": "./scripts/init-task-system.sh",
+    "create": "./scripts/task-manager.sh create",
+    "verify": "./scripts/task-manager.sh verify",
+    "complete": "./scripts/task-manager.sh complete",
+    "list": "./scripts/task-manager.sh list"
+  },
+  "files": [
+    "SKILL.md",
+    "README.md",
+    "scripts/"
+  ]
+}

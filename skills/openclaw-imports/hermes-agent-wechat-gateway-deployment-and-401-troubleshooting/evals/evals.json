@@ -1,0 +1,48 @@
+{
+  "skill_name": "hermes-agent-wechat-gateway-deployment-and-401-troubleshooting",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "我在阿里云服务器上已经装了 OpenClaw，现在想再装个 Hermes Agent 来对接微信，但执行 hermes gateway setup 扫码后一直报 401，token 格式是 account_id:hex 这种，weixin_accounts.json 里也有 token，但发消息就是 401，能帮我排查下吗？",
+      "expectations": [
+        "检查 /root/.hermes/weixin_accounts.json 和 context-tokens.json 是否存在且 token 格式正确",
+        "确认 WEIXIN_TOKEN 环境变量是否从 weixin_accounts.json 正确获取",
+        "检查 gateway.run 启动时是否使用了正确的 token 和 session",
+        "建议在 weixin.py 中添加调试 patch 打印 _api_post 的 token 值以定位问题"
+      ],
+      "trigger_confidence": "high"
+    },
+    {
+      "id": 2,
+      "prompt": "hermes 命令一执行就卡死 CPU 100%，ps 看全是 hermes 进程，是不是那个 bash wrapper 无限递归了？怎么修？",
+      "expectations": [
+        "确认 /usr/local/bin/hermes 是否为 bash wrapper 且内容包含 exec hermes \"$@\"",
+        "删除 /usr/local/bin/hermes 并创建指向 /usr/local/lib/hermes-agent/venv/bin/hermes 的符号链接",
+        "验证修复后执行 hermes -m '测试' 能正常返回响应"
+      ],
+      "trigger_confidence": "high"
+    },
+    {
+      "id": 3,
+      "prompt": "搞了一下午微信网关，get_updates 轮询老是超时 15 秒，但消息能收到，就是回复发不出去，日志里 HTTP 401 Missing Authentication header，我 weixin_accounts.json 里 token 是 50cfe23845ee@im.bot:abc123def456 这种格式，应该没问题吧？",
+      "expectations": [
+        "解释 get_updates 超时是 iLink API long polling 正常行为，不影响功能",
+        "检查 WEIXIN_ACCOUNT_ID 和 WEIXIN_TOKEN 是否从 weixin_accounts.json 正确提取并配置到 .env",
+        "对比 WeixinAdapter.send 和 gateway.run 发送时的 token 传递差异",
+        "建议清理 /root/.hermes/context-tokens.json 后重新扫码登录"
+      ],
+      "trigger_confidence": "high"
+    },
+    {
+      "id": 4,
+      "prompt": "刚装完 hermes agent，hermes doctor 说配置都 ok，但对话没反应，deepseek key 我填了 sk-bec7b80231fa42ddb2af2c73634ce8ac，是不是还要配模型名？还有 gateway 启动用哪个命令？直接 hermes gateway start 还是 python -m hermes.gateway.run？",
+      "expectations": [
+        "说明 hermes doctor 只检查配置完整性，不验证 API 连通性，需实际发起对话测试",
+        "确认 DeepSeek V4 模型配置正确，无需额外指定模型名",
+        "指出 hermes gateway start 可能触发 bash wrapper 无限递归，建议使用 /usr/local/lib/hermes-agent/venv/bin/python -m hermes.gateway.run",
+        "验证 hermes -m '你好' 能正常返回 DeepSeek 响应"
+      ],
+      "trigger_confidence": "medium"
+    }
+  ]
+}

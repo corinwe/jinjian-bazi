@@ -1,0 +1,7 @@
+# Hermes 内部数据（不追踪）
+.archive/
+.curator_backups/
+.curator_state
+.hub/
+.usage.json
+.bundled_manifest
