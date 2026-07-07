@@ -57,7 +57,9 @@ Thumbs.db
 # Profile配置文件（含密钥）
 config.yaml
 
-# 显式排除所有Hermes系统文件
+# 旧版报告存档（非当前版，人工清理到知识库）
+人物档案/
+
 gateway_state.json
 memories/MEMORY.md
 preflight.sh

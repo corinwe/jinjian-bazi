@@ -194,10 +194,11 @@ skill_view('bazi-calibration')            # 校准体系
 
 ## 📋 Phase 6 — 归档 + 推库
 
-### Step 6.1 — 放入人物档案
+### Step 6.1 — 放入人物档案（禁止写入/root/）
 ```bash
 cp <报告文件> /root/weiwuji-knowledge-base/07-国学哲学/八字命格/02-人物档案/<序号>-<姓名>/
 ```
+🚨 **铁律**：所有人物八字分析报告只放知识库人物档案，**禁止写入 `/root/`**。
 
 ### Step 6.2 — 推库
 ```bash

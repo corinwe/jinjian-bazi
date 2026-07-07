@@ -252,6 +252,7 @@ project_context = (
 | `references/engineering-checklists.md` | 工程检查清单 |
 | `references/project-config.md` | 项目配置（含验证命令、铁律、测试速查） |
 | `references/physical-pipeline-20260706.md` | 物理化流水线 |
+| `references/loading-chain-audit-methodology.md` | 🆕 加载链审计方法论 |
 | `references/full-chain-verification.md` | 全链路验证 |
 | ...（另含19个参考文件） |
 

@@ -184,6 +184,7 @@ project_context = (
 | **memories/** | profile根目录 | USER.md + MEMORY.md（Hermes自动注入） |
 
 **🚨 禁止**：SOUL.md写项目级路径，HERMES.md写系统级身份，skills/写引擎代码。
+**🚨 铁律**：所有人物八字分析报告**只放在知识库人物档案下**，禁止写入 `/root/`。违者用 `rm -rf` 清理干净。
 
 ## ⏰ 时间确认（每次会话自动执行）
 
