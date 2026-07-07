@@ -161,19 +161,33 @@ result['sec_1_overview']                 → 基础身份数据
 
 ## 📋 Phase 4 — 分析 + 出报告
 
-### Step 4.1 — 加载对应事象技能
+### Step 4.1 — 🚨 强制加载对应事象技能（不可跳过，写报告前必须执行）
+
+> ⚠️ **每次写报告前必须加载以下所有技能，缺一不可。加载后确认内容不为空才可开始写。**
+> **铁律F要求：每§前先读JSON再写。技能规则用于补充JSON中没有的推理内容。**
+
 ```bash
-skill_view('bazi-destiny-analysis')       # 性格/命运综合分析（§6五重人格）
-skill_view('bazi-wealth-analysis')        # 财富（§8含补财库）
-skill_view('bazi-marriage-analysis')      # 婚姻
-skill_view('bazi-education-analysis')     # 学业（§11含文昌判断）
-skill_view('bazi-children-analysis')      # 子女
-skill_view('bazi-career-analysis')        # 事业
-skill_view('bazi-health-psychology')      # 健康
-skill_view('bazi-misfortune-analysis')    # 灾祸
-skill_view('bazi-remission-methods')      # 化解（§8.5补财库方案）
-skill_view('bazi-liunian-analysis')       # 流年
+# 🚨 以下11个技能全部必须加载，不可选择性跳过
+skill_view('bazi-destiny-analysis')       # §6性格/命运分析（五重人格）
+skill_view('bazi-wealth-analysis')        # §8财富（含补财库方案）
+skill_view('bazi-marriage-analysis')      # §12婚姻
+skill_view('bazi-education-analysis')     # §11学业（含文昌判断·仅≤25岁）
+skill_view('bazi-children-analysis')      # §13子女
+skill_view('bazi-career-analysis')        # §10事业
+skill_view('bazi-health-psychology')      # §14健康
+skill_view('bazi-misfortune-analysis')    # §5灾祸
+skill_view('bazi-remission-methods')      # §8.5补财库+§20五行补充
+skill_view('bazi-liunian-analysis')       # §16流年+事件总表
 skill_view('bazi-birthtime-analysis')     # 时辰判断（如需）
+```
+
+**验证：确认以下11个技能全部加载成功**
+```
+□ bazi-destiny-analysis    □ bazi-wealth-analysis      □ bazi-marriage-analysis
+□ bazi-education-analysis  □ bazi-children-analysis    □ bazi-career-analysis
+□ bazi-health-psychology   □ bazi-misfortune-analysis  □ bazi-remission-methods
+□ bazi-liunian-analysis    □ bazi-birthtime-analysis
+→ ❌ 缺一个都不能开始写报告
 ```
 
 ### Step 4.2 — 格局判定规则（写§2前先过此规则·完整体系·2026-07-07重构）
@@ -521,6 +535,31 @@ skill_view('bazi-birthtime-analysis')     # 时辰判断（如需）
 第3步：逐§填入内容，每填完一个删除占位符并打勾✅
 
 第4步：输出前扫描占位符 — 应全部被替换，零残留
+```
+
+### Step 4.3C — 每§写完后强制JSON校验检查点
+
+> 🚨 **铁律F的物理执行闸门**——每写完一个§，标记✅之前必须反向验证数据来自JSON而非记忆。
+> **规则来源**：HERMES.md 铁律F + SOUL.md 执行铁律①（必须验证）
+
+```yaml
+每个§标记✅前，执行以下物理校验：
+
+① 从报告中提取该§的所有数字/十神/五行数据
+② 对比引擎JSON中的对应字段：
+   python3 -c "import json; r=json.load(open('/tmp/{姓名}_engine.json'));
+   print(json.dumps(r['sec_X_...'], ensure_ascii=False))"
+③ 逐项确认一致：
+   □ 藏干十神名 = JSON shi_shen 字段
+   □ 身强弱分数 = JSON score 数值
+   □ 财星分数 = JSON cai_xing_total 数值
+   □ 大运干支/年份 = JSON da_yun_list
+   □ 喜用/忌神列表 = JSON xi/ji
+④ 不一致 → 以JSON为准改报告 → 重新校验
+⑤ 一致 → 标记 ✅
+
+口诀：写一个§，验一个§，数字十神对JSON
+      不匹配的先改报告，匹配了才能打勾勾
 ```
 
 ### Step 4.4 — 选择报告模式 → 逐§写分析
