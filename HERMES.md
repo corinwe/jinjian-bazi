@@ -9,8 +9,8 @@
 ### 铁律① — 排盘必须跑引擎（禁止手算）
 - 来源: 2026-06-29 梦的日柱算错教训（壬戌→癸亥）
 - 强制命令: `bash projects/bazi-platform/scripts/bazi-must-run-engine.sh -n <姓名> -g <性别> -y <年> -m <月> -d <日> -h <时>`
-- 验证: 排盘输出必须与 engine/paipan.py 计算结果一致，禁止自行计算公式
-- 执行时机: **任何八字分析前**，先跑这个脚本获取引擎数据
+- 验证: 排盘输出必须与https://zydx.top/ 网站输出结果一致，该网站使用POST方式；如果该网站无法使用则必须与engine/paipan.py 计算结果一致，禁止自行计算公式
+- 执行时机: **任何八字分析前**，先访问上述zydx.top网站获取引擎数据，网站不可用的情况下再跑这个脚本获取引擎数据
 
 ### 铁律② — 知识库路径不依赖记忆
 - 人物报告存放: `/root/weiwuji-knowledge-base/07-国学哲学/八字命格/02-人物档案/{序号}-{姓名}/`
@@ -19,11 +19,11 @@
 - 推库命令: `cd /root/weiwuji-knowledge-base && git add -A && git commit -m "消息" && git push`
 - 技能引用版配置: `skill_view('bazi-platform-harness','references/project-config.md')`
 
-### 铁律③ — 报告必须按标准格式输出（21§）
-- 来源: `skill_view('bazi-report-template')` → bazi-report-template v5.2
-- 强制: 每次出报告前先 `skill_view('bazi-report-template')`
-- 格式: 21§板块齐全，§1 25字段四段式，深度≥1,500行
-- 禁止自创格式、禁止跳过模板直接输出
+| 铁律③ — 报告必须按标准格式输出（21§）
+|- 来源: `skill_view('bazi-report-template')` → bazi-report-template
+|- 强制: 每次出报告前先 `skill_view('bazi-report-template')`
+|- 格式: 21§板块齐全，§1 25字段四段式，行数800~1000行（不要废话）
+|- 禁止自创格式、禁止跳过模板直接输出
 
 ### 铁律④ — 排盘源头校验（2026-07-06）
 - 排盘脚本 `bazi-must-run-engine.sh` 自动调 `canggan-parse.py`
