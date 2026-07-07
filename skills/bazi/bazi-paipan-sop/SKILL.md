@@ -163,19 +163,62 @@ result['sec_1_overview']                 → 基础身份数据
 
 ### Step 4.1 — 加载对应事象技能
 ```bash
-skill_view('bazi-wealth-analysis')        # 财富
+skill_view('bazi-destiny-analysis')       # 性格/命运综合分析（§6五重人格）
+skill_view('bazi-wealth-analysis')        # 财富（§8含补财库）
 skill_view('bazi-marriage-analysis')      # 婚姻
-skill_view('bazi-education-analysis')     # 学业
+skill_view('bazi-education-analysis')     # 学业（§11含文昌判断）
 skill_view('bazi-children-analysis')      # 子女
 skill_view('bazi-career-analysis')        # 事业
 skill_view('bazi-health-psychology')      # 健康
 skill_view('bazi-misfortune-analysis')    # 灾祸
-skill_view('bazi-remission-methods')      # 化解
+skill_view('bazi-remission-methods')      # 化解（§8.5补财库方案）
 skill_view('bazi-liunian-analysis')       # 流年
 skill_view('bazi-birthtime-analysis')     # 时辰判断（如需）
 ```
 
-### Step 4.2 — 选择报告模式 → 逐§写分析
+### Step 4.2 — 必须包含的三项专项内容
+
+> 🚨 **以下三项是每份报告必含内容**，不可遗漏。三项的判断逻辑逐条列出：
+
+#### ① 性格分析（§6）— 所有报告必含
+```
+判断: 所有人都有性格分析，不设判断条件
+内容: 五重人格特质（每重≥50字）+ 十神底色 + 白话解读
+技能: bazi-destiny-analysis（写前先加载，列出核心规则再写）
+```
+
+#### ② 补财库方案（§8.5）— 所有报告必含
+```
+判断: 所有人都有财库检查，不设判断条件
+内容: 
+  - 财库检查（日支/时支是否有辰戌丑未）
+  - 有库→蓄财策略；无库→补财库方案（5种方法）
+  - 大运窗口匹配
+技能: bazi-remission-methods（写前先加载，确认补库规则）
+```
+
+#### ③ 文昌改进方案（§21.8）— 按年龄判断
+```
+判断逻辑:
+  当前年龄 = 当前年份 - 出生年份
+  IF 当前年龄 ≤ 25岁 → 强制包含 §21.8 文昌改进方案 ⚠️
+  IF 当前年龄 > 25岁 → 可不包含（非强制）
+
+  另外：原局文昌检查（从引擎JSON提取）：
+  - wen_chang.has_wen_chang = true → 原局有文昌，不需补
+  - wen_chang.has_wen_chang = false → 需要补文昌（§21.8必含）
+
+  两者用OR：年龄≤25 OR 原局需补文昌 → 都输出文昌改进方案
+
+内容（年龄≤25时强制必含）:
+  - 年干文昌位查法
+  - 本命文昌检查结果（原局有/无）
+  - 文昌布局方案（方位/摆件/颜色/时间/饮食）
+  - 关键学业年份
+技能: bazi-education-analysis（写前先加载文昌规则）
+```
+
+### Step 4.3 — 选择报告模式 → 逐§写分析
 
 > 🚨 **2026-07-07老板校准**：报告深度不强制1500行。**说清楚即可。**
 > 
@@ -268,6 +311,7 @@ git add -A && git commit -m "🧮 <消息>" && git push
 | 文件 | 路径 |
 |:-----|:------|
 | 项目铁律+技能矩阵 | `skill_view('bazi-platform-harness', 'references/project-config.md')` |
+| 验证模式选择 | `references/verification-mode-selection-20260707.md` |
 | 排盘门禁脚本 | `projects/bazi-platform/scripts/bazi-must-run-engine.sh` |
 | 引擎代码 | `projects/bazi-platform/engine/` |
 | 知识库 | `/root/weiwuji-knowledge-base` |
