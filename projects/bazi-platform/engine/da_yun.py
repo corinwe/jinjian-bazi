@@ -233,57 +233,52 @@ def compute_da_yun(bazi: BaZi, birth_year: int = 1980, birth_month: int = 1, bir
     return da_yun_list, qi_yun_age, qi_yun_year
 
 
-def compute_da_yun_scores(bazi: BaZi, da_yun_list: list[DaYun]) -> list[tuple[int, float]]:
+def classify_da_yun(bazi: BaZi, da_yun_list: list[DaYun]) -> list[dict]:
     """
-    评估每步大运的吉凶评分
-
-    ⚠️ 审计标记 (2026-06-29): 评分公式为自创，九龙道长原始素材无此数值体系
-       - 基准分5.0: 无原始依据
-       - 主喜用+2.0/次喜用+1.5/主忌神-2.0/次忌神-1.5: 无原始依据
-       - 建议: 待修改为基于原始素材的定性判断，或标注为实验性评分
-
-    返回: [(index, score), ...]  score越高越好
-    评分逻辑: 大运干支为喜用则加分，为忌神则减分
+    大运定性分类（基于原始理论·2026-07-07替换自创评分）
+    
+    规则来源：bazi-fortune-analysis §6.9（格局判定与身强弱校验）
+    每个大运的天干和地支，分别判断是喜用还是忌神：
+      - 双喜用（天干+地支都是喜用）→ 最佳大运
+      - 一喜一忌 → 中等大运
+      - 双忌神（天干+地支都是忌神）→ 最差大运
+    
+    返回: [{"index": i, "gan": gan, "zhi": zhi, "gan_xi_ji": str, "zhi_xi_ji": str, "label": str}, ...]
+      label: "纯喜用🏆" / "一喜一忌" / "纯忌神⚠️"
     """
     from ge_ju import determine_xi_yong_shen
-
+    
     xi_yong, ji_shen = determine_xi_yong_shen(bazi)
-
+    
     results = []
     for i, dy in enumerate(da_yun_list):
-        # 大运天干五行 + 地支五行
         gan_wx = TIAN_GAN_WU_XING[dy.gan]
         zhi_wx = DI_ZHI_WU_XING[dy.zhi]
-        # ⚠️ 以下数值(5.0/2.0/1.5)均为自创，无九龙道长原始素材支撑
-        score = 5.0  # 基准分 (自创数值)
-
-        # 天干独立计分
-        if gan_wx in xi_yong:
-            if gan_wx == xi_yong[0]:
-                score += 2.0  # 自创
-            else:
-                score += 1.5  # 自创
-        if gan_wx in ji_shen:
-            if gan_wx == ji_shen[0]:
-                score -= 2.0  # 自创
-            else:
-                score -= 1.5  # 自创
-
-        # 地支独立计分
-        if zhi_wx in xi_yong:
-            if zhi_wx == xi_yong[0]:
-                score += 2.0  # 自创
-            else:
-                score += 1.5  # 自创
-        if zhi_wx in ji_shen:
-            if zhi_wx == ji_shen[0]:
-                score -= 2.0  # 自创
-            else:
-                score -= 1.5  # 自创
-
-        score = max(0, min(10, score))
-        results.append((i, round(score, 1)))
-
+        
+        gan_label = "喜用" if gan_wx in xi_yong else ("忌神" if gan_wx in ji_shen else "平")
+        zhi_label = "喜用" if zhi_wx in xi_yong else ("忌神" if zhi_wx in ji_shen else "平")
+        
+        if gan_label == "喜用" and zhi_label == "喜用":
+            label = "纯喜用🏆"
+        elif gan_label == "忌神" and zhi_label == "忌神":
+            label = "纯忌神⚠️"
+        elif gan_label == "喜用" and zhi_label == "忌神":
+            label = "一喜一忌(天喜地忌)"
+        elif gan_label == "忌神" and zhi_label == "喜用":
+            label = "一喜一忌(天忌地喜)"
+        else:
+            label = "中等"
+        
+        results.append({
+            "index": i,
+            "gan": dy.gan,
+            "zhi": dy.zhi,
+            "gan_gan_zhi": f"{dy.gan}{dy.zhi}",
+            "gan_xi_ji": gan_label,
+            "zhi_xi_ji": zhi_label,
+            "label": label
+        })
+    
     return results
 
 
@@ -328,13 +323,12 @@ if __name__ == "__main__":
 
     for name, b, byear in test_cases:
         dy_list, qy_age, qy_year = compute_da_yun(b, byear, qi_yun_days=1.1)
-        scores = compute_da_yun_scores(b, dy_list)
+        classified = classify_da_yun(b, dy_list)
 
         print(f"【{name}】{b.summary()}")
         print(f"  起运年龄: {qy_age:.1f}岁 ≈ {qy_year}年起")
-        print("  大运序列:")
+        print("  大运定性序列:")
         for i, dy in enumerate(dy_list):
-            score = scores[i][1]
-            star = "🏆" if score >= 8 else "✅" if score >= 6 else "⚠️" if score >= 4 else "❌"
-            print(f"    {star} {dy.gan_zhi} ({dy.start_age}~{dy.end_age}岁, {dy.start_year}年起) — {score}/10")
+            dc = classified[i] if i < len(classified) else {}
+            print(f"    {dc.get('label','?')} {dy.gan_zhi} ({dy.start_age}~{dy.end_age}岁, {dy.start_year}年起)")
         print()

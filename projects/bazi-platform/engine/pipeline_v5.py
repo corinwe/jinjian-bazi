@@ -22,7 +22,7 @@ from cai_xing import compute_cai_xing
 from character import analyze_character
 from comprehensive_v2 import run_comprehensive_engine
 from constants import TIAN_GAN_WU_XING, BaZi, Pillar
-from da_yun import compute_da_yun, compute_da_yun_scores
+from da_yun import compute_da_yun, classify_da_yun
 
 # dimensions_v2已删除（审计标记 2026-06-29: 自创评分体系），DEFAULT_DIMENSIONS不再使用
 from education import analyze_education
@@ -169,11 +169,22 @@ def run_v5(bazi: BaZi, birth_year=1980, birth_month=1, birth_day=1, qi_yun_days=
 
     # 大运
     dy_list, qy_age, qy_year = compute_da_yun(bazi, birth_year, birth_month, birth_day, qi_yun_days)
-    dy_scores = compute_da_yun_scores(bazi, dy_list)
+    dy_classified = classify_da_yun(bazi, dy_list)
 
-    # 最佳/最差大运
-    best_idx = max(range(len(dy_scores)), key=lambda i: dy_scores[i][1]) if dy_scores else -1
-    worst_idx = min(range(len(dy_scores)), key=lambda i: dy_scores[i][1]) if dy_scores else -1
+    # 最佳/最差大运（基于原始理论定性分类）
+    best_idx = -1
+    worst_idx = -1
+    for i, dc in enumerate(dy_classified):
+        if dc["label"] == "纯喜用🏆" and best_idx < 0:
+            best_idx = i
+        elif dc["label"] == "纯忌神⚠️" and worst_idx < 0:
+            worst_idx = i
+    # 无纯喜用时取第一个一喜一忌(天喜地忌)
+    if best_idx < 0:
+        for i, dc in enumerate(dy_classified):
+            if "天喜地忌" in dc["label"]:
+                best_idx = i
+                break
 
     dy_gans = [dy.gan for dy in dy_list]
     dy_zhis = [dy.zhi for dy in dy_list]
@@ -237,7 +248,7 @@ def run_v5(bazi: BaZi, birth_year=1980, birth_month=1, birth_day=1, qi_yun_days=
         xi,
         ji,
         dy_list,
-        dy_scores,
+        dy_classified,
         best_idx,
         worst_idx,
         mar,
@@ -306,9 +317,9 @@ def run_v5(bazi: BaZi, birth_year=1980, birth_month=1, birth_day=1, qi_yun_days=
                 "nian": cai.nian_zhi_score,
             },
             "best_da_yun": f"{dy_list[best_idx].gan_zhi}" if best_idx >= 0 else "",
-            "best_da_yun_score": dy_scores[best_idx][1] if best_idx >= 0 else 0,
+            "best_da_yun_label": dy_classified[best_idx]["label"] if best_idx >= 0 else "",
             "worst_da_yun": f"{dy_list[worst_idx].gan_zhi}" if worst_idx >= 0 else "",
-            "worst_da_yun_score": dy_scores[worst_idx][1] if worst_idx >= 0 else 0,
+            "worst_da_yun_label": dy_classified[worst_idx]["label"] if worst_idx >= 0 else "",
             "qi_yun_age": round(qy_age, 1),
             "education": edu.get("display", ""),
             # 🚨 v5.1新增：缺失字段补充
@@ -381,7 +392,9 @@ def run_v5(bazi: BaZi, birth_year=1980, birth_month=1, birth_day=1, qi_yun_days=
                     "end_age": d.end_age,
                     "start_year": d.start_year,
                     "end_year": d.start_year + 9,
-                    "score": dy_scores[i][1],
+                    "label": dy_classified[i]["label"] if i < len(dy_classified) else "",
+                    "gan_xi_ji": dy_classified[i]["gan_xi_ji"] if i < len(dy_classified) else "",
+                    "zhi_xi_ji": dy_classified[i]["zhi_xi_ji"] if i < len(dy_classified) else "",
                     "gan_ss": get_shi_shen_for_gan(d.gan, ri_zhu),
                 }
                 for i, d in enumerate(dy_list)

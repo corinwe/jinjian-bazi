@@ -278,8 +278,10 @@ def compute_shen_qiang_ruo(bazi: BaZi) -> tuple[float, str, ScoreDetails]:
         details.total = 50.0
         label = "从弱"
         details.zi_zuo_bi_jie = False
-    elif total >= 50:
+    elif total > 60:
         label = "身强"
+    elif total >= 40:
+        label = "中和"
     else:
         label = "身弱"
 

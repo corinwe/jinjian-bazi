@@ -958,7 +958,7 @@ def run_comprehensive_engine(
     xi_yong: list[str],
     ji_shen: list[str],
     da_yun_list: list[dict],
-    da_yun_scores: list,
+    da_yun_classified: list[dict],
     best_idx: int,
     worst_idx: int,
     marriage_result: dict,
@@ -975,9 +975,10 @@ def run_comprehensive_engine(
     all_gans = [bazi.year.gan, bazi.month.gan, bazi.day.gan, bazi.hour.gan]
     all_zhis = [bazi.year.zhi, bazi.month.zhi, bazi.day.zhi, bazi.hour.zhi]
 
-    # 构造大运列表（含score）
+    # 构造大运列表（含定性标签）
     dy_list_with_score = []
     for i, dy in enumerate(da_yun_list):
+        dc = da_yun_classified[i] if i < len(da_yun_classified) else {}
         dy_list_with_score.append(
             {
                 "gan": getattr(dy, "gan", ""),
@@ -986,7 +987,9 @@ def run_comprehensive_engine(
                 "start_age": getattr(dy, "start_age", 0),
                 "end_age": getattr(dy, "end_age", 9),
                 "start_year": getattr(dy, "start_year", 0),
-                "score": da_yun_scores[i][1] if i < len(da_yun_scores) else 5,
+                "label": dc.get("label", ""),
+                "gan_xi_ji": dc.get("gan_xi_ji", ""),
+                "zhi_xi_ji": dc.get("zhi_xi_ji", ""),
             }
         )
 

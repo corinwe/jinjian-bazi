@@ -2,6 +2,8 @@
 name: bazi-report-engine-audit
 description: 金鉴真人·引擎深度报告审计与机制修复工作流。2026-07-05提炼：完整审计generate_deep_report.py产出的报告，修复pipeline/report-generator层机制漏洞。v1.1新增第七部分·内容级·九龙道长原始规则对照验证(2026-07-05老板校准：报告每个数据点必须追溯到引擎计算+原始规则，展示证据链，而非仅做格式/字段检查)。
 tags: ["bazi", "audit", "report-generator", "quality"]
+references:
+  - references/20260707-full-system-audit-findings.md — 2026-07-07全系统审计发现（4个引擎Bug+全链路验证）
 ---
 
 # 引擎深度报告审计与机制修复工作流
@@ -431,7 +433,125 @@ grep -c "^### 15\." {报告}        # 应为4（年/月/日/时四宫）
 
 ---
 
+## 第九部分：引擎代码 vs 技能规则全链路审计（2026-07-07新增）
+
+> **背景**：2026-07-07全链路审计发现4个引擎代码与技能规则不一致的Bug。
+> **教训**：引擎代码的数值阈值（分界线/条件判断）必须与技能规则完全一致。不一致就是Bug，不论引擎看起来跑得多正常。
+
+### 9.1 引擎审计检查清单（新增·每次修改引擎后执行）
+
+```yaml
+□ ① 身强弱分界线对照
+   技能规则: >60身强, 40-60中和, <40身弱
+   引擎代码: 检查 shen_qiang_ruo.py 的 elif total >= ? 条件
+   ✅ 一致 → 通过
+   ❌ 不一致 → Bug（如 old: >=50 → 应改为 >60）
+
+□ ② 复合格局身强弱校验
+   技能规则: 杀印相生需身弱, 食神制杀需身强, 伤官生财需身强, 伤官配印需身弱
+   引擎代码: 检查 ge_ju.py 的复合格局检测分支是否调用 compute_shen_qiang_ruo()
+   ✅ 有校验 → 通过
+   ❌ 无条件直接判定 → Bug（会输出不可能成立的格局）
+
+□ ③ 中和喜忌分段处理
+   技能规则: 中和偏强(≥55)喜克泄耗, 真正中和(45-55)灵活, 中和偏弱(<45)喜印比
+   引擎代码: 检查 ge_ju.py 的 determine_xi_yong_shen 中和分支
+   ✅ 按分数段分3种处理 → 通过
+   ❌ 走else/从旺分支 → Bug（子源55.6分喜木火❌→应喜金土水✅）
+
+□ ④ 数值阈值一致性
+   技能规则的所有数值阈值（40分/60分/50分/10步等）必须与引擎代码完全一致
+   搜索引擎代码中所有数字常量，逐项对照skill规则
+
+□ ⑤ 中文字符一致
+   引擎代码中的中文字符串（如"正财"）必须与十神名称完全一致
+   繁体字/全角字/错别字都会导致永远不匹配
+```
+
+### 9.2 本会话审计发现的4个引擎Bug
+
+| # | 模块 | 规则来源 | 引擎旧值 | 正确值 | 修复 |
+|:-:|:-----|:---------|:---------|:-------|:-----|
+| ① | shen_qiang_ruo.py L281 | bazi-fortune-analysis §4.2 | `>=50` → 身强 | `>60` → 身强, `>=40` → 中和 | 2026-07-07 |
+| ② | ge_ju.py L74-98 | bazi-fortune-analysis §6.4 | 复合格局无条件判定 | 加身强弱校验 | 2026-07-07 |
+| ③ | ge_ju.py 中和分支 | 老板2026-06-20校准（子源案） | else→从旺喜印比 | 按分数段三段处理 | 2026-07-07 |
+| ④ | ge_ju.py L88 | 十神名称标准 | "正財"（繁体） | "正财"（简体） | 2026-07-07 |
+
+### 9.3 引擎审计触发条件
+
+```yaml
+每次以下场景之一触发时，必须执行9.1清单：
+
+① 修改任何引擎.py文件后
+② 发现报告中身强弱/喜忌/格局与技能规则矛盾后
+③ 老板指出「这个值不对」后（先怀疑引擎代码，再怀疑数据输入）
+④ 全量审计时（至少每两周一次）
+
+执行方法：
+  cd projects/bazi-platform/engine
+  # 检查分界线
+  grep -n ">= [0-9]" shen_qiang_ruo.py ge_ju.py
+  # 检查中文字符
+  grep -nP '[^\x00-\x7F]' ge_ju.py | grep -v "^.*#[^#]*$"
+  # 检查复合格局条件
+  grep -n "杀印相生\|食神制杀\|伤官生财\|伤官配印" ge_ju.py
+```
+
+### 9.4 审计验证命令
+
+```bash
+# 三八字全链路测试
+cd /root/.hermes/profiles/jinjian-zhenren/projects/bazi-platform/engine
+python3 -c "
+from paipan import get_full_paipan
+from constants import BaZi, Pillar
+from shen_qiang_ruo import compute_shen_qiang_ruo
+from ge_ju import determine_ge_ju, determine_xi_yong_shen
+from da_yun import compute_da_yun
+
+# 魏启令测试
+p = get_full_paipan(1980,8,6,6,'男','魏启令')
+b = BaZi(year=Pillar(**p['year_pillar']),month=Pillar(**p['month_pillar']),
+         day=Pillar(**p['day_pillar']),hour=Pillar(**p['hour_pillar']),gender='男')
+s,l,_ = compute_shen_qiang_ruo(b)
+g,_ = determine_ge_ju(b)
+x,j = determine_xi_yong_shen(b)
+print(f'魏启令: {p[\"bazi\"]} → {s}分/{l} 格局:{g} 喜:{x} 忌:{j}')
+
+# 主母测试
+p = get_full_paipan(1987,7,31,12,'女','主母')
+b = BaZi(year=Pillar(**p['year_pillar']),month=Pillar(**p['month_pillar']),
+         day=Pillar(**p['day_pillar']),hour=Pillar(**p['hour_pillar']),gender='女')
+s,l,_ = compute_shen_qiang_ruo(b)
+g,_ = determine_ge_ju(b)
+x,j = determine_xi_yong_shen(b)
+print(f'主母: {p[\"bazi\"]} → {s}分/{l} 格局:{g} 喜:{x} 忌:{j}')
+
+# 子源测试
+p = get_full_paipan(2011,5,31,10,'男','子源')
+b = BaZi(year=Pillar(**p['year_pillar']),month=Pillar(**p['month_pillar']),
+         day=Pillar(**p['day_pillar']),hour=Pillar(**p['hour_pillar']),gender='男')
+s,l,_ = compute_shen_qiang_ruo(b)
+g,_ = determine_ge_ju(b)
+x,j = determine_xi_yong_shen(b)
+print(f'子源: {p[\"bazi\"]} → {s}分/{l} 格局:{g} 喜:{x} 忌:{j}')
+"
+```
+
+**验证通过标准**：
+- 魏启令(64.0/身强/杂气格/喜木水火/忌土金) ✅
+- 主母(3.6/身弱/七杀格/喜土金/忌火木水) ✅
+- 子源(55.6/中和/杂气格/喜金土水/忌木火) ✅
+
+---
+
 ## 版本说明
+
+**v2.0（2026-07-07）** — 全链路模块审计方法论
+- 新增第九部分：引擎代码 vs 技能规则全量审计方法论（5项检查清单）
+- 新增4大引擎代码Bug修复记录（身强弱分界线/复合格局身强弱校验/中和喜忌三段处理/繁体字）
+- 新增9.4三八字全链路验证命令
+- 引擎审计发现：shen_qiang_ruo.py/ge_ju.py/da_yun.py 三模块直审计关键阈值
 
 **v1.1（2026-07-05）** — 内容级验证方法论
 - 新增第七部分：内容级·九龙道长原始规则对照验证

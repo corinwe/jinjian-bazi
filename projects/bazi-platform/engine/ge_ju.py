@@ -67,9 +67,15 @@ def determine_ge_ju(bazi: BaZi) -> tuple[str, str]:
 
     # 若本中余气都未透干，则为杂气格（已默认）
 
-    # 复合格局检测（基于透干十神）
+    # 复合格局检测（基于透干十神 + 身强弱校验）
     all_shi_shen = list(tou_gan_ss)
     extra_info = []
+    
+    # 获取身强弱分数（用于成格条件校验）
+    sqr_score, sqr_label, _ = compute_shen_qiang_ruo(bazi)
+    is_shen_qiang = sqr_label in ("身强", "中和偏强")
+    is_shen_ruo = sqr_label in ("身弱", "")
+    is_zhong_he = sqr_label == "中和"
 
     # 官杀混杂
     has_guan = "正官" in all_shi_shen
@@ -77,25 +83,44 @@ def determine_ge_ju(bazi: BaZi) -> tuple[str, str]:
     if has_guan and has_sha:
         extra_info.append("官杀混杂")
 
-    # 伤官生财
+    # 伤官生财（需身强·成格条件§6.4.4）
     has_shang_guan = "伤官" in all_shi_shen
     has_zheng_cai = "正财" in all_shi_shen
     has_pian_cai = "偏财" in all_shi_shen
     if has_shang_guan and (has_zheng_cai or has_pian_cai):
-        extra_info.append("伤官生财")
+        if is_shen_qiang:
+            extra_info.append("伤官生财(成格)")
+        else:
+            extra_info.append("伤官生财(不成格-需身强)")
 
-    # 杀印相生（以身强弱为基础）
+    # 伤官配印（需身弱·成格条件§6.4.3）
+    if has_shang_guan and ("正印" in all_shi_shen or "偏印" in all_shi_shen):
+        if is_shen_ruo:
+            extra_info.append("伤官配印(成格)")
+        else:
+            extra_info.append("伤官配印(不成格-需身弱)")
+
+    # 杀印相生（需身弱·成格条件§6.4.1·8条件中第1条）
     if has_sha and ("正印" in all_shi_shen or "偏印" in all_shi_shen):
-        extra_info.append("杀印相生")
+        if is_shen_ruo:
+            extra_info.append("杀印相生(成格)")
+        else:
+            extra_info.append("杀印相生(不成格-需身弱)")
 
-    # 食神生财
+    # 食神生财（需身强）
     has_shi_shen = "食神" in all_shi_shen
     if has_shi_shen and (has_zheng_cai or has_pian_cai):
-        extra_info.append("食神生财")
+        if is_shen_qiang:
+            extra_info.append("食神生财(成格)")
+        else:
+            extra_info.append("食神生财(不成格-需身强)")
 
-    # 食神制杀
+    # 食神制杀（需身强·成格条件§6.4.2）
     if has_shi_shen and has_sha:
-        extra_info.append("食神制杀")
+        if is_shen_qiang:
+            extra_info.append("食神制杀(成格)")
+        else:
+            extra_info.append("食神制杀(不成格-需身强)")
 
     detail_parts = [main_ge_ju]
     if extra_info:
@@ -142,6 +167,22 @@ def determine_xi_yong_shen(bazi: BaZi) -> tuple[list[str], list[str]]:
         # 喜克泄耗：先官杀→再食伤→后财才（skill line 1601）
         xi_yong = [ke_wo, wo_sheng, my_ke]
         ji_shen = [sheng_wo, ri_wx]
+    elif label == "中和":
+        # 中和分三段处理（2026-07-07审计修复）
+        # 规则来源：bazi-fortune-analysis §4.2 + 老板2026-06-20校准（子源案）
+        if score >= 55:
+            # 55-60分 → 中和偏强 → 喜克泄耗（同身强）
+            xi_yong = [ke_wo, wo_sheng, my_ke]
+            ji_shen = [sheng_wo, ri_wx]
+        elif score >= 45:
+            # 45-55分 → 真正中和 → 无固定喜忌，随大运灵活变化
+            # 暂设喜克泄耗（安全默认）
+            xi_yong = [ke_wo, wo_sheng, my_ke]
+            ji_shen = [sheng_wo, ri_wx]
+        else:
+            # 40-44分 → 中和偏弱 → 适度用印比
+            xi_yong = [sheng_wo, ri_wx]
+            ji_shen = [my_ke, ke_wo, wo_sheng]
     elif label == "从弱":
         # 从弱喜克泄耗
         xi_yong = [ke_wo, wo_sheng, my_ke]
