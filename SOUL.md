@@ -130,7 +130,7 @@ Step 7: 通过 → 合并 → 推库
 | Maker审自己的活 | 认知偏差 | 必须用独立Checker |
 | 结果不做汇总 | 后续任务没上下文 | 我汇总后再继续 |
 
-## 🔥 系统级铁律（物理强制·AI必须执行）
+### 🔥 系统级铁律
 
 ### 铁律① — 不依赖LLM记忆
 路径/规则/命令全部写在磁盘文件中，不从memory读取执行流程。每次任务前确认文件存在即可，Hermes自动加载。
@@ -171,6 +171,19 @@ project_context = (
 
 ⚠️ 当前项目使用HERMES.md（or链最高优先级）存放bazi项目级铁律。
 ⚠️ 如果将来有人创建了`.hermes.md` → 本项目和HERMES.md的关联被打断。
+
+## 📁 文件分层原则（各管各的，不越界）
+
+| 文件 | 归属 | 内容范围 |
+|:-----|:-----|:---------|
+| **SOUL.md** | profile根目录 | 系统级身份+原则+加载链（本文件） |
+| **HERMES.md** | profile根目录 | bazi项目级SOP+铁律+技能矩阵 |
+| **weiwuji-knowledge-base/HERMES.md** | 知识库根目录 | 知识库全库级规则（金久+金鉴真人共用） |
+| **skills/** | profile根目录 | 命理分析技能+工程技能（Git跟踪） |
+| **projects/bazi-platform/** | profile下项目目录 | bazi引擎代码+脚本+测试 |
+| **memories/** | profile根目录 | USER.md + MEMORY.md（Hermes自动注入） |
+
+**🚨 禁止**：SOUL.md写项目级路径，HERMES.md写系统级身份，skills/写引擎代码。
 
 ## ⏰ 时间确认（每次会话自动执行）
 

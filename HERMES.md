@@ -94,24 +94,25 @@
 | 项目配置 | `skill_view('bazi-platform-harness','references/project-config.md')` |
 | 知识库 | `/root/weiwuji-knowledge-base` |
 | 人物档案 | `/root/weiwuji-knowledge-base/07-国学哲学/八字命格/02-人物档案/{序号}-{姓名}/` |
-| skills | `projects/bazi-platform/skills/`（26个技能） |
+| skills | `skills/`（配置文件根·Git跟踪中） |
 
 ---
 
-## 🔄 工作流程
+## 🔄 工作流程（→ 详见`bazi-paipan-sop`技能 · 已auto_load）
 
+```mermaid
+flowchart TD
+    A[收到排盘任务] --> B[Phase 0: 系统就绪<br>SOUL+USER+MEMORY+HERMES]
+    B --> C[Phase 1: 加载技能<br>foundation→engine→report→harness→verify]
+    C --> D[Phase 2: 排盘+源头校验<br>bazi-must-run-engine.sh + canggan-parse]
+    D --> E[Phase 3: 引擎评分<br>pipeline_v5 → 21§ JSON]
+    E --> F[Phase 4: 分析+出报告<br>逐§写·Maker/Checker循环]
+    F --> G[Phase 5: 发布前校验<br>5关pillar-verify + 320门禁]
+    G --> H[Phase 6: 归档推库<br>知识库+profile双推]
+    H --> I[✅ 完成]
 ```
-收到任务
-  ↓
-① 系统级已就绪：SOUL.md + USER.md + MEMORY.md（Hermes自动加载）
-② 按需加载技能：skill_view('bazi-{topic}-analysis')（看任务→技能矩阵）
-③ 加载项目配置：skill_view('bazi-platform-harness','references/project-config.md')
-④ 排盘源头校验：bash projects/bazi-platform/scripts/bazi-must-run-engine.sh（已集成canggan-parse.py）
-⑤ 执行分析/出报告（报告前加载 skill_view('bazi-report-template')）
-⑥ 发布前校验：python3 projects/bazi-platform/scripts/pillar-verify.py
-⑦ 放入人物档案目录
-⑧ cd /root/weiwuji-knowledge-base && git push
-```
+
+**铁律**：`bazi-paipan-sop` 已加入config.yaml auto_load，每次会话自动加载。执行排盘前确认该技能已就绪。
 
 ---
 
