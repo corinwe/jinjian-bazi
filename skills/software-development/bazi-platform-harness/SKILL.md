@@ -21,6 +21,31 @@ tags: [八字, 排盘, 工程化, 校验, 流水线]
 
 ---
 
+## 🔍 2026-07-07 全量审计发现
+
+### ① HERMES.md L97：skills路径错误（已修）
+- **旧**：`projects/bazi-platform/skills/`（路径不存在 ❌）
+- **新**：`skills/`（profile根目录 ✅）
+- 引擎目录是 `projects/bazi-platform/engine/`，但skills目录在profile根目录下
+
+### ② check.sh钩子引用2个不存在的脚本（待修复）
+- `bazi-format-check.py` → MISSING
+- `bazi-report-validator.py` → MISSING
+- 当前效果：post_tool_call钩子在output_file为空时静默跳过
+- 修复计划：创建脚本或清理钩子引用
+
+### ③ skills/曾是破损git子模块（已修复）
+- 旧：skills/是git子模块（mode 160000），子模块未正确初始化
+- 修复：`git rm --cached skills/` → `git add skills/` 直接跟踪文件
+- 新增 `skills/.gitignore` 排除 Hermes 内部数据
+
+### ④ skill_manage symlink bug workaround
+- 现象：skill_manage 无法写入 symlink 指向的技能文件
+- workaround：用 `action='create'` 同名覆盖替换 symlink 为真实文件
+- 或用 `write_file`/`terminal` 直接编辑目标路径
+
+---
+
 ## ⚠️ 核心教训：Hermes加载机制是or链，不是叠加载
 
 > 2026-07-06 我造了BOOTSTRAP.md + preflight.sh手动加载流程 → 被老板连续纠正4次
