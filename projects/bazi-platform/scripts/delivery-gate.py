@@ -392,6 +392,20 @@ def check_job_change_signals(report_text, engine):
     if not has_job_content:
         return errors  # 报告不含工作变动分析，跳过
     
+    # 专项检查3条补充规则
+    supplement_rules = {
+        '大运换运': ['换运', '大运切换', '大运交接', '大运转换', '大运过渡'],
+        '伏吟效应': ['伏吟', '伏吟年', '流年伏吟', '自刑'],
+        '岁运并临': ['岁运并临', '岁运并临年', '大运流年相同'],
+    }
+    missing_supplements = []
+    for rule_name, kws in supplement_rules.items():
+        if not any(kw in report_text for kw in kws):
+            missing_supplements.append(rule_name)
+    
+    if missing_supplements:
+        errors.append(f"⚠️ 工作变动分析缺少补充规则：{', '.join(missing_supplements)}（推荐加入，增强信号强度判断）")
+    
     # 检查覆盖了多少系统
     covered = []
     for system, kws in systems.items():
