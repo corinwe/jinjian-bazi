@@ -371,6 +371,40 @@ def check_data_source(report_text, engine):
 # 主流程
 # ══════════════════════════════════════════════
 
+def check_job_change_signals(report_text, engine):
+    """G7: 工作变动信号分析完整性——检查报告是否覆盖七大系统"""
+    errors = []
+    # 七大系统的关键词
+    systems = {
+        '官杀系统': ['官杀', '正官', '七杀', '升职', '降职', '事业变动'],
+        '印星系统': ['印星', '正印', '偏印', '调令', '合同', '任命'],
+        '驿马系统': ['驿马', '寅申', '巳亥', '变动', '跳槽', '换工作'],
+        '财星系统': ['财星', '加薪', '涨薪', '薪酬', '收入'],
+        '食伤系统': ['食伤', '食神', '伤官', '辞职', '创业'],
+        '宫位系统': ['年柱', '月柱', '日支', '时柱', '宫位'],
+        '大运周期': ['大运', '换运', '伏吟', '岁运并临'],
+    }
+    
+    # 只检查报告中提到「工作变动」「升职」「跳槽」「变动」的段落
+    job_change_kw = ['工作变动', '升职', '跳槽', '加薪', '事业变动', '职业变化']
+    has_job_content = any(kw in report_text for kw in job_change_kw)
+    
+    if not has_job_content:
+        return errors  # 报告不含工作变动分析，跳过
+    
+    # 检查覆盖了多少系统
+    covered = []
+    for system, kws in systems.items():
+        if any(kw in report_text for kw in kws):
+            covered.append(system)
+    
+    if len(covered) < 3:
+        missing = [s for s in systems if s not in covered]
+        errors.append(f"❌ 工作变动分析覆盖不足：仅覆盖{len(covered)}/7个系统（{', '.join(covered)}），"
+                      f"缺少：{', '.join(missing[:3])}")
+    return errors
+
+
 def main():
     parser = argparse.ArgumentParser(description='金鉴真人·交付物理门禁')
     parser.add_argument('--report', '-r', required=True, help='报告文件路径(.md)')
@@ -440,6 +474,8 @@ def main():
         ("G5b 财库方位正确性", lambda t: check_cai_ku_fangwei(t, engine),
          bool(engine)),
         ("G6 数据来源(财星)", lambda t: check_data_source(t, engine),
+         bool(engine)),
+        ("G7 工作变动分析", lambda t: check_job_change_signals(t, engine),
          bool(engine)),  # 有引擎数据才跑
     ]
 
