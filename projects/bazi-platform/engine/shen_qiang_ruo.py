@@ -4,7 +4,7 @@
 核心规则（强制·不可违背）:
   1. 月令本气印=40分；月令中/余气印=0分
   2. 所有其他位置印=0分（不论任何位置、任何藏干比例）
-  3. 月令比劫全计分
+  3. 月令比劫只看本气，中气/余气不计
   4. 所有比劫全计分（天干比劫全计分，地支藏干按比例）
   5. 燥土规则: 未/戌 + 天干丙/丁引化 = 当火看（不计印分、不生金）
               未/戌 + 天干壬/癸灭火 = 当土看（生金）
@@ -154,23 +154,20 @@ def compute_shen_qiang_ruo(bazi: BaZi) -> tuple[float, str, ScoreDetails]:
             pass  # 保持0分
 
     # ═══════════════════════════════════════
-    # ② 月令比劫评分（全计分）
+    # ② 月令比劫评分（只取本气）
     # ═══════════════════════════════════════
+    # ⚠️ 月令只看本气对日主的生助，中气/余气不计（与印星规则一致）
+    # 只检查本气(100%)
     yue_bi_jie_score = 0.0
-    for cg, ratio in yue_cang_gan:
-        if _is_bi_jie(cg, ri_zhu):
-            # 月令比劫全计分
-            r = CANG_GAN_RATIO.get(ratio, 0)
-            # 月令比劫基础分=40×藏干比例
-            yue_bi_jie_score += 40.0 * r
+    ben_qi = yue_cang_gan[0][0] if yue_cang_gan else ""
+    if ben_qi and _is_bi_jie(ben_qi, ri_zhu):
+        # 月令本气比劫 = 40分
+        yue_bi_jie_score = 40.0
 
     # 燥土规则对月令比劫的影响
-    if zao_tu_mode == "fire":
-        # 燥土当火看—土类比劫不计
-        for cg, ratio in yue_cang_gan:
-            if cg in ("戊", "己") and _is_bi_jie(cg, ri_zhu):
-                # 燥土当火→土性消失
-                yue_bi_jie_score = 0.0
+    if zao_tu_mode == "fire" and ben_qi in ("戊", "己") and _is_bi_jie(ben_qi, ri_zhu):
+        # 燥土当火→土性消失
+        yue_bi_jie_score = 0.0
 
     details.yue_ling_bi_jie = round(yue_bi_jie_score, 1)
 
