@@ -38,19 +38,38 @@ def _get_tou_gan_shi_shen(bazi: BaZi, ri_zhu: str) -> set[str]:
 
 def determine_ge_ju(bazi: BaZi) -> tuple[str, str]:
     """
-    判定格局（v2.0 · 原始规则修正）
+    判定格局（v3.0 · 从弱/从旺优先级修正）
 
     规则：
-      1. 月令本气→中气→余气依次看何者透干
-      2. 透干→该十神成格
-      3. 比肩劫财不入格局
-      4. 本中余气均未透干→杂气格
+      1. 特殊格局（从弱/从旺）优先级高于月令本气定的正八格
+      2. 月令本气→中气→余气依次看何者透干
+      3. 透干→该十神成格
+      4. 比肩劫财不入格局
+      5. 本中余气均未透干→杂气格
 
     返回: (主格局, 详细描述)
     """
     ri_zhu = bazi.ri_zhu
     yue_zhi = bazi.month.zhi
     yue_cangs = bazi.month.cang_gan
+
+    # ⚠️ 特殊格局优先判断：从弱/从旺优先级高于月令本气定的正八格
+    sqr_score, sqr_label, _ = compute_shen_qiang_ruo(bazi)
+    if sqr_label == "从弱":
+        # 从弱格细分：取克泄耗五行中能量最强的
+        from energy import compute_energy_profile
+        ep = compute_energy_profile(bazi)
+        wx_energy = ep.get("wu_xing_energy", {})
+        # 从弱喜克泄耗：官杀(土)>财(火)>食伤(木)
+        energy_map = {"土": wx_energy.get("土", 0),
+                      "火": wx_energy.get("火", 0),
+                      "木": wx_energy.get("木", 0)}
+        strongest = max(energy_map, key=lambda k: energy_map[k])
+        sub_type = {"土": "从杀格", "火": "从财格", "木": "从儿格"}.get(strongest, "从杀格")
+        return "从弱格", f"从弱格({sub_type})"
+    if sqr_label == "从旺":
+        return "从旺格", "从旺格(专旺)"
+
     tou_gan_ss = _get_tou_gan_shi_shen(bazi, ri_zhu)
 
     # 月令本气→中气→余气依次看何者透干
@@ -70,9 +89,8 @@ def determine_ge_ju(bazi: BaZi) -> tuple[str, str]:
     # 复合格局检测（基于透干十神 + 身强弱校验）
     all_shi_shen = list(tou_gan_ss)
     extra_info = []
-    
-    # 获取身强弱分数（用于成格条件校验）
-    sqr_score, sqr_label, _ = compute_shen_qiang_ruo(bazi)
+
+    # 身强弱已在上方获取，直接使用
     is_shen_qiang = sqr_label in ("身强", "中和偏强")
     is_shen_ruo = sqr_label in ("身弱", "")
     is_zhong_he = sqr_label == "中和"
