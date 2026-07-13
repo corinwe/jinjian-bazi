@@ -5,7 +5,7 @@ tags: [八字, 排盘, SOP, 金鉴真人, pipeline, 物理化]
 related_skills: [bazi-engine-workflow, bazi-foundation-analysis, bazi-report-template, bazi-platform-harness, bazi-task-dispatch, maker-checker-workflow, bazi-auto-verify, bazi-calibration, bazi-report-engine-audit]
 ---
 
-# 金鉴真人·八字排盘SOP v1.2
+# 金鉴真人·八字排盘SOP v1.3
 
 > 本SOP是排盘流程的**物理化约束**，执行排盘任务时必须按顺序走完所有Phase。
 > 
@@ -13,6 +13,13 @@ related_skills: [bazi-engine-workflow, bazi-foundation-analysis, bazi-report-tem
 > **替代方案**：`skill_view('bazi-paipan-sop')` 手动加载。
 > 
 > **核心原则**：每一步必须先加载对应技能（skill_view），再从引擎取数据，最后做人工分析。
+> 
+> ⚠️ **双系统说明**（2026-07-13更新）：
+>   本体系融合了九龙道长（传统+独家倍数法）和泉师兄（盲派实务）两套知识体系。
+>   两套体系在**刑冲合害优先级（三会>三合 vs 三合>三会）、体用定义、地支特殊生克**等3个核心点上存在根本冲突（详见 foundation-analysis §3B/§3C/§3D 盲派专项）。
+>   - **默认**：出报告时使用 **九龙道长体系**
+>   - **双系统模式**：用户明确要求「两套都出」时，同时输出两套分析
+>   - 所有冲突点均独立标注，不互相覆盖
 > 
 > **⚠️ CWD铁律**：所有 `cd projects/bazi-platform/...` 命令，必须从 `/root/.hermes/profiles/jinjian-zhenren/` 开始执行。Hermes默认 terminal CWD 为 `/root`——必须先 `cd /root/.hermes/profiles/jinjian-zhenren && cd projects/bazi-platform/...`。
 > 
