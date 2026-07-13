@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>测试报告页</title></head>
+<body>
+<script>
+fetch('/api/v1/engine/debug', {
+  method: 'POST',
+  headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify({name:"印",gender:"男",birth_year:1983,birth_month:5,birth_day:31,birth_hour:4,calendar_type:"solar"})
+})
+.then(r => r.json())
+.then(data => {
+  data._meta = {name:"印",gender:"男",year:1983,month:5,day:31,hour:4,calendar:"solar",birthplace:"默认东八区",timestamp:new Date().toISOString()}
+  sessionStorage.setItem('lastReport', JSON.stringify(data))
+  location.href = '/#/report'
+})
+.catch(e => { document.body.textContent = 'Error: '+e.message })
+</script>
+<p>Generating test report...</p>
+</body>
+</html>

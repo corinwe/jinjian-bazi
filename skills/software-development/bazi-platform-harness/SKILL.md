@@ -106,6 +106,11 @@ project_context = (
 | **㉒ 起运精确计算** | **见下方"起运年龄精确计算与验证工作流"全量5关流程。起运年份：出生年+浮点月份偏移，Q4(10~12月)自动+1。禁用int截断+禁止写近似值** | **2026-07-07** |
 | **㉓ 起运年份Q4进位** | **起运月份≥10(Q4) → 显示年份+1（大运只占当年尾巴，主要覆盖次年起的10年）** | **2026-07-07** |
 | **㉔ 引擎da_yun.py禁用int()** | **da_yun.py中`int(qi_yun_age + step*10)`已删除。改用浮点月偏移+Q4进位。这是代码级bug，不是人为疏漏** | **2026-07-07** |
+| **㉕ 交付物理门禁** | **`delivery-gate.py` 13项检查（exit code阻断），每次交付前先跑** | **2026-07-07** |
+| **㉖ `/goal`硬约束** | **Hermes内置机制，Judge模型每轮自动检查持续性目标。老板设一次即可** | **2026-07-07** |
+| **㉗ 铁律⑨：有疑问先查原始理论** | **凡事不确定或有疑问，先查九龙道长原始理论。5步流程：skill_view基础→按事象→按§索引→原始行号→对比引擎。口诀：有疑先查九龙，不猜不赌不蒙** | **2026-07-09** |
+| **㉘ 格局优先于从弱** | **身弱判为从弱/从旺时，格局名必须用特殊格局名（从弱格/从旺格），不能用月令正八格。geju.py先查身强弱再定格局** | **2026-07-09** |
+| **㉙ 公网部署** | **网站已部署: http://43.162.90.39/ 。nginx:80→uvicorn:8000, systemd自启, 见 references/deployment-guide-20260709.md** | **2026-07-09** |
 
 ---
 
@@ -179,6 +184,43 @@ project_context = (
 | `python3 projects/bazi-platform/scripts/pillar-verify.py` | 四柱分析前跑：5关校验（五鼠遁/十神/结构/冲刑/最优性） | 分析发布前 |
 | `python3 projects/bazi-platform/scripts/verify_report.py` | 报告发布前跑：7项格式校验 | 报告发布前 |
 | `cd projects/bazi-platform/engine/tests && python3 validate_all.py` | 引擎全量验证 | 代码修改后 |
+| **`bash projects/bazi-platform/scripts/run-with-gate.sh {姓名} /tmp/{姓名}_报告.md`** | **交付门禁（13项检查，阻断交付）** | **每次交付前必跑** |
+
+### 🔒 交付物理门禁（2026-07-07 新增）
+
+**来源**: 三次交付问题（行数不足/品牌名残留/缺性格分析）→ 老板指出「文件写了原则不执行」→ 创建物理化门禁 + 发现Hermes `/goal` 机制
+
+**核心认知**: 文件规则（SOUL.md/HERMES.md/SOP）不能替代物理阻断。LLM会「觉得差不多」就放行。**必须用exit code阻断的脚本来强制执行。**
+
+**强制命令**（每次交付前必跑）:
+```bash
+bash projects/bazi-platform/scripts/run-with-gate.sh {姓名} /tmp/{姓名}_报告.md [/tmp/{姓名}_engine.json]
+```
+- exit 0 = ✅ 全部通过，可以交付
+- exit 1 = ⛔ 阻断，先修复再重跑（老板未看到报告前自己修好）
+
+**13项门禁清单**:
+```
+线A（引擎数据一致·7项）:
+  A1 身强弱分数一致  A2 财星分数一致  A3 五行生克方向正确
+  A4 十神名称正确    A5 大运年份正确  A6 喜忌一致性
+  A7 空亡一致性
+线B（/goal交付门禁·6项）:
+  G1 品牌名=0残留     G2 五重人格存在   G3 精简版≥800行
+  G4 婚姻子女≥5处    G5 补财库≥5种    G6 财星数字来自引擎
+```
+
+**`/goal` 机制**（Hermes内置斜杠命令·系统级硬约束）:
+- 老板在Feishu打一次 `/goal 交付前必须通过delivery-gate.py的13项检查`
+- Judge模型在每轮对话结束后**自动检查**目标是否达成
+- 未达成则Judge返回 `continue` → 系统强制继续 → 不通过不放行
+- 当前配置: `goals.max_turns: 20`
+- 与Kanban关系: `/goal`=单Agent硬约束, Kanban=多角色任务编排
+
+**涉及文件**:
+- `projects/bazi-platform/scripts/delivery-gate.py` — 13项检查物理门禁
+- `projects/bazi-platform/scripts/run-with-gate.sh` — 一键触发包装
+- `bazi-paipan-sop Phase 5` — SOP已集成门禁流程
 
 ### 🚨 起运年龄精确计算与验证工作流（2026-07-07新增·3次纠正后的固化流程）
 
@@ -254,7 +296,7 @@ project_context = (
 | `references/physical-pipeline-20260706.md` | 物理化流水线 |
 | `references/loading-chain-audit-methodology.md` | 🆕 加载链审计方法论 |
 | `references/full-chain-verification.md` | 全链路验证 |
-| ...（另含19个参考文件） |
+| `references/deployment-guide-20260709.md` | 🆕 公网部署指南(niginx+systemd+域名) |
 
 ---
 
@@ -265,3 +307,5 @@ project_context = (
 3. 排盘前: 确认`/tmp/bazi_last_result.json`已更新（由bazi-must-run-engine.sh生成）
 4. 发布报告前: 跑`verify_report.py`确认格式通过
 5. 四柱分析结论发布前: 跑`pillar-verify.py`确认5关全过
+6. **交付给老板前**: `bash projects/bazi-platform/scripts/run-with-gate.sh {姓名} /tmp/{姓名}_报告.md` — 13项门禁，exit 0才可交付
+7. **Judge硬约束**: 建议老板设`/goal`后，Judge会持续检查

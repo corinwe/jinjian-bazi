@@ -129,7 +129,7 @@ class AnalysisService:
         # 更新状态
         self.analysis_repo.update_status(analysis_id, "completed")
 
-        # ── 4. 组装返回（包含完整analysis）──
+        # ── 4. 组装返回（包含完整analysis + 原始result）──
         return {
             "status": "completed",
             "analysis_id": analysis_id,
@@ -143,6 +143,7 @@ class AnalysisService:
                 "cheng_gu": basic.get("cheng_gu"),
             },
             "analysis": analysis_data,
+            "result": engine_result.get("result"),
         }
 
     def get_analysis(self, analysis_id: int) -> dict | None:

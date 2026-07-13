@@ -103,7 +103,7 @@ def analyze_appearance(
     # 金水两旺出美女
     has_jin_shui = wx_count.get("金", 0) >= 2 and wx_count.get("水", 0) >= 2
     if has_jin_shui and bazi_gans[2:] and TIAN_GAN_WU_XING.get(bazi_gans[2], "") in ("庚", "辛"):
-        beauty_note = "金水相生，皮肤白皙、气质出众"
+        beauty_note = "金水相生，皮肤白皙、气质出众、鼻子高挺"
     else:
         beauty_note = ""
 

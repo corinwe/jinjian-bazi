@@ -81,6 +81,7 @@ async def analyze(request: AnalyzeRequest):
         status="completed",
         basic=result["basic"],
         analysis=result.get("analysis"),
+        result=result.get("result"),
         message=result.get("message"),
     )
 

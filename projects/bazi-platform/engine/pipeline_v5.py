@@ -137,6 +137,13 @@ def run_v5(bazi: BaZi, birth_year=1980, birth_month=1, birth_day=1, qi_yun_days=
     if current_year is None:
         current_year = datetime.now().year
 
+    # 从§19曲线获取大运评分的辅助函数
+    def _calc_dy_score(gan_zhi: str, overall: dict) -> int:
+        for _c in overall.get("curve", []):
+            if _c.get("da_yun", "") == gan_zhi:
+                return _c.get("score", 5)
+        return 5
+
     ri_zhu = bazi.ri_zhu
     all_gans = [bazi.year.gan, bazi.month.gan, bazi.day.gan, bazi.hour.gan]
     all_zhis = [bazi.year.zhi, bazi.month.zhi, bazi.day.zhi, bazi.hour.zhi]
@@ -328,7 +335,6 @@ def run_v5(bazi: BaZi, birth_year=1980, birth_month=1, birth_day=1, qi_yun_days=
         },
         # §2 格局
         "sec_2_ge_ju": {"main": main_ge, "detail": detail_ge, "shi_shen": get_shi_shen_all_dry(bazi),
-                          "condition": f"月令{detail_ge}成立：月令本气定格局{'，天干透出' + str(all_gans[1]) + '确认' if all_gans[1] in xi else '，以月令为基准'}",
                           "tiao_hou_detail": th},
         # §3 身强弱
         "sec_3_shen_qiang_ruo": {
@@ -396,6 +402,7 @@ def run_v5(bazi: BaZi, birth_year=1980, birth_month=1, birth_day=1, qi_yun_days=
                     "gan_xi_ji": dy_classified[i]["gan_xi_ji"] if i < len(dy_classified) else "",
                     "zhi_xi_ji": dy_classified[i]["zhi_xi_ji"] if i < len(dy_classified) else "",
                     "gan_ss": get_shi_shen_for_gan(d.gan, ri_zhu),
+                    "score": _calc_dy_score(d.gan_zhi, comprehensive.get("sec_19_overall", {})),
                 }
                 for i, d in enumerate(dy_list)
             ],
@@ -426,7 +433,7 @@ def format_21_section_report(result: dict) -> str:
     lines.append(f"身强弱: {s1['shen_qiang_ruo']} | {s1['cong_ruo_check']}")
     lines.append(f"喜用: {s1['xi_yong']} | 忌: {s1['ji_shen']}")
     lines.append(f"财星: {s1['cai_xing_score']}分 | 学历: {s1.get('education', '')}")
-    lines.append(f"最佳运: {s1['best_da_yun']}({s1['best_da_yun_score']}/10)")
+    lines.append(f"最佳运: {s1.get('best_da_yun', '—')}({s1.get('best_da_yun_score', 0)}/10)")
     lines.append("")
 
     s2 = result["sec_2_ge_ju"]
@@ -550,8 +557,9 @@ def format_21_section_report(result: dict) -> str:
     s17 = result["sec_17_da_yun_detail"]
     lines.append("## §17 大运")
     for dy in s17["list"]:
-        star = "🏆" if dy["score"] >= 8 else "✅" if dy["score"] >= 6 else "⚠️"
-        lines.append(f"  {star} {dy['gan_zhi']}({dy['start_age']}~{dy['end_age']}岁) {dy['score']}/10")
+        score = dy.get("score", 0) or 0
+        star = "🏆" if score >= 8 else "✅" if score >= 6 else "⚠️"
+        lines.append(f"  {star} {dy.get('gan_zhi', '?')}({dy.get('start_age', '?')}~{dy.get('end_age', '?')}岁) {score}/10")
     lines.append("")
 
     s18 = result["sec_18_verdicts"]
@@ -636,6 +644,18 @@ def run_pipeline(
 
     result = add_narratives(result)
 
+    # 🆕 安全过滤：剥离所有内部规则标记，防止泄漏到用户端
+    import re
+    def _strip_rule_markers(obj):
+        if isinstance(obj, str):
+            return re.sub(r'【金鉴真人[^】]*】', '', obj).strip()
+        elif isinstance(obj, dict):
+            return {k: _strip_rule_markers(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [_strip_rule_markers(i) for i in obj]
+        return obj
+    result = _strip_rule_markers(result)
+
     # 构造兼容旧接口的输出
     energy_profile = compute_energy_profile(bazi)
     strongest_wx = (
@@ -651,6 +671,10 @@ def run_pipeline(
 
     dims_raw = {}
 
+    try:
+        text_report = format_21_section_report(result)
+    except Exception:
+        text_report = ""
     output = {
         "paipan": {
             "bazi": bazi.summary(),
@@ -728,7 +752,7 @@ def run_pipeline(
             },
         },
         "result": result,
-        "text": format_21_section_report(result),
+        "text": text_report,
     }
 
     return output

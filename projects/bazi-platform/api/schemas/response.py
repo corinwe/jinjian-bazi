@@ -21,6 +21,7 @@ class AnalyzeResponse(BaseModel):
     status: str
     basic: BasicData
     analysis: dict | None = None
+    result: dict | None = None
     message: str | None = None
 
 
