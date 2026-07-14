@@ -1,6 +1,6 @@
 ---
 name: bazi-knowledge-extraction
-description: 金鉴真人·外部知识萃取方法论。涵盖：全网搜索（DuckDuckGo免费搜索+Brave Search）/抖音/公众号/静态HTML网页等外部来源的八字知识系统化提取→全量对比→交叉验证→知识库融合的完整流水线。含§11全网搜索交叉验证工作流+去伪铁律（老板校准：绝不污染知识库）+体系边界混淆陷阱（⚠️2026-07-14更新：象法归入盲派三大法，非独立并存）+搜索武装安装快速参考。§3M-§3O三垣·神煞·串宫压运已补。
+description: 金鉴真人·外部知识萃取方法论。涵盖：全网搜索（DuckDuckGo免费搜索+Brave Search）/抖音/公众号/静态HTML网页等外部来源的八字知识系统化提取→全量对比→交叉验证→知识库融合的完整流水线。含§11全网搜索交叉验证工作流+去伪铁律（老板校准：绝不污染知识库）+体系边界判定（⚠️2026-07-14老板校准：象法归入盲派三大法·盲派体系下理法·象法·技法三法并行·与九龙道长体系并列）+搜索武装安装快速参考。§3M-§3O三垣·神煞·串宫压运已补。
 tags: [bazi, extraction, knowledge, integration, douyin, analysis, pipeline]
 related_skills:
   - bazi-wealth-analysis
@@ -1318,4 +1318,8 @@ P0缺口先补上，入库推库闭环完
 | R11 | bazi-knowledge-extraction/references/盲派寻根基_十神归属权知识点提取_20260714.md | 盲派寻根基+十神归属权知识（67条/11类） | 163·搜狐·bazitalk·hellonge |
 | R12 | bazi-foundation-analysis/references/盲派做功机制_全量原始提取.md | 盲派做功方式完整8页原始提取（算准网） | 算准网 |
 | R13 | bazi-foundation-analysis/references/盲派做功机制_效率体系.md | 盲派做功效率+合制体系+暗象详解 | 算准网 |
+| R14 | bazi-foundation-analysis/references/盲派串宫压运完整技法知识点_20260714.md | 串宫压运十二神完整体系（401行） | time.actor·mingtianji |
+| R15 | bazi-foundation-analysis/references/盲派三垣体系完整知识点提取_20260714.md | 三垣胎元命宫身宫完整体系（227行） | 算准网·time.actor |
+| R16 | bazi-foundation-analysis/references/盲派十二神煞完整知识提取_20260714.md | 盲派神煞15组+串宫十二神（334行） | 维基·time.actor·算准网 |
+| R17 | bazi-foundation-analysis/references/盲派寻根基_十神归属权知识点提取_20260714.md | 寻根基+归属权21字诀（67条） | 搜狐·bazitalk·163
 

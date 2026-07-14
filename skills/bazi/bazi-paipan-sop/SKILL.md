@@ -175,7 +175,10 @@ print(f'时柱: {p[\"hour_pillar\"][\"gan\"]}{p[\"hour_pillar\"][\"zhi\"]}')
 
 > **数据来源：引擎计算，LLM不做计算只做翻译。**
 
-### Step 3.1 — 调用pipeline_v5
+### Step 3.1 — 调用pipeline_v5（两种路径）
+
+#### 路径A：run_v5() — 纯JSON输出（扁平结构·秒*在顶层）
+
 ```bash
 cd projects/bazi-platform/engine && python3 -c "
 from pipeline_v5 import run_v5
@@ -195,7 +198,7 @@ bazi = BaZi(
 # 完整引擎评分（qi_yun_days=None=引擎自动基于节气表计算）
 result = run_v5(bazi, 年, 月, 日, qi_yun_days=None)
 
-# 输出所有§的JSON
+# 输出所有§的JSON（扁平结构，sec_*在顶层）
 import json; print(json.dumps(result, ensure_ascii=False, indent=2))
 "
 ```
@@ -204,6 +207,46 @@ import json; print(json.dumps(result, ensure_ascii=False, indent=2))
 cd projects/bazi-platform/engine && python3 -c "..." > /tmp/{姓名}_engine.json
 ```
 ✅ `qi_yun_days=None` 说明：不传值或传None时，da_yun.py自动基于节气表计算起运天数。无需手动导入jie_qi模块。
+
+#### 路径B：run_pipeline() — 一站式调用（嵌套输出·含文本报告）
+
+`run_pipeline()` 是更简捷的封装，不需要手工构造 BaZi 对象，且自动附加 `detail_analysis` 分析文本和 `narratives` 叙述段落：
+
+```bash
+cd projects/bazi-platform/engine && python3 -c "
+from pipeline_v5 import run_pipeline
+from paipan import get_full_paipan
+
+# 排盘
+p = get_full_paipan(年, 月, 日, 时, '性别', '姓名')
+
+# 一站式调用
+result = run_pipeline(
+    name='姓名',
+    gender='性别',
+    year_gan=p['year_pillar']['gan'],
+    year_zhi=p['year_pillar']['zhi'],
+    month_gan=p['month_pillar']['gan'],
+    month_zhi=p['month_pillar']['zhi'],
+    day_gan=p['day_pillar']['gan'],
+    day_zhi=p['day_pillar']['zhi'],
+    hour_gan=p['hour_pillar']['gan'],
+    hour_zhi=p['hour_pillar']['zhi'],
+    birth_year=年,
+    birth_month=月,
+    birth_day=日,
+)
+
+# ⚠️ run_pipeline输出是嵌套结构！sec_* 在 result['result'] 下
+import json; print(json.dumps(result, ensure_ascii=False, indent=2))
+"
+```
+
+**输出路径对比**：
+| 函数 | sec_* 路径 | 额外输出 |
+|:-----|:-----------|:---------|
+| `run_v5()` | `result['sec_N_...']`（扁平） | 无 |
+| `run_pipeline()` | `result['result']['sec_N_...']`（嵌套） | `paipan`/`basic_data`/`analysis`/`text` |
 
 ### Step 3.2 — 提取关键数据
 从引擎JSON提取（以pipeline_v5输出为准）：
