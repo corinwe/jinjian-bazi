@@ -137,6 +137,9 @@ flowchart TD
 | 任务 | 必须加载 | 可选加载 |
 |:-----|:---------|:---------|
 | **排盘/基础分析** | `bazi-foundation-analysis` | `bazi-auto-verify` |
+| **⛩️ 盲派分析（理法篇）** | `bazi-foundation-analysis §3B-§3K` | `bazi-image-method` |
+| **⛩️ 盲派分析（技法篇·三垣/神煞/串宫）** | `bazi-foundation-analysis §3L-§3O` | `bazi-liunian-analysis` |
+| **🎨 象法分析（象形读图/取象）** | `bazi-image-method` | `bazi-foundation-analysis §3B` |
 | **财富分析** | `bazi-wealth-analysis` | `bazi-foundation-analysis` |
 | **事业分析** | `bazi-career-analysis` | `bazi-wealth-analysis` |
 | **婚姻分析** | `bazi-marriage-analysis` | `bazi-foundation-analysis` |
