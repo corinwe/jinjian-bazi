@@ -1,6 +1,6 @@
 ---
 name: bazi-knowledge-extraction
-description: 金鉴真人·外部知识萃取方法论。涵盖：抖音/公众号/静态HTML网页/全网搜索（DuckDuckGo免费搜索）等外部来源的八字知识的系统化提取→全量对比→交叉验证→缺口分析→技能库/知识库融合的完整流水线。含DuckDuckGo全网搜索交叉验证工作流+Playwright提取脚本+缺口分析方法论+融合标准+curl+sed网页提取+多页书籍拼接+双系统跨体系交叉验证(泉师兄盲派vs九龙道长)+批量文档并行处理工作流(4组并行/QA审计门/只提一次必录铁律)+泉师兄19篇全量融合记录+§4.4泉师兄婚姻体系补遗(鸳鸯门/定份额/小三/同性恋)。
+description: 金鉴真人·外部知识萃取方法论。涵盖：抖音/公众号/静态HTML网页/全网搜索（DuckDuckGo免费搜索+Brave Search）等外部来源的八字知识的系统化提取→全量对比→交叉验证→缺口分析→技能库/知识库融合的完整流水线。含DuckDuckGo全网搜索交叉验证工作流+Brave Search后备方案+Playwright提取脚本+缺口分析方法论+融合标准+curl+sed网页提取+多页书籍拼接+browser_console动态文章JS提取+双系统跨体系交叉验证(泉师兄盲派vs九龙道长)+批量文档并行处理工作流+泉师兄19篇全量融合记录+寻根基+十神归属权知识点提取。§11全网搜索交叉验证工作流（2026-07-14新增）
 tags: [bazi, extraction, knowledge, integration, douyin, analysis, pipeline]
 related_skills:
   - bazi-wealth-analysis
@@ -1001,6 +1001,20 @@ scroll加载补动态，curl直取当备用
 ### 11.2 五步搜索交叉验证工作流
 
 ```yaml
+搜索工具选择（按推荐优先级排列）：
+  ├─ DuckDuckGo Search（ddgs）— 推荐首选，免费免Key
+  │   安装：hermes skills install duckduckgo-search && pip install ddgs
+  │   用法：ddgs text -k "关键词" -m 5
+  │   搜索经验：命理专业关键词（如「盲派做功 体用宾主」）无广告干扰，结果可信度高
+  ├─ Brave Search（web-search）— 后备方案，需API Key免费套餐（2000次/月）
+  │   安装：hermes skills install skills-sh/brave/brave-search-skills/web-search
+  │   配置：echo 'BRAVE_SEARCH_API_KEY=xxx' >> ~/.hermes/profiles/<profile>/.env
+  │   用法：curl -s "https://api.search.brave.com/res/v1/web/search?q=xxx" \
+  │           -H "X-Subscription-Token: ${BRAVE_SEARCH_API_KEY}"
+  │   限速：50 req/sec，免费套餐月配额2000次
+  └─ Tavily Search — 后备方案2，需API Key
+
+```yaml
 Step ① — 主题拆解（确定搜索方向）
   将要学习的领域拆解为多个子主题：
   ├─ 每个子主题一次搜索
@@ -1108,10 +1122,96 @@ Step ⑤ — 搜索能力沉淀
   └─ baike.baidu.com/view/盲派命理 — 百科概述 ⭐⭐⭐
 ```
 
-### 11.5 实战口诀
+### 11.5 特殊场景：主要来源被封锁时（Zhihu/公众号登录墙）找替代源
+
+> **场景**：用户指定的主要来源（如 zhuanlan.zhihu.com 的特定文章）被登录/CAPTCHA/反爬封锁，无法直接提取
+> **关键词**：寻找被封锁内容的替代拷贝 → 全网搜索交叉验证
+
+#### 11.5.1 核心策略：找到被封锁内容的替代拷贝
+
+当主要来源（如知乎专栏文章）完全不可达时，不要放弃——用以下策略找到其他网站转载/引用的相同内容：
+
+```yaml
+策略① — 主题关键词搜索 + 排除被封锁域名
+  ├─ 提取被封锁URL文章核心主题的几个关键词
+  ├─ 用DDGS搜索这些关键词（不加site限制）
+  ├─ 排除已知被封锁域名
+  └─ 从结果中挑选内容最完整的替代来源
+
+策略② — 搜索文章标题或独特短句
+  ├─ 如果知道或能推断文章标题：用引号搜精确标题
+  ├─ 如果标题未知：搜文章中独特的短语
+  └─ 注意：ddgs Python API有时不支持引号精确搜索（会抛异常），用不加引号的组合关键词代替
+
+策略③ — 搜索文章URL中post ID的附带信息
+  ├─ zhuanlan.zhihu.com/p/620842906 → post ID = 620842906
+  └─ 搜索时除了搜主题词也可带post ID（偶尔被其他站点收录时附带）
+
+策略④ — 寻找同一作者的多平台分发
+  ├─ 知乎作者通常同步发到搜狐号、头条号、百家号、163等
+  ├─ 搜索作者名（如果知道）＋ 主题关键词
+  └─ 这三个168/搜狐/头条的文章往往可以curl直接提取
+```
+
+#### 11.5.2 盲派主题的搜索关键词模式（实战验证）
+
+本次（2026-07-14）从被封锁的3篇知乎文章提取「寻根基」和「十神归属权」知识时，以下关键词组合有效：
+
+```yaml
+有效搜索模式：
+  ├─ 「寻根基 找出处 盲派 八字」  → 找到163.com、搜狐、bazitalk、hellonge
+  ├─ 「天干寻根基 地支找出处」      → 找到163.com详细文章
+  ├─ 「十神归属权 盲派 天干 地支」  → 找到知乎替代来源和转载
+  ├─ 「寻根基断事秘诀 八字」        → 找到全面文章
+  ├─ 「盲派 十神 归属 家里 家外」   → 找到hellonge.com的家里家外详解
+  └─ 「盲派 十神 所有权 归属」      → 找到bazitalk.com的宾主体用做功详解
+
+找到的替代来源类型：
+  ├─ 163.com/dy/article/ — 网易自媒体，curl可提取
+  ├─ sohu.com/a/ — 搜狐号，curl可提取（提取text时需要过滤导航）
+  ├─ bazitalk.com/ — 命理独立博客，curl可提取全文
+  ├─ hellonge.com/ — 命理网站，curl可提取全文
+  └─ toutiao.com/ — 今日头条，但curl提取较困难（需要browser）
+
+替代来源提取方法对照：
+  ├─ 静态文章（163/搜狐/bazitalk/hellonge） → curl提取 + python清洗HTML
+  ├─ 动态渲染（头条/知乎二手搬运）           → browser_navigate + browser_console JS提取
+  └─ 验证：多个来源交叉比对同一知识点，确认无误后再入库
+```
+
+#### 11.5.3 提取格式推荐（盲派主题）
+
+盲派八字知识提取推荐三列知识表格格式，每行一条知识点：
+
+```markdown
+知识点|原文|来源
+---|---|---
+寻根基是盲派预测的核心|「寻根机、找出处」，是盲派预测的核心。|https://example.com
+```
+
+优势：
+- 原文可追溯（方便后续交叉验证）
+- 来源明确（多个来源同一知识点可对比差异）
+- 结构统一（可直接作为reference文件入库）
+
+#### 11.5.4 防坑要点
+
+```yaml
+❌ 不要在被封锁的URL上反复重试 — 换方法栈
+❌ 不要假设所有替代来源内容完全一致 — 可能引用不全或有删改
+❌ 不要跳过交叉验证 — 替代来源可能引入错误/删减
+✅ 一次搜索不行换关键词 — 盲派术语丰富，换两组关键词后通常能找到转载
+✅ 优先找内容最完整的来源 — 163和搜狐内容通常最接近知乎原文
+✅ 同一个知识点至少在2个独立来源验证后再入库
+✅ 区分「多人根」等盲派特有的核心规则 — 不能与传统子平混淆
+```
+
+### 11.6 实战口诀
 
 ```yaml
 主题拆解分方向，并行搜索不孤单
+主要来源被封锁，替代拷贝找转载
+163搜狐bazitalk，curl直取效率高
 DuckDuckGo免费搜，中文结果也全面
 URL筛选挑权威，delegate并行提取快
 所有来源回齐后，逐条交叉验覆盖
@@ -1123,16 +1223,14 @@ P0缺口先补上，入库推库闭环完
 
 ## §12. 参考文件索引
 
-| 编号 | 文件 | 涵盖内容 | 来源 |
-|:----|:-----|:---------|:-----|
-| R01 | references/20260713_quanshixiong_19wen_audit.md | 泉师兄19篇全量审计 | 抖音 |
-| R02 | references/20260713_quanshixiong_19wen_case_count_correction.md | 案例数量校正 | 抖音 |
-| R03 | references/盲派做功方式知识点提取_20260714.md | 盲派做功方式体系 | 算准网·盲派 |
-| R04 | references/段建业盲派核心知识提取_20260714.md | 段建业盲派体系核心（宾主/体用/贼神捕神/正用反用/取象/宫位/做功/十神意向） | 神机阁 |
-| R05 | references/三大体系并列架构_九龙道长_盲派_象法.md | 三大体系并列架构定义 | 本体系 |
-| R06 | references/盲派_象法_象形法方法论_20260714.md | 象法·象形法方法论 | 泉师兄 |
-| R07 | references/象法_象形法_盲派核心方法论_20260714.md | 象法·盲派核心方法论 | 泉师兄 |
-| R08 | references/象法_盲派取象方法论_20260714.md | 象法取象方法论 | bazi-wealth-analysis |
-| R09 | references/mangpai-quxiang-7-dimensions.md | 盲派取象七种思路（五行·天干·地支·十神·宫位·神煞·状态） | time.actor |
-| R10 | references/yuanyangmen-详解之一_道缘释_20260714.md | 鸳鸯门婚姻口诀详解 | 泉师兄·道缘释 |
+| 编号 | 文件路径 | 涵盖内容 | 来源 |
+|:----|:---------|:---------|:-----|
+| R01 | bazi-knowledge-extraction/references/20260713_quanshixiong_19wen_audit.md | 泉师兄19篇全量审计 | 抖音 |
+| R02 | bazi-knowledge-extraction/references/20260713_quanshixiong_19wen_case_count_correction.md | 案例数量校正 | 抖音 |
+| R03 | bazi-knowledge-extraction/references/盲派做功方式知识点提取_20260714.md | 盲派做功方式体系 | 算准网·盲派 |
+| R04 | bazi-knowledge-extraction/references/段建业盲派核心知识提取_20260714.md | 段建业盲派体系核心（宾主/体用/贼神捕神/正用反用/取象/宫位/做功/十神意向） | 神机阁 |
+| R05 | bazi-foundation-analysis/references/三大体系并列架构_九龙道长_盲派_象法.md | 三大体系并列架构定义 | 本体系 |
+| R09 | bazi-image-method/references/mangpai-quxiang-7-dimensions.md | 盲派取象七种思路（五行·天干·地支·十神·宫位·神煞·状态） | time.actor |
+| R10 | bazi-marriage-analysis/references/yuanyangmen-详解之一_道缘释_20260714.md | 鸳鸯门婚姻口诀详解 | 泉师兄·道缘释 |
+| R11 | bazi-knowledge-extraction/references/盲派寻根基_十神归属权知识点提取_20260714.md | 盲派寻根基+十神归属权知识（67条/11类） | 163·搜狐·bazitalk·hellonge |
 
