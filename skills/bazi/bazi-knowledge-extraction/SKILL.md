@@ -1088,6 +1088,7 @@ scroll加载补动态，curl直取当备用
   │   安装：hermes skills install duckduckgo-search && pip install ddgs
   │   用法：ddgs text -k "关键词" -m 5
   │   搜索经验：命理专业关键词（如「盲派做功 体用宾主」）无广告干扰，结果可信度高
+  │   ⚠️ 适用范围：命理/学术等专业小众领域适用。通用/商业类关键词（产品对比/购物/本地服务）广告多。
   ├─ Brave Search（web-search）— 后备方案，需API Key免费套餐（2000次/月）
   │   安装：hermes skills install skills-sh/brave/brave-search-skills/web-search
   │   配置：echo 'BRAVE_SEARCH_API_KEY=xxx' >> ~/.hermes/profiles/<profile>/.env
