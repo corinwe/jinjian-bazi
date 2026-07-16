@@ -35,13 +35,13 @@ related_skills: [bazi-engine-workflow, bazi-foundation-analysis, bazi-report-tem
 
 ## 📋 Phase 0 — 系统就绪（自动·无需操作）
 
-| 资源 | 来源 | 内容 |
-|:-----|:-----|:------|
-| SOUL.md | Hermes自动加载 | 身份+原则+3条执行铁律+Sub-Agent分工 |
-| USER.md | Hermes自动注入 | 老板画像+原则+教训 |
-| MEMORY.md | Hermes自动注入 | 持久记忆+路径 |
-| HERMES.md | 项目级or链自动加载 | 8条铁律+铁律A~G+工作流+技能矩阵 |
-| config.yaml | 系统配置 | `tool_use_enforcement: true`（阻断执行幻觉） |
+| 资源 | 来源 | 内容 | 行数 |
+|:-----|:-----|:------|:----|
+| SOUL.md | Hermes自动加载 | 身份+铁律（无SOP，Sub-Agent分工等已迁至HERMES.md） | ~65行 |
+| USER.md | Hermes自动注入 | 老板画像+原则+教训 | — |
+| MEMORY.md | Hermes自动注入 | 持久记忆+路径 | — |
+| HERMES.md | 项目级or链自动加载 | 全部操作规则（铁律A~G+Sub-Agent分工+任务流程+反模式+加载链） | ~111行 |
+| config.yaml | 系统配置 | `tool_use_enforcement: true` + `hooks:` 三件套（pre_tool_call+pre_llm_call+post_tool_call） | — |
 
 验证：在首次调用skill_view之前，必须先执行 terminal('date') 确认服务器时间（北京时间 CST/UTC+8）。SOUL.md铁律：不执行date不准发分析/报告。上下文压缩可能残留旧session时间戳，必须物理验证不可依赖记忆。
 

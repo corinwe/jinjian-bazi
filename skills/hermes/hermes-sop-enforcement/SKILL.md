@@ -6,6 +6,8 @@ version: 1.1
 created: 2026-07-16
 updated: 2026-07-16
 source: 官方文档逐字精读+生产部署实践
+references:
+  - references/hermes-hook-architecture-20260716.md — 实战hook脚本+配置示例+六六一键配置脚本+关键教训
 ---
 
 # Hermes Agent SOP Enforcement — 让Agent按规则执行，不靠自觉
