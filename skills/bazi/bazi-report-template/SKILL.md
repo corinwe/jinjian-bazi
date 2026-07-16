@@ -17,6 +17,7 @@ related_skills:
 > - 本文件 = **精简版**（免费用户 1,500-2,500字）
 > - `references/detailed-template.md` = **详尽版**（收费用户 4,000-8,000字）
 > - `references/skill-orchestration-for-21s.md` = **技能编排参考**（各§的skill加载顺序+引擎降级策略+行数基准）
+- `references/report-supplementation.md` = **报告补入标准流程**（补报告专用：家里家外/财官库/一生做功标准化模块+patch工作流）
 > - SOP Phase 4.4 根据用户类型选择加载
 
 ## §1. 报告结构与字段映射
