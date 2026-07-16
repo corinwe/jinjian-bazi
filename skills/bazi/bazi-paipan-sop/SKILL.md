@@ -574,95 +574,127 @@ IF 当前年龄 > 25岁 → 完全不输出
 
 **以上六项在写「做功结构」「暗象」「财富分析」章节前强制执行。**
 
-### Step 4.3A — 21§ 逐模块执行映射
+### Step 4.3A — 21§ 逐模块执行映射（老板验收标准·v2026-07-16）
 
 > 🚨 **每写一个§前，先加载该§对应的理论技能，列出核心规则后逐一对比命主数据，再写分析。**
+>
+> **§顺序和标题锁定：** 以下为老板验收通过的格式。§编号和标题不可调换、不可合并、不可改名。详见 `skill_view('bazi-report-template')` §1.1。
 
 ```yaml
-§1 一页总览表:
-  引擎数据: pipeline_v5 → sec_1_overview (25字段)
-  技能规则: bazi-report-template §1
-  验证: 字段完整性 → 25项不缺 ✅
+§1 八字排盘:
+  内容: 四柱全息+纳音+藏干+十神+空亡
+  引擎: bazi-engine.py JSON输出（年柱/月柱/日柱/时柱/藏干）
+  技能: bazi-report-template §1.1
 
-§2 格局分析:
-  引擎数据: ge_ju.py → sec_2_ge_ju
-  技能规则: bazi-fortune-analysis §6
-  执行流程: Phase 4.2 七步检查清单 ✅
+§2 格局判定:
+  内容: 月令透干法+主格辅格+成格条件验证+分级
+  引擎: ge_ju.py → 格局名称
+  技能: bazi-fortune-analysis §6（7步检查清单）
 
-§3 身强弱详解:
-  引擎数据: shen_qiang_ruo.py → sec_3_shen_qiang_ruo
-  技能规则: bazi-foundation-analysis §4 ✅
+§3 身强弱分析（基于引擎数据）:
+  内容: 总分+等级+明细=印+比劫逐项+合局加分
+  引擎: shen_qiang_ruo.py → sec_3_shen_qiang_ruo
+  技能: bazi-foundation-analysis §4
 
-§4 喜用神详解:
-  引擎数据: ge_ju.py → sec_4_xi_yong
-  技能规则: bazi-fortune-analysis §5 ✅
+§4 用神取用与层级论:
+  内容: 身强/身弱决策树+用神层级+四吉四恶
+  引擎: ge_ju.py → sec_4_xi_yong
+  技能: bazi-fortune-analysis §5
 
-§5 灾祸/疾病/搬迁:
-  引擎数据: misfortune_analysis.py → sec_5_zai_huo
-  技能规则: bazi-misfortune-analysis ✅
+§5 十神详解与性格分析:
+  内容: 十神性格速查+五重人格（格局/十神/冲害/神煞/综合）
+  引擎: character.py → sec_6_character
+  技能: bazi-destiny-analysis（五重人格）+ bazi-foundation-analysis §十神详解
 
-§6 性格分析:
-  引擎数据: character.py → sec_6_character
-  技能规则: bazi-destiny-analysis (五重人格)
-  执行流程: Phase 4.2 七步检查清单 ✅
+§6 财富分析:
+  内容: 财星总分（穷举✅）+五路财富+墓库+大运开库
+  引擎: cai_xing.py → sec_8_wealth
+  技能: bazi-wealth-analysis + bazi-remission-methods（补财库）
 
-§7 身材外貌:
-  引擎数据: comprehensive_v2.py → sec_7_appearance ✅
+§7 事业与名望分析:
+  内容: 官杀扛力+格局定方向+行业五行+贵人
+  引擎: career_v2.py → sec_10_career
+  技能: bazi-career-analysis
 
-§8 财富分析（含补财库）:
-  引擎数据: cai_xing.py → sec_8_wealth
-  技能规则: bazi-wealth-analysis + bazi-remission-methods ✅
+§8 婚姻与家庭分析:
+  内容: 夫妻星+夫妻宫+刑冲合害+幸福度评分
+  引擎: marriage_v2.py → sec_12_marriage
+  技能: bazi-marriage-analysis
 
-§9 置业/买房:
-  引擎数据: comprehensive_v2.py → sec_9_property
-  技能规则: bazi-house-buying ✅
+§9 子女分析:
+  内容: 子女星（官杀/食伤）+时柱+缘薄因素
+  引擎: children_v2.py → sec_13_children
+  技能: bazi-children-analysis
 
-§10 事业分析:
-  引擎数据: career_v2.py → sec_10_career
-  技能规则: bazi-career-analysis ✅
+§10 健康与疾病分析:
+  内容: 五行过三断病+七杀断病+偏印断病+燥湿
+  引擎: health_v2.py → sec_14_health
+  技能: bazi-health-psychology
 
-§11 学历分析:
-  引擎数据: education.py → sec_11_education
-  技能规则: bazi-education-analysis ✅
-
-§12 婚姻分析:
-  引擎数据: marriage_v2.py → sec_12_marriage
-  技能规则: bazi-marriage-analysis ✅
-
-§13 子女分析:
-  引擎数据: children_v2.py → sec_13_children
-  技能规则: bazi-children-analysis ✅
-
-§14 健康分析:
-  引擎数据: health_v2.py → sec_14_health
-  技能规则: bazi-health-psychology ✅
-
-§15 六亲分析:
-  引擎数据: family.py → sec_15_family
-  技能规则: bazi-foundation-analysis §1.5 ✅
-
-§16 事件总表（含婚姻子女重点年份）:
-  引擎数据: liu_nian_v2.py → sec_16_events
-  技能规则: bazi-liunian-analysis
-  强制内容: 婚姻/子女/事业/财富/健康/搬迁/觉醒事件 ✅
-
-§17 大运精析:
-  引擎数据: da_yun.py → sec_17_da_yun_detail
+§11 大运总论:
+  内容: 8步大运全览+起运+方向+体力
+  引擎: da_yun.py → sec_17_da_yun_detail（大运列表+起运年龄）
   验证: 只列8步至80岁 ✅
 
-§18 三决断:
-  引擎数据: comprehensive_v2.py → sec_18_verdicts ✅
+§12 早年大运详解:
+  内容: 第1-2步大运（~30岁前）逐年分析
+  引擎: da_yun.py → sec_17_da_yun_detail（前2步）
+  技能: bazi-fortune-analysis §4
 
-§19 运程总评:
-  引擎数据: pipeline_v5.py → sec_19_overall
-  技能规则: bazi-calibration ✅
+§13 中年大运详解:
+  内容: 第3-5步大运（~50岁）逐年分析
+  引擎: da_yun.py → sec_17_da_yun_detail（第3-5步）
+  技能: bazi-fortune-analysis §4
 
-§20 五行补充:
-  引擎数据: comprehensive_v2.py → sec_20_wu_xing_advice
-  技能规则: bazi-remission-methods ✅
+§14 当前大运与流年分析:
+  内容: 当前大运+当前流年详细分析（分时段断事）
+  引擎: da_yun.py（当前运）+ liu_nian.py → sec_16_events
+  技能: bazi-liunian-analysis
 
-§21 人生建议:
-  引擎数据: comprehensive_v2.py → sec_21_advice ✅
+§15 晚年大运详解:
+  内容: 第6-8步大运（~80岁）逐年分析
+  引擎: da_yun.py → sec_17_da_yun_detail（第6-8步）
+  技能: bazi-fortune-analysis §4
+
+§16 大运流年应事总表:
+  内容: 全生命周期事件表（婚姻/子女/事业/财富/健康/搬迁/觉醒）
+  引擎: liu_nian_v2.py → sec_16_events
+  技能: bazi-liunian-analysis
+
+§17 空亡·墓库·神煞:
+  内容: 空亡判定+墓库属性+神煞查法+化解
+  引擎: comprehensive_v2.py
+  技能: bazi-foundation-analysis §13（神煞）+ §10（墓库）
+
+§18 五行流通与平衡:
+  内容: 五行分数+过旺过弱+流通+调候
+  引擎: comprehensive_v2.py
+  技能: bazi-foundation-analysis §3 + bazi-calibration
+
+§19 六亲关系:
+  内容: 宫位六亲+十神六亲+各柱关系
+  引擎: family.py → sec_15_family
+  技能: bazi-foundation-analysis §1.5（宫位六亲）
+
+§20 化解与建议:
+  内容: 开运+补财库+文昌+风水+贵人
+  引擎: comprehensive_v2.py → sec_20_wu_xing_advice
+  技能: bazi-remission-methods
+
+§21 总结:
+  内容: 综合总评+核心金句+人生路线图
+  引擎: pipeline_v5.py → sec_19_overall
+  技能: —（融合各§结论）
+```
+
+> ⚠️ **§顺序和标题必须与bazi-report-template §1.1完全一致。** 生成报告前强制加载该模板一次。
+
+```yaml
+验证口诀:
+  每写一§先读JSON，引擎数据取出来
+  藏干十神分数表，全部来自引擎算
+  不凭记忆不跳步，只有JSON没有的才用技能补
+  写完过后grep扫，§1~§21全齐了再推库
 ```
 
 **验证口诀**：
@@ -767,7 +799,7 @@ IF 当前年龄 > 25岁 → 完全不输出
     □ 判体强用弱 ─ 本事大但目标少，易内耗
     □ 判用强体弱 ─ 目标多但扛不住，富屋贫人
     □ 判宾主关系 ─ 主（日时）=自己掌控 / 宾（年月）=外部给予
-    □ **"食神在体"** ─ 盲派体用判定中，「体」= 日主 + 印 + 比劫 + 食神，「用」= 财 + 官 + 伤官。食神归体、伤官归用，不可混为一谈
+    □ **"食神在体"** ─ 盲派体用判定中，「体」= 日主 + 印 + 比劫 + 食伤（食神+伤官），「用」= 财 + 官。食伤（食神+伤官）全归体，用只有财和官，不可混为一谈
 
 第4步 — 格局（八字等级）
   goal: 确定八字的正局/反局/成格条件，决定人生格局高低
