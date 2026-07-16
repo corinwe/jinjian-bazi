@@ -7,8 +7,10 @@ related_skills: [bazi-engine-workflow, bazi-foundation-analysis, bazi-report-tem
 
 # 金鉴真人·八字排盘SOP v1.3
 
-> 本SOP是排盘流程的**物理化约束**，执行排盘任务时必须按顺序走完所有Phase。
+> **本SOP是排盘流程的物理化约束，执行排盘任务时必须按顺序走完所有Phase。**
 > 
+> **🛡️ SOP执行保障**：SOP中的每一步是否被执行，不依赖Agent的"自觉"——通过 `hermes-sop-enforcement` 技能中的 Event Hooks 机制自动强制。详见 `skill_view('hermes-sop-enforcement')`。
+>
 > **加载方式**：已加入config.yaml → skills → auto_load，每次会话自动加载。
 > **替代方案**：`skill_view('bazi-paipan-sop')` 手动加载。
 > 
@@ -41,7 +43,7 @@ related_skills: [bazi-engine-workflow, bazi-foundation-analysis, bazi-report-tem
 | HERMES.md | 项目级or链自动加载 | 8条铁律+铁律A~G+工作流+技能矩阵 |
 | config.yaml | 系统配置 | `tool_use_enforcement: true`（阻断执行幻觉） |
 
-**验证：** ⚠️ 每次排盘前先`date`确认服务器时间（时区Asia/Shanghai）
+验证：在首次调用skill_view之前，必须先执行 terminal('date') 确认服务器时间（北京时间 CST/UTC+8）。SOUL.md铁律：不执行date不准发分析/报告。上下文压缩可能残留旧session时间戳，必须物理验证不可依赖记忆。
 
 ### 🔴 致命陷阱：Profile缓存目录存在旧版报告
 
@@ -986,9 +988,82 @@ cd /root/.hermes/profiles/jinjian-zhenren && git add -A && git commit -m "🧮 <
 
 ---
 
-## 📋 Phase 7 — 纠错修正工作流
+## 📋 Phase 7 — 🚨 最终验证（SOP最后一环）
 
-### Step 7.0 — 铁律⑨+铁律0：先查原始理论，再写入→审计→说OK
+> **⚠️ 这是 SOP 的最后一环。推库完成不代表交付完成——必须验证落地文件与提交版本一致、git 状态干净、报告内容可读。**
+> 
+> **核心理念**：发布（Phase 6）是过程，验证（Phase 7）是终点。Phase 5 验的是「能不能发」，Phase 7 验的是「发对了没有」。两者不可相互替代，Phase 7 必须最后执行。
+
+### Step 7.1 — 验证报告文件已落地（物理存在性）
+
+```bash
+# 检查知识库目录下的报告文件是否存在
+ls -la /root/weiwuji-knowledge-base/07-国学哲学/八字命格/02-人物档案/<序号>-<姓名>/<报告文件名>
+# 确认文件大小 > 0
+wc -c /root/weiwuji-knowledge-base/07-国学哲学/八字命格/02-人物档案/<序号>-<姓名>/<报告文件名>
+```
+✅ 文件存在且 > 0 bytes
+
+### Step 7.2 — 验证 git 状态干净
+
+```bash
+# 知识库
+cd /root/weiwuji-knowledge-base && git status --short
+# 期望输出：空（无未提交修改）
+# 如果非空 → 说明 Step 6.2 的提交可能遗漏了文件 → 回 Step 6.2 重新提交
+
+# 技能库
+cd /root/.hermes/profiles/jinjian-zhenren && git status --short
+# 期望输出：空
+```
+✅ 双库 git status 干净
+
+### Step 7.3 — 验证 git 提交记录（确认推成功）
+
+```bash
+# 检查最近一次提交
+cd /root/weiwuji-knowledge-base && git log -1 --oneline --stat
+cd /root/.hermes/profiles/jinjian-zhenren && git log -1 --oneline --stat
+```
+✅ 提交消息中包含目标人物/报告名称（确认推的不是无关内容）
+
+### Step 7.4 — 验证报告内容完整性（可选·依赖场景）
+
+| 验证项 | 脚本/方法 | 通过标准 |
+|:-------|:----------|:---------|
+| 报告行数 | `wc -l <文件>` | ≥ 800 行（精简版） |
+| ²¹§完整性 | `grep -c '§[0-9]' <文件>` | ≥ 21 |
+| 无残留占位符 | `grep -c '待填\|[占位符]' <文件>` | 0 |
+| 八字正确性 | `grep '八字' <文件>` | 与输入一致 |
+| 大运只列到80岁 | `grep '大运' <文件>` | 最后一大运 ≤ 80 |
+
+```bash
+# 一键运行
+python3 projects/bazi-platform/scripts/delivery-gate.py --report /root/weiwuji-knowledge-base/07-国学哲学/八字命格/<序号>-<姓名>/<报告文件名> [--engine /tmp/<姓名>_engine.json]
+```
+✅ 全部通过 → 交付完成
+❌ 任一不通过 → 修复后回到 Step 6.2 重新提交
+
+### Step 7.5 — 汇报最终状态
+
+```yaml
+最终交付状态:
+  □ 文件落地:    ✅/❌
+  □ git状态干净: ✅/❌
+  □ 最终提交:    ✅/❌
+  □ 报告完整性:  ✅/❌
+→ 全部 ✅ → 报告老板「交付完成，最终验证通过」
+→ 任一 ❌ → 报告具体问题 + 修复方案
+```
+
+> 🚨 **铁律**：Phase 7 未完成，不得汇报「交付完成」。
+> 🔑 **核心价值**：防止「推了以为推成功」「文件大了以为内容完整」「git 提交了以为状态干净」——所有这些必须物理验证，不依赖记忆/假设。
+
+---
+
+## 📋 Phase 8 — 纠错修正工作流
+
+### Step 8.0 — 铁律⑨+铁律0：先查原始理论，再写入→审计→说OK
 
 > **来源**: HERMES.md 铁律⑨（有疑先查九龙）+ SOUL.md 铁律0（写入→审计→说OK）
 > **口诀**: 有疑先查九龙，不猜不赌不蒙；写下→审计→说OK，三步少一不算完
@@ -1014,32 +1089,32 @@ cd /root/.hermes/profiles/jinjian-zhenren && git add -A && git commit -m "🧮 <
   → 任一步没过 → 继续修，不说OK
 ```
 
-### Step 7.1 — 确认问题范围
+### Step 8.1 — 确认问题范围
 ```
 当老板指出问题时：
   ├─ 不要辩解！
   └─ 立即确认：「明白，我查原始理论然后全面修复」
 然后区分问题类型：
   □ 单点问题 → 直接修复+验证
-  □ 体系性问题 → 执行全流程修正 Step 7.2~7.6
+  □ 体系性问题 → 执行全流程修正 Step 8.2~8.6
 ```
 
 🚨 **双验必读**：当老板指出理论规则错误时，必须同时检查**技能文件（理论层）+ 引擎代码（实践层）**，两层可能有不一致。
 详见 `references/dual-layer-correction-workflow.md`
 
-### Step 7.2 — 回原始理论全量验证
+### Step 8.2 — 回原始理论全量验证
 ```
 第1步：找到所有相关的原始理论素材
 第2步：全量提取，非抽样
 第3步：标记已有 vs 缺失 vs 冲突
 ```
 
-### Step 7.3 — 补漏所有相关技能模块
+### Step 8.3 — 补漏所有相关技能模块
 ```
 列出完整链路 → 逐文件检查修复
 ```
 
-### ⚠️ Step 7.3A — 技能文件存在性检查（2026-07-10新增·全量审计触发）
+### ⚠️ Step 8.3A — 技能文件存在性检查（2026-07-10新增·全量审计触发）
 
 > **教训**: 2026-07-10审计发现SOP引用的5个技能文件在磁盘上不存在。
 > **铁律**: SOP中引用的每个技能文件必须先确认磁盘存在，才能执行skill_view。
@@ -1052,18 +1127,18 @@ cd /root/.hermes/profiles/jinjian-zhenren && git add -A && git commit -m "🧮 <
 ⑤ 全量审计时（至少月一次），执行此检查
 ```
 
-### Step 7.4 — 焊死物理化链（7个焊接点）
+### Step 8.4 — 焊死物理化链（7个焊接点）
 ```
 ① SOUL.md → ② HERMES.md → ③ SOP → ④ 技能SKILL.md
 → ⑤ 引擎代码 → ⑥ 参考文件 → ⑦ 验证脚本
 ```
 
-### Step 7.5 — 端到端验证
+### Step 8.5 — 端到端验证
 ```
 用真实八字跑通全流程
 ```
 
-### Step 7.6 — 推库 + 汇报
+### Step 8.6 — 推库 + 汇报
 ```
 git add/commit/push 双库
 ```
@@ -1080,3 +1155,4 @@ git add/commit/push 双库
 | 4 | 报告完整21§ |
 | 5 | 5关+320门禁全绿 |
 | 6 | git push成功 |
+| **7 🚨** | **文件落地 ✅ + git状态干净 ✅ + 提交记录确认 ✅ + 报告完整性 ✅** |

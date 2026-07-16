@@ -1,0 +1,32 @@
+# Hermes Agent 生产级hooks配置参考
+# 复制此配置到 ~/.hermes/config.yaml 的对应位置
+
+# =============================================================================
+# Event Hooks 配置
+# =============================================================================
+hooks:
+  # 写文件后自动验证
+  post_tool_call:
+    - matcher: "write_file|patch"
+      command: "~/.hermes/profiles/jinjian-zhenren/skills/hermes/hermes-sop-enforcement/scripts/bazi-auto-verify-hook.sh"
+      timeout: 30
+
+  # LLM回答前注入SOP提醒
+  pre_llm_call:
+    - command: "~/.hermes/profiles/jinjian-zhenren/skills/hermes/hermes-sop-enforcement/scripts/bazi-pre-llm-hook.sh"
+
+  # 会话启动时注入初始上下文
+  # on_session_start:
+  #   - command: "~/.hermes/agent-hooks/session-init.sh"
+
+# =============================================================================
+# Goals 配置
+# =============================================================================
+goals:
+  max_turns: 20  # /goal 自动续行上限
+
+# =============================================================================
+# 上下文压缩配置（确保首轮目标不被裁剪）
+# =============================================================================
+compression:
+  protect_first_n: 3  # 保留开头3轮，确保 /goal 目标可见

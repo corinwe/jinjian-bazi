@@ -37,7 +37,13 @@ cd /root/weiwuji-knowledge-base && git add -A && git commit -m "📖 ..." && git
 cd /root/.hermes/profiles/jinjian-zhenren && git add -A && git commit -m "🧮 ..." && git push
 ```
 
-## §4. 关键注意事项
+## §4. 参考文件
+
+| 文件 | 说明 |
+|:-----|:------|
+| `references/arkclaw-engineering-patterns-20260716.md` | 🆕 外部工程模式参考：ArkClaw财报分析工具的工程学方法（错误隔离屏障+多入口设计） |
+
+## §5. 关键注意事项
 
 - **CWD要求**: 所有 `cd projects/bazi-platform/` 命令必须从 `/root/.hermes/profiles/jinjian-zhenren/` 开始执行
 - **引擎JSON路径**: `/tmp/{姓名}_engine.json`

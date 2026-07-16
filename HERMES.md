@@ -1,295 +1,111 @@
 # ═══════════════════════════════════════════════
-# 金鉴真人 · 八字排盘平台 HERMES.md
-# bazi项目级：约束 · 原则要求 · SOP
-# HERMES.md 优先级高于 AGENTS.md（or链第1位）
+# HERMES.md — 金鉴真人·项目级操作规则
 # ═══════════════════════════════════════════════
 
-## 🔥 项目铁律
-
-### 铁律① — 排盘必须跑引擎（禁止手算）
-- 来源: 2026-06-29 梦的日柱算错教训（壬戌→癸亥）
-- 强制命令: `bash projects/bazi-platform/scripts/bazi-must-run-engine.sh -n <姓名> -g <性别> -y <年> -m <月> -d <日> -h <时>`
-- 验证: 排盘输出必须与https://zydx.top/ 网站输出结果一致，该网站使用POST方式；如果该网站无法使用则必须与engine/paipan.py 计算结果一致，禁止自行计算公式
-- 执行时机: **任何八字分析前**，先访问上述zydx.top网站获取引擎数据，网站不可用的情况下再跑这个脚本获取引擎数据
-
-### 铁律② — 知识库路径不依赖记忆
-- 人物报告存放: `/root/weiwuji-knowledge-base/07-国学哲学/八字命格/02-人物档案/{序号}-{姓名}/`
-- 编码规则: 序号为当前目录最大号+1
-- GitHub: `git@github.com:corinwe/weiwuji-knowledge-base.git`
-- 推库命令: `cd /root/weiwuji-knowledge-base && git add -A && git commit -m "消息" && git push`
-- 技能引用版配置: `skill_view('bazi-platform-harness','references/project-config.md')`
-
-| 铁律③ — 报告必须按标准格式输出（21§）
-|- 来源: `skill_view('bazi-report-template')` → bazi-report-template
-|- 强制: 每次出报告前先 `skill_view('bazi-report-template')`
-|- 格式: 21§板块齐全，§1 25字段四段式，行数800~1000行（不要废话）
-|- 禁止自创格式、禁止跳过模板直接输出
-
-### 铁律④ — 排盘源头校验（2026-07-06）
-- 排盘脚本 `bazi-must-run-engine.sh` 自动调 `canggan-parse.py`
-- 排盘时就标出「藏干十神易混淆项」（如辛+午=七杀⚠️）
-- 源头防错，不等分析结束
-
-### 铁律⑤ — 分析结论发布前校验（2026-07-06）
-- 跑 `python3 projects/bazi-platform/scripts/pillar-verify.py`
-- 5关: 五鼠遁 → 藏干十神 → 结构优先级 → 全局冲刑 → 最优性
-
-### 铁律⑥ — 车库测试门禁（任何修改后必跑）
-- 全量验证: `cd projects/bazi-platform/engine/tests && python3 validate_all.py`
-- 排盘验证: `bash projects/bazi-platform/scripts/bazi-must-run-engine.sh`
-
-### 铁律⑦ — 原始理论验证原则（2026-07-05 · 学业模块走弯路教训）
-- **老板提点 → 先查原始理论验证，不能照单全收**
-  - 老板语音输入可能有错字/口水话，需要自行识别
-  - 老板提点一个"点"，必须延伸到"面"和"体系"（正反面全看）
-- **由点→面→体系**
-  - 例：身强遇正财跑引擎认为"喜用"→ 但原始理论说「正财=搞钱」→ 实际是搞钱无心向学，不是学得好
-  - 例：身强遇食伤跑引擎认为"喜用"→ 但素材02行129说「食伤追求吃喝玩乐」→ 贪玩
-- **每次改规则前加载对应技能文件**确认原始理论
-  - `skill_view('bazi-education-analysis')`
-  - `skill_view('bazi-marriage-analysis')`
-- **每次修改后拿真实案例跑验证**
-- **无原始依据不杜撰** — 所有规则必须有素材行号或公众号原文支撑
-
-### 铁律⑧ — 模块审计/修复标准流程（2026-07-05）
-**每次审计/修复一个模块，必须按以下标准流程执行：**
-
-**Step 1 — 规则审计（对照原始理论逐条验证）**
-  □ 加载对应skill（`skill_view('bazi-xxx-analysis')`）
-  □ 逐条对比代码逻辑 vs 原始理论
-  □ 无杜撰（原始理论没有的不能写）
-  □ 无遗漏（原始理论有的不能少）
-  □ 无错误（与原始理论完全一致）
-  □ 特别检查：模块的判断逻辑本身是否与九龙道长一致
-
-**Step 2 — 全量更新（修哪改哪的全都要改）**
-  □ 代码/引擎逻辑更新
-  □ 相关函数签名/返回值更新
-  □ 引用该模块的所有文件更新
-  □ 页面/报告/脚本/配置同步更新
-
-**Step 3 — 引用链验证（排盘时正确调用）**
-  □ 所有pipeline确认调用新版（v3/v4/v5各查一遍）
-  □ 调用参数完整（特别是shen_label/喜用神是否传递）
-  □ comprehensive_v2中间层参数传递正确
-  □ 测试通过（test_full_suite.py）
-
-**Step 4 — 点面体系验证**
-  □ 修一个点→延伸到整个面→延伸到整个体系
-  □ 正反面逻辑都考虑
-  □ 拿真实案例验证输出合理
-  □ 确认排盘脚本(bazi-must-run-engine.sh)能正确引用新版
-
-### 铁律⑨ — 有疑问先查原始理论（2026-07-09 · 格局vs身弱依赖关系教训）
-- **凡事不确定或者有疑问时，一律先查九龙道长原始理论知识，不靠经验、不靠直觉、不靠猜测**
-- **「疑问」包括但不限于：**
-  - 某八字现象从未见过 → 查理论再看
-  - 两个规则似乎矛盾 → 查理论确认优先级
-  - 引擎输出与预期不符 → 查理论验证是否正确
-  - 老板提点但与引擎不一致 → 查理论确认谁对
-- **查理论的标准流程：**
-  1. 先 `skill_view('bazi-foundation-analysis')` 查基础规则
-  2. 按事象查对应技能（`bazi-wealth-analysis`/`bazi-career-analysis`等）
-  3. 按§索引查具体规则（如§3身强弱、§6格局、§10财富）
-  4. 找到原始规则行号 → 对比当前引擎/报告 → 确认是否一致
-  5. 有差异 → 修引擎或修报告，以原始理论为准
-- **禁止**：凭感觉说"I think"、"应该是"、"大概率"
-- **口诀**：有疑先查九龙，不猜不赌不蒙
+> **本文件版本：v3.0 · 2026-07-16**
+> **职责：存放SOUL.md迁出的SOP/规则/流程 + 项目级铁律**
+> **加载方式**：Hermes or链自动加载（CWD递归搜索HERMES.md）
+> **生效范围**：金鉴真人profile + bazi-platform项目目录
 
 ---
 
-## 📍 核心路径
+## 一、铁律A~G（执行标准）
 
-| 资源 | 路径 |
-|:-----|:------|
-| 引擎目录 | `projects/bazi-platform/engine/` |
-| 排盘门禁脚本 | `projects/bazi-platform/scripts/bazi-must-run-engine.sh` |
-| 排盘源头校验 | `projects/bazi-platform/scripts/canggan-parse.py`（自动集成） |
-| 四柱5关校验 | `projects/bazi-platform/scripts/pillar-verify.py` |
-| 测试验证 | `cd projects/bazi-platform/engine/tests && python3 validate_all.py` |
-| 项目配置 | `skill_view('bazi-platform-harness','references/project-config.md')` |
-| 知识库 | `/root/weiwuji-knowledge-base` |
-| 人物档案 | `/root/weiwuji-knowledge-base/07-国学哲学/八字命格/02-人物档案/{序号}-{姓名}/` |
-| skills | `skills/`（配置文件根·Git跟踪中） |
+### 铁律A — 每次会话先跑 date
+```bash
+date  # 确认服务器时间，时区CST/UTC+8
+```
+
+### 铁律B — 排盘必须跑引擎，禁止手算
+大运/身强弱/财星分数等所有量化数据，必须从引擎JSON提取。禁止凭经验手算。
+
+### 铁律C — 写§前先skill_view加载对应技能
+每写一个§前，先加载该§对应的理论技能，列出核心规则后逐一对比命主数据。
+
+### 铁律D — 每§写完反向校验JSON
+写过的内容中的数字/十神/分数，回到引擎JSON逐项确认一致。
+
+### 铁律E — 交付前过五关
+pillar-verify + 320门禁 + 内容校验，全绿才能交付。
+
+### 铁律F — 大运数据逐行映射
+大运表的每一行必须对应引擎da_yun_list中的一条记录，禁止合并一行写20年。
+
+### 铁律G — 不引入原局不存在的字
+报告中每个天干/地支必须能在原局/大运/流年中找到。
 
 ---
 
-## 🔄 工作流程（→ 详见`bazi-paipan-sop`技能 · 已auto_load）
+## 二、Sub-Agent 分工体系
 
-```mermaid
-flowchart TD
-    A[收到排盘任务] --> B[Phase 0: 系统就绪<br>SOUL+USER+MEMORY+HERMES]
-    B --> C[Phase 1: 加载技能<br>foundation→engine→report→harness→verify]
-    C --> D[Phase 2: 排盘+源头校验<br>bazi-must-run-engine.sh + canggan-parse]
-    D --> E[Phase 3: 引擎评分<br>pipeline_v5 → 21§ JSON]
-    E --> F[Phase 4: 分析+出报告<br>逐§写·Maker/Checker循环]
-    F --> G[Phase 5: 发布前校验<br>5关pillar-verify + 320门禁]
-    G --> H[Phase 6: 归档推库<br>知识库+profile双推]
-    H --> I[✅ 完成]
-```
+| 角色 | 负责 | 守则 |
+|:----|:-----|:-----|
+| **引擎开发员** | Python规则引擎（36模块） | TDD先行，零幻觉 |
+| **前端开发员** | HTML/CSS/JS前端 | 移动端优先，永不展示JSON |
+| **API开发员** | FastAPI后端 | 契约优先，错误语义明确 |
+| **测试验证员** | 单元/集成/E2E测试 | 320条门禁全覆盖 |
+| **审核员** | Maker输出的对抗性审查 | 假设有bug |
+| **命理分析师** | 八字推理分析 | 零自创断事逻辑 |
+| **报告生成员** | 21§报告格式化输出 | 禁止通用占位符 |
 
-**铁律**：`bazi-paipan-sop` 已加入config.yaml auto_load，每次会话自动加载。执行排盘前确认该技能已就绪。
-
----
-
-## 📋 任务→技能矩阵
-
-| 任务 | 必须加载 | 可选加载 |
-|:-----|:---------|:---------|
-| **排盘/基础分析** | `bazi-foundation-analysis` | `bazi-auto-verify` |
-| **⛩️ 盲派分析（理法篇）** | `bazi-foundation-analysis §3B-§3K` | `bazi-image-method` |
-| **⛩️ 盲派分析（技法篇·三垣/神煞/串宫）** | `bazi-foundation-analysis §3L-§3O` | `bazi-liunian-analysis` |
-| **🎨 象法分析（象形读图/取象）** | `bazi-image-method` | `bazi-foundation-analysis §3B` |
-| **财富分析** | `bazi-wealth-analysis` | `bazi-foundation-analysis` |
-| **事业分析** | `bazi-career-analysis` | `bazi-wealth-analysis` |
-| **婚姻分析** | `bazi-marriage-analysis` | `bazi-foundation-analysis` |
-| **学业分析** | `bazi-education-analysis` | `bazi-foundation-analysis` |
-| **健康/疾病** | `bazi-health-psychology` | `bazi-misfortune-analysis` |
-| **子女分析** | `bazi-children-analysis` | `bazi-foundation-analysis` |
-| **灾祸分析** | `bazi-misfortune-analysis` | `bazi-liunian-analysis` |
-| **化解方法** | `bazi-remission-methods` | `bazi-foundation-analysis` |
-| **流年分析** | `bazi-liunian-analysis` | `bazi-foundation-analysis` |
-| **买房置业** | `bazi-house-buying` | `bazi-wealth-analysis` |
-| **四柱反推** | `bazi-four-pillars-analysis` | — |
-| **出报告** | `bazi-report-template` | 对应事象技能 |
-| **校准/审计** | `bazi-calibration` | 对应模块技能 |
-| **全量验证** | `bazi-validate-all` | `bazi-auto-verify` |
-
----
-
-|---
-|
-|## 🚨 老板做事风格标准（焊死·每次加载）
-|
-|> **每次老板交代任何规则/要求/修改/补充，必须执行三步走，缺一不可：**
-|
-|```
-|第1步 — 写入必加载文件
-|  → SOUL.md（系统级·自动加载）或 HERMES.md（项目级·or链加载）
-|  → 确保下次会话自动加载，不依赖记忆
-|  → ✅ grep确认写入成功
-|
-|第2步 — 全盘物理审计
-|  → 用真实数据/报告验证规则是否真的被执行了
-|  → 检查链：引擎代码→技能→SOP→报告输出→验证脚本
-|  → ✅ 逐项打勾
-|
-|第3步 — 审计通过才说OK
-|  → 三步全过 → 报告"已完成，已审计"
-|  → 任一步没过 → 继续修，不说OK
-|
-|口诀：写下→审计→说OK，三步少一不算完
-|```
-|
-|**本文件版本：v2.0 · 2026-07-07 · 职责分离重构：SOUL管人格，HERMES管SOP**
-
----
-
-## 🚨 铁律A — 藏干十神逐字验证（写§1前必须执行）
+## 三、任务派发流程
 
 ```
-写报告§1排盘表前，必须逐字验证每个地支藏干的十神：
-  □ 申藏庚(劫财·本气) 壬(伤官·中气) 戊(正印·余气)
-     ❌ 错误: 庚=比肩 | 戊=偏印
-     ✅ 正确: 庚=劫财(同五行同阴阳) | 戊=正印(土生金)
-  □ 未藏己(偏印·本气) 丁(七杀·中气) 乙(偏财·余气)
-  □ 亥藏壬(伤官·本气) 甲(正财·中气)
-     ❌ 错误: 壬克辛(金生水=泄不是克)
-     ✅ 正确: 辛生壬=泄(我生者·阴阳不同=伤官)
-  □ 卯藏乙(偏财·本气)
-口诀: 写藏干前先跑引擎验证，不凭记忆写
+老板指令 → 拆任务 → 定终止条件 → 组四要素(目标+标准+格式+流程)
+→ delegate_task派发 → 审核结果 → 不通过重派 → 通过合并推库
 ```
 
-## 🚨 铁律B — 五行生克关系必须准确
+## 四、端到端八字排盘流程
 
 ```
-所有五行生克关系的描述必须精确：
-  ✅ 金生水 = 泄（日主辛生水）
-  ✅ 水生木 = 生
-  ✅ 木生火 = 生
-  ❌ 禁止用"克"描述生（"辛克壬"这是错的）
-  ❌ 禁止用"生"描述克（"火生辛"这是错的）
-口诀: 生生泄克克，先想清楚再下笔
+Phase 0: 系统就绪（SOUL+USER+MEMORY+HERMES）
+Phase 1: 加载技能（foundation→engine→report→harness）
+Phase 2: 排盘+源头校验（bazi-must-run-engine.sh）
+Phase 3: 引擎评分（pipeline_v5→21§JSON）
+Phase 4: 分析+出报告（Maker/Checker循环）
+Phase 5: 发布前校验（5关pillar-verify+320门禁）
+Phase 6: 归档推库（知识库+profile双推）
 ```
 
-## 🚨 铁律C — 报告禁止出现品牌名
+## 五、物理拦截系统（pre_tool_call hooks）
 
-```
-报告中禁止出现以下字眼：
-  ❌ 九龙道长 / 道长老九 / 九龙体系
-  ❌ 金鉴真人 / 金鉴体系
-  ✅ 直接出结论：如"月令未土藏干己丁乙全不透→杂气格"
-  ✅ 规则引用用"原始规则""命理理论""实战规律"
-```
+> 以下规则由 `/root/.hermes/hooks/bazi-mandatory/precheck.py` 物理强制，不是靠自觉。
 
-## 🚨 铁律D — 婚姻子女重点事件年份表（强制必含·缺了不出）
+### 拦截规则
+- 写报告类.md文件前，必须先过 pillar-verify
+- 验证标记：`touch /tmp/.bazi_verified`
+- 未验证→block，返回明确错误信息
 
-```
-每份报告必须包含婚姻子女重点事件年份表（§16的一部分）：
-  格式:
-  | 年份 | 事件 | 命理解读 |
-  |:----|:-----|:---------|
-  | {年} | {婚姻/子女事件} | {解读} |
-
-  包含内容:
-  □ 结婚年份（如有）
-  □ 配偶星出现的年份
-  □ 子女出生年份（如有）
-  □ 婚姻危机年份（夫妻宫被冲刑）
-  □ 添丁窗口年份
-
-  此表是§16事件总表的核心组成部分，不可省略。
+### 触发方式
+```bash
+# 验证通过后，设置放行标记
+bash projects/bazi-platform/scripts/pillar-verify.py && touch /tmp/.bazi_verified
+# 然后写文件（hook自动放行）
 ```
 
-## 🚨 铁律E — 规则写入后必须做物理审计
+## 六、反模式清单
+
+| 反模式 | 正确做法 |
+|:-------|:---------|
+| 不拆任务直接派 | 拆成2-5分钟子任务 |
+| 不带终止条件 | 每个任务明确Success condition |
+| 缺四要素 | 目标+标准+格式+流程全带 |
+| Maker审自己活 | 必须用独立Checker |
+| 结果不做汇总 | 我汇总后再继续 |
+| 靠LLM自觉遵守规则 | 用pre_tool_call hook物理拦截 |
+
+## 七、加载链说明
 
 ```
-每次把规则写入文件后，必须执行物理审计确认：
-  第1步: 规则已写入文件? (grep确认)
-  第2步: 写一份新报告/重跑引擎验证规则生效?
-  第3步: 强制内容在报告中实际存在?(grep关键词)
-  第4步: 从输出反推回文件——报告中的每个数据能否追溯到引擎JSON?
-口诀: 写进去≠做好了，审计过了才是真
+线A（系统级·无条件加载，每个会话自动注入）：
+  ① 系统基础提示词 ← Hermes内置
+  ② config.yaml ← profile根目录
+  ③ SOUL.md ← profile根目录（~105行身份+铁律）
+  ④ USER.md ← memories/USER.md
+  ⑤ MEMORY.md ← memories/
+
+线B（项目级·CWD or链）：
+  ① HERMES.md ← CWD递归搜索到git root（本文件）
+  ② AGENTS.md ← 仅CWD
+  ③ CLAUDE.md/.cursorrules ← 兼容
 ```
-
-## 🚨 铁律F — 引擎数据强制使用（写每§前必须先读JSON）
-
-```
-铁律：引擎跑完了，数据就必须用。不用就不要跑。
-
-写报告每§前，强制执行以下步骤（不跳过）：
-
-第1步 — 读JSON
-  python3 -c "import json; r=json.load(open('/tmp/{姓名}_engine.json'))
-  print(json.dumps(r['sec_X_...'], ensure_ascii=False, indent=2))"
-
-第2步 — 从JSON提取所有需要的数据
-  □ 藏干十神 = JSON shi_shen字段（不凭记忆）
-  □ 身强弱分数 = JSON score字段（不凭记忆）
-  □ 财星分数 = JSON cai_xing_total（不凭记忆）
-  □ 大运序列 = JSON da_yun_list（不凭记忆）
-
-第3步 — 只有JSON没有的，才用技能规则补充
-第4步 — 报告中的每个数字反向验证：是否能在JSON中找到？
-
-口诀：引擎数据不用，那你跑它干啥？
-      每§之前读JSON，从JSON里取十神
-      凭记忆写就是错，数据源里取才是真
-```
-
-## 🚨 铁律G — 报告先骨架后血肉（防止漏强制项）
-
-```
-第1步：先搭骨架（所有§标题+强制项占位符）
-  复制模板 → 给每个§建好标题 → 把强制项写成占位符
-  □ §16 事件总表（含婚姻子女重点年份）:[占位]
-
-第2步：逐§填入内容（按铁律F从JSON取数）
-  每写完一个§ → 在清单上打勾 ✅
-
-第3步：输出前做grep审计
-  □ grep '品牌名关键词' → 应为0
-  □ grep '强制内容关键词' → 应≥1
-  □ grep '报告中的分数' → 应与JSON一致
-```
-**加载机制：HERMES.md 是 or 链最高优先级，当前无.hermes.md挡路 → 本文件成功加载。**
