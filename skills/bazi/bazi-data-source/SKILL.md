@@ -49,41 +49,66 @@ references:
 | 22 | 神煞 | calc(日干,年支) | dict | 8种主要神煞 |
 | 23 | 大运 | ENGINE['大运']['序列'] | list | 8步大运(到80岁) |
 
-## 物理约束机制
+## 🚨 铁律：大运顺逆看年干阴阳（非日干）
 
-### 约束① — BAZI_DATASOURCE 环境变量
-
-```bash
-export BAZI_DATASOURCE=/tmp/{姓名}_datasource.json
-# 不设置 → pre_tool_call_hook阻止写报告
+```python
+# 🔴 错误历史：2026-07-16 魏启令八字用日干(辛=阴)定顺逆 → 判逆排 → 大运顺序全反
+# ✅ 正确：年干阴阳 + 性别
+is_shun = (YY_MAP[nian_gan] == '阳' and gender == '男') or \
+           (YY_MAP[nian_gan] == '阴' and gender == '女')
+# 年干阳男/阴女→顺排；年干阴男/阳女→逆排
 ```
 
-### 约束② — pre_tool_call_hook
+## 🚨 铁律：8大运足够（不扩展到10步）
 
-每次写文件前检查：
-- BAZI_DATASOURCE 是否设置
-- 数据源文件是否存在
-- 报告内容中的关键数字是否与数据源一致
+老板指定：8步大运（到80岁）足够分析一生。扩展逻辑仅在引擎输出少于8步时补足。
+
+## 物理约束机制（4层）
+
+### 约束① — inject-context.sh 自动设置 BAZI_DATASOURCE
+
+```bash
+# pre_llm_call hook：每次LLM调用前自动检测并设置
+if [ -z "$BAZI_DATASOURCE" ]; then
+    for f in /tmp/*_ds.json; do
+        [ -f "$f" ] && export BAZI_DATASOURCE="$f" && break
+    done
+fi
+```
+不设置 → pre_tool_call_hook阻止写报告。
+
+### 约束② — precheck.py 物理拦截
+
+在 `/root/.hermes/hooks/bazi-mandatory/precheck.py` 中嵌入：
+```
+检查顺序：
+  ① /tmp/.bazi_verified 存在？→放行
+  ② BAZI_DATASOURCE 已设置？→不满足→BLOCK
+  ③ BAZI_DATASOURCE 文件存在？→不满足→BLOCK
+  ④ 全部通过→继续走原拦截逻辑
+```
 
 ### 约束③ — report-generator.py
 
-所有模块函数的唯一参数是DS（数据源dict）：
+所有模块函数的唯一参数是DS（数据源dict）。
 ```python
-def module_wealth(DS):    # 财富模块
-    cai = DS['藏干十神']  # 读的是文件数据，不是记忆
-def module_career(DS):    # 事业模块
+def module_wealth(DS):     # 财富模块
+    cai = DS['藏干十神']    # 读文件数据，非记忆
+def module_career(DS):     # 事业模块  
     guan = DS['藏干十神']
+def module_dayun(DS):      # 大运模块
+    dy = DS['大运'][i]     # DS['大运']来自汽车引擎输出，非临时计算
 ```
 
 ### 约束④ — Phase 5.1 内容对齐校验
 
-| 检查项 | 比对 | 
-|:-------|:-----|
-| 身强弱得分 | 报告中 → ENGINE['身强弱']['总分'] |
-| 身强弱等级 | 报告中 → ENGINE['身强弱']['等级'] |
-| 大运年龄 | 报告中 → ENGINE['大运']['序列'][i]['起始年龄'] |
-| 日主 | 报告中 → ENGINE['日主'] |
-| 藏干 | 报告中引用 → ENGINE['藏干']存在 |
+| 检查项 | 比对源 | 历史错误 |
+|:-------|:-------|:---------|
+| 身强弱得分 | ENGINE['身强弱']['总分'] | 子源55.6分(中和)被写成身强 |
+| 身强弱等级 | ENGINE['身强弱']['等级'] | 同上 |
+| 大运年龄 | ENGINE['大运']['序列'][i]['起始年龄'] | 戊子运真/假误判 |
+| 日主 | ENGINE['日主'] | 无 |
+| 藏干 | ENGINE['藏干']存在 | 申中戊(余气30%)被遗忘 |
 
 ## 使用流程
 
