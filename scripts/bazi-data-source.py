@@ -28,13 +28,13 @@ def calc_shishen(tg, rizhu):
         return '比肩' if tg_yy == rz_yy else '劫财'
     sheng_wo = {'金':'土','木':'水','水':'金','火':'木','土':'火'}
     if sheng_wo.get(rz_wx) == tg_wx:
-        return '偏印' if tg_yy != rz_yy else '正印'
+        return '偏印' if tg_yy == rz_yy else '正印'
     wo_sheng = {'金':'水','木':'火','水':'木','火':'土','土':'金'}
     if wo_sheng.get(rz_wx) == tg_wx:
         return '食神' if tg_yy == rz_yy else '伤官'
     ke_wo = {'金':'火','木':'金','水':'土','火':'水','土':'木'}
     if ke_wo.get(rz_wx) == tg_wx:
-        return '七杀' if tg_yy != rz_yy else '正官'
+        return '七杀' if tg_yy == rz_yy else '正官'
     wo_ke = {'金':'木','木':'土','水':'火','火':'金','土':'水'}
     if wo_ke.get(rz_wx) == tg_wx:
         return '正财' if tg_yy != rz_yy else '偏财'

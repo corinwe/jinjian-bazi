@@ -49,6 +49,35 @@ references:
 | 22 | 神煞 | calc(日干,年支) | dict | 8种主要神煞 |
 | 23 | 大运 | ENGINE['大运']['序列'] | list | 8步大运(到80岁) |
 
+## 🚨 铁律：9种神煞检查顺序
+
+神煞计算顺序固定：天乙贵人→文昌贵人→桃花→驿马→华盖→孤辰寡宿→灾煞。每种神煞有独立的查表（日干/年支两种口径）。注意：文昌贵人用日干查，桃花用年支查，不可混用。
+
+## 🚨 铁律：体用穷举必须同时列天干+藏干（2026-07-16 子源校准）
+
+> **根因**：report-generator.py 只从DS['藏干十神']提取财官为用，漏算天干财官（年干辛正财8分+月时双癸正官24分=32分）。
+> **结果**：子源用被算成14.4分（×），正确46.4分（√）。体用比6.78:1→2.62:1。
+> **教训**：体用穷举表必须同时列出天干成分和藏干成分。
+
+```python
+# ✅ 正确：天干财官+藏干财官=用
+# 天干财官：年干8分 + 月干12分 + 时干12分
+# 藏干财官：各藏干按比例折算
+def calc_yong(DS):
+    yong = {'正财':0,'偏财':0,'正官':0,'七杀':0}
+    # ① 天干财官
+    for pos in ['年','月','时']:
+        ss = DS['十神'][pos]
+        if ss in yong:
+            yong[ss] += 8.0 if pos == '年' else 12.0
+    # ② 藏干财官
+    for zk in ['年支','月支','日支','时支']:
+        for c in DS['藏干十神'][zk]:
+            if c['十神'] in yong:
+                yong[c['十神']] += 12 * int(c['比例'].replace('%','')) / 100
+    return sum(yong.values())
+```
+
 ## 🚨 铁律：大运顺逆看年干阴阳（非日干）
 
 ```python
@@ -109,6 +138,72 @@ def module_dayun(DS):      # 大运模块
 | 大运年龄 | ENGINE['大运']['序列'][i]['起始年龄'] | 戊子运真/假误判 |
 | 日主 | ENGINE['日主'] | 无 |
 | 藏干 | ENGINE['藏干']存在 | 申中戊(余气30%)被遗忘 |
+
+## 🚨 铁律：每份报告用各自数据源独立生成（2026-07-16 主母复制Bug校准）
+
+> **根因**：生成主母成+子源报告时，复制魏启令报告模板只替换了名字，未替换八字数据。
+> **结果**：主母成的报告正文全是魏启令的数据（辛金身强→实际应为庚金从弱）。
+> **教训**：**永远不要复制一份报告当模板改名字**。每份报告必须从其各自的数据源独立生成。
+
+```python
+# 🔴 错误（2026-07-16 主母复制Bug）
+for name in ['主母成', '子源']:
+    shutil.copy('魏启令_报告.md', f'{name}_报告.md')  # ← 只改了文件名，数据没换！
+    # 然后替换名字字符串 → 数据仍然是魏启令的
+
+# ✅ 正确
+for name, ds_path in [('主母成', '/tmp/cheng_ds.json'), ('子源', '/tmp/ziyuan_ds.json')]:
+    DS = json.load(open(ds_path))          # 从该人自己的数据源读
+    generate_report(DS, name)              # 用该人自己的数据生成
+```
+
+**验证方法**：每份报告生成后立即检查——
+- 报告中八字=该人八字？→ `if label == '主母成': assert '丁卯丁未庚午壬午' in content`
+- 报告中不包含他人的八字？→ `assert '庚申癸未辛亥辛卯' not in content` （魏启令八字）
+- 报告中日主=该人日主？→ `assert R+'金' in content` （主母成为庚金）
+
+## 🚨 铁律：报告中每个数字必须标记数据源路径（Phase 5.1）
+
+源于2026-07-16子源校准：子引擎报告身强弱的子代理写身强，无物理约束阻止。
+
+格式：
+```markdown
+- 身强弱：64.0分（DS['身强弱']['总分']）
+- 大运：甲申（DS['大运'][0]）
+- 财星：乙木偏财（DS['藏干十神']['时支'][0]）
+```
+
+报告尾部统一声明：
+```
+**数据源**：/tmp/{姓名}_ds.json
+**所有数字来自DS路径** | **0处凭记忆数据**
+```
+
+## 🚨 铁律：报告必须通过质量门禁才能推库（Phase 5.6）
+
+```bash
+# 推库前必须运行
+python3 /root/.hermes/profiles/jinjian-zhenren/scripts/verify-report-quality.py /tmp/{姓名}_报告.md
+# exit 0 → 可推库
+# exit 1 → 修复后重新验证
+```
+
+质量门禁5项检查：
+1. ✅ 文件存在且非空
+2. ✅ 行数 ≥ 800行（G3门禁）
+3. ✅ 21§完整性（§1-§21全部有内容）
+4. ✅ 每个§有分析性文本（非空§）
+5. ✅ 数据源引用 ≥ 3处（DS['xxx']格式）
+
+## 相关脚本
+
+| 脚本路径 | 用途 | 此session更新 |
+|:---------|:-----|:--------------|
+| `/root/.hermes/profiles/jinjian-zhenren/scripts/bazi-data-source.py` | 引擎→数据源验证+锁定 | v2.2:8大运+神煞+空亡 |
+| `/root/.hermes/profiles/jinjian-zhenren/scripts/report-generator.py` | 从DS取数的报告生成器 | 修复:天干财官计入用 |
+| `/root/.hermes/profiles/jinjian-zhenren/scripts/verify-report-quality.py` | 报告质量物理门禁(21§/≥800行) | 本次新增 |
+| `/root/.hermes/hooks/bazi-mandatory/precheck.py` | pre_tool_call物理拦截(BAZI_DATASOURCE检查) | 本次新增嵌入 |
+| `/root/.hermes/hooks/bazi-mandatory/inject-context.sh` | pre_llm_call自动设BAZI_DATASOURCE | 本次更新 |
 
 ## 使用流程
 
