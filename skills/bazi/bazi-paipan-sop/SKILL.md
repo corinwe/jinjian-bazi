@@ -2,7 +2,7 @@
 name: bazi-paipan-sop
 description: 金鉴真人·八字排盘标准作业程序（SOP）。封装排盘全流程：技能加载顺序（含盲派§3B-§3O+象法11章）→排盘源头校验→引擎评分→分析报告（默认九龙+备选盲派五大步骤）→发布前校验→归档推库。确保每次排盘物理化加载所有必需技能。盲派五大步骤：阴阳→五行→体用→格局→做功→再细化财富/事业。2026-07-14重写
 tags: [八字, 排盘, SOP, 金鉴真人, pipeline, 物理化]
-related_skills: [bazi-engine-workflow, bazi-foundation-analysis, bazi-report-template, bazi-platform-harness, bazi-task-dispatch, maker-checker-workflow, bazi-auto-verify, bazi-calibration, bazi-report-engine-audit]
+related_skills: [bazi-engine-workflow, bazi-foundation-analysis, bazi-report-template, bazi-platform-harness, bazi-task-dispatch, maker-checker-workflow, bazi-auto-verify, bazi-calibration, bazi-report-engine-audit, bazi-data-source]
 ---
 
 # 金鉴真人·八字排盘SOP v1.3
@@ -385,7 +385,7 @@ result['sec_1_overview']                 → 基础身份数据
 ⚙️ 第一步：跑数据源验证+锁定脚本（物理化·自动化·不靠记忆）
   bash: python3 bazi-engine-workflow/scripts/bazi-data-source.py /tmp/{姓名}_engine.json /tmp/{姓名}_datasource.json
   → 输出文件: /tmp/{姓名}_datasource.json
-  → 包含字段: 8字段+藏干+十神+纳音+空亡+神煞+起运年龄+十大运
+  → 包含字段: 8字段+藏干+十神+纳音+空亡+神煞+起运年龄+八大运(到80岁)
   → 验证失败: STOP → 检查引擎JSON
 
 🚨 第二步：确认数据源字段完整（从datasource.json读取）：
@@ -396,7 +396,7 @@ result['sec_1_overview']                 → 基础身份数据
   □ 空亡（日柱对应旬空）
   □ 神煞（≥6种）
   □ 起运年龄（数值+文字）
-  □ 十大运（序列≥10步）
+  □ 八大运（序列≥8步）
   ▶ 以上缺任何一项 → STOP → 调排盘CLI重跑
 
 口诀：引擎加载排第一，八个字段齐不齐
