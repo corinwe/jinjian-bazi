@@ -65,8 +65,8 @@ def calc_shensha(DS):
     }
 
 
-def extend_dayun(dayun_list, nian_gan, gender, count=10):
-    """扩展大运到count步。顺逆=年干阴阳+性别，非日干"""
+def extend_dayun(dayun_list, nian_gan, gender, count=8):
+    """扩展大运到count步（老板说8步足够）。顺逆=年干阴阳+性别。"""
     if len(dayun_list) >= count:
         return dayun_list[:count]
     last = dayun_list[-1]
@@ -84,7 +84,6 @@ def extend_dayun(dayun_list, nian_gan, gender, count=10):
                          '起始年龄': l_age - 9, '终止年龄': l_age,
                          '起始年份': l_year - 9, '终止年份': l_year})
     return extended
-
 
 def load_and_validate(engine_path):
     """引擎JSON → 验证 → 补全 → 返回唯一数据源"""
