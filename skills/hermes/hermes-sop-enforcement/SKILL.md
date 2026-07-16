@@ -190,19 +190,22 @@ hooks:
 
 ---
 
-## 四、推荐实施路径
+### 推荐实施路径（金鉴体系已验证·2026-07-16）
 
-### P0（今晚能做）
-1. 创建 `~/.hermes/agent-hooks/` 目录
-2. 写 `pre_tool_call` hook：匹配 `write_file|patch` → 写文件前验证，不通过就block
-3. 写 `pre_llm_call` hook：每次回答前注入提醒（约束力弱但聊胜于无）
-4. 配置 `hooks_auto_accept: true`
+### P0（已验证部署）
+1. 创建 `~/.hermes/hooks/bazi-mandatory/` 目录（已部署）
+2. `pre_tool_call` hook → `precheck.py` — 写报告前验证，block未验证写操作
+3. `pre_llm_call` hook → `inject-context.sh` — 每次回答前注入提醒（约束力弱）
+4. `post_tool_call` hook → `check.sh` + `verify-format.py` — 写报告后审计日志+§格式校验
+5. 配置 `hooks_auto_accept: true`
+6. SOUL.md瘦身（272→65行）+ HERMES.md规则迁移
 
-### P1（本周做）
+### P1（待做）
 5. 将重复性 SOP 转为 Cron Job（workdir + narrow toolsets）
 6. 为不同任务类型定义工具集
+7. 报告格式验证hook已就绪（`verify-format.py` — 检查九龙道长版报告§顺序是否匹配模板）
 
-### P2（本月做）
+### P2（待做）
 7. 将 Profile 导出为可分发包
 8. 为多Agent协作配置 Kanban lanes
 
