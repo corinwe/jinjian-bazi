@@ -42,6 +42,7 @@ related_skills: [bazi-engine-workflow, bazi-foundation-analysis, bazi-report-tem
 | MEMORY.md | Hermes自动注入 | 持久记忆+路径 | — |
 | HERMES.md | 项目级or链自动加载 | 全部操作规则（铁律A~G+Sub-Agent分工+任务流程+反模式+加载链） | ~111行 |
 | config.yaml | 系统配置 | `tool_use_enforcement: true` + `hooks:` 三件套（pre_tool_call+pre_llm_call+post_tool_call） | — |
+| post_tool_call Hooks | `references/post_tool_call_hooks_20260716.md` | 格式校验（21§顺序）+ 能量表穷举校验 | 详见该ref |
 
 验证：在首次调用skill_view之前，必须先执行 terminal('date') 确认服务器时间（北京时间 CST/UTC+8）。SOUL.md铁律：不执行date不准发分析/报告。上下文压缩可能残留旧session时间戳，必须物理验证不可依赖记忆。
 
@@ -793,8 +794,8 @@ IF 当前年龄 > 25岁 → 完全不输出
   goal: 确定体与用的关系，决定人生是"靠自己"还是"靠外部"
   skill: bazi-foundation-analysis §3B（盲派体用宾主）
   执行清单：
-    □ 判体 ─ 日主+印+比劫（自己的本钱和工具）
-    □ 判用 ─ 财+官+食伤（人生追求的目标）
+    □ 判体 ─ 日主+印+比劫+食神+伤官（自己的本钱和工具包——含思维力/技术/创造力/抗争力）
+    □ 判用 ─ 财+官（人生追求的目标——唯财官二类，不含食伤）
     □ 判体用关系 ─ 体生用=主动追求 / 用生体=被动获得 / 体用相当=平衡
     □ 判体强用弱 ─ 本事大但目标少，易内耗
     □ 判用强体弱 ─ 目标多但扛不住，富屋贫人
