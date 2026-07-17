@@ -1,0 +1,85 @@
+# Harness Engine: Workflow v2
+# Workflow优先于自由Agent - 流程用确定性代码编排
+
+workflow_name: "九龙道长标准报告 v2"
+workflow_version: "2.0"
+
+phases:
+
+  # Phase 0: 预检查
+  - id: 0
+    name: "系统预检查"
+    type: "computational"
+    steps:
+      - name: "检查BAZI_DATASOURCE"
+        action: "check_env"
+        param: "BAZI_DATASOURCE"
+        fail: "BLOCK"
+      - name: "检查数据源完整性"
+        action: "verify_ds_fields"
+        fail: "BLOCK"
+
+  # Phase 1: 引擎排盘
+  - id: 1
+    name: "排盘"
+    type: "computational"
+    steps:
+      - name: "执行排盘"
+        action: "run_engine"
+        fail: "REJECT"
+
+  # Phase 2: 数据源生成
+  - id: 2
+    name: "数据源锁定"
+    type: "computational"
+    steps:
+      - name: "运行数据源脚本"
+        action: "run_script"
+        script: "bazi-data-source.py"
+        fail: "BLOCK"
+
+  # Phase 3: 规则加载
+  - id: 3
+    name: "规则加载"
+    type: "computational"
+    steps:
+      - name: "加载所有规则文件"
+        action: "load_rules"
+        fail: "BLOCK"
+
+  # Phase 4: 模块生成（逐§）
+  - id: 4
+    name: "模块生成"
+    type: "orchestrated"
+    sections:
+      - id: "s8"
+        name: "财富分析（含开财库）"
+        rule: "rules/cai_fu.yaml"
+        template: "templates/cai_fu.md"
+        sensor: "sensors/check_cai_fu"
+      - id: "s10"
+        name: "事业分析"
+        rule: "rules/shi_ye.yaml"
+        template: "templates/shi_ye.md"
+        sensor: "sensors/check_shi_ye"
+
+  # Phase 5: 质量门禁
+  - id: 5
+    name: "发布前校验"
+    type: "computational"
+    steps:
+      - name: "数据源对齐"
+        action: "check_ds_alignment"
+        fail: "BLOCK"
+      - name: "数字算术自检"
+        action: "check_arithmetic"
+        fail: "BLOCK"
+
+  # Phase 6: 归档
+  - id: 6
+    name: "归档推库"
+    type: "computational"
+    steps:
+      - name: "复制到人物档案"
+        action: "copy_to_archive"
+        fail: "BLOCK"

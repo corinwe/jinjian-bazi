@@ -1205,9 +1205,9 @@ python3 /root/.hermes/profiles/jinjian-zhenren/scripts/verify-report-quality.py 
 → exit 1 = 不通过 → 查看失败项，修复后重新验证
 ```
 
-#### 🚨 多份报告独立生成+逐份验证
+#### 🚨 多份报告：独立生成+逐份验证
 
-**顺序**：每份报告必须在推库前独立验证——不能等全部生成再一起验证。
+当同时生成多份报告（如一家三口），必须每份从各自数据源独立生成，每份单独验证。
 
 ```
 🔴 错误方式（复制模板改名字）：
@@ -1216,23 +1216,24 @@ python3 /root/.hermes/profiles/jinjian-zhenren/scripts/verify-report-quality.py 
   → ❌ 主母成报告写的是辛金身强（实际应为庚金从弱）
 
 ✅ 正确方式（各自数据源独立生成）：
-  python3 gen_report.py /tmp/cheng_ds.json /tmp/主母成_报告.md 主母成
-  # 验证: 八字=丁卯丁未庚午壬午? 日主=庚金? → ✅
-  python3 gen_report.py /tmp/ziyuan_ds.json /tmp/子源_报告.md 子源  
-  # 验证: 八字=辛卯癸巳丙戌癸巳? 日主=丙火? → ✅
+  # 每份报告传入各自的 DS 路径
+  python3 gen_report.py /tmp/cheng_ds.json   /tmp/主母成_报告.md 主母成
+  python3 gen_report.py /tmp/ziyuan_ds.json  /tmp/子源_报告.md  子源
 ```
 
-**生成后立即验证**（每个报告独立跑）：
+**每份生成后立即验证**（不等全部生成）：
 ```bash
 python3 -c "
 with open('/tmp/{姓名}_报告.md') as f:
     c = f.read()
-assert '魏启令' not in c           # 不含其他人名字
-assert '{该人日主}' in c            # 日主正确
-assert '{该人八字关键字段}' in c    # 八字正确
+# 检查不含他人八字
+assert '庚申癸未辛亥辛卯' not in c  # 不是魏启令
+assert '丁卯丁未庚午壬午' not in c  # 不是主母成（对本人的报告）
+# 检查含本人日主
+assert '{该人日主}{该人五行}' in c
 print('独立验证通过')
 "
-
+```
 
 ---
 
