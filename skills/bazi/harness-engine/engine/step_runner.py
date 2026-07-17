@@ -129,6 +129,10 @@ def apply_shi_ye_rules(ds, rule):
             result['shen_advice'] = sr.get('text','') + '\n' + sr.get('advice',''); break
         elif '身弱' in shen_level and '身弱' in sr.get('name',''):
             result['shen_advice'] = sr.get('text','') + '\n' + sr.get('advice',''); break
+        elif '中和' in shen_level and '中和' in sr.get('name',''):
+            result['shen_advice'] = sr.get('text','') + '\n' + sr.get('advice',''); break
+        else:
+            result['shen_advice'] = f'身强弱为{shen_level}。'
     ri_ss = ds['藏干十神'].get('日支',[{}])[0].get('十神','?')
     for dr in r.get('day_branch_rules', []):
         if ri_ss in dr.get('condition',''):
