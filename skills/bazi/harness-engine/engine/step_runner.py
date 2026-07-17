@@ -65,6 +65,28 @@ def apply_generic_rules(ds, rule, sec_name):
     r = rule.get('rule', {})
     items = [ar.get('text', '') for ar in r.get('analysis_rules', [])]
     result['ANALYSIS'] = '\n'.join(items) if items else sec_name + '分析'
+    
+    # 学业文昌特殊处理
+    if sec_name in ('学业', '补文昌'):
+        wen = ds.get('神煞', {}).get('文昌贵人', '未找到')
+        result['WENCHANG_POS'] = f'文昌贵人在：{wen}。'
+        zhi_pos = [ds.get(k,'') for k in ['年支','月支','日支','时支']]
+        for i, label in enumerate(['年','月','日','时']):
+            if wen in zhi_pos[i]:
+                result['WENCHANG_POS'] += f'在{label}柱，'
+                result['WENCHANG_POS'] += '早年学习力强，正统教育路线顺利。' if label in '年月' else '中年后学业运佳，适合深造。'
+                break
+        else:
+            result['WENCHANG_POS'] += '不在四柱地支，需大运流年引出。'
+        wx_map = {'寅':'火-利好文科','午':'火-利好文科','戌':'火-利好文科',
+                  '申':'水-利好理科','子':'水-利好理科','辰':'水-利好理科',
+                  '亥':'木-利好教育','卯':'木-利好教育','未':'木-利好教育',
+                  '巳':'金-利好金融','酉':'金-利好金融','丑':'金-利好金融'}
+        result['XUELI'] = f'文昌属{wx_map.get(wen, "—")}' if wen != '未找到' else '文昌不显，学历随大运变化。'
+        fw_map = {'子':'北','丑':'东北','寅':'东北','卯':'东','辰':'东南',
+                  '巳':'东南','午':'南','未':'西南','申':'西南','酉':'西','戌':'西北','亥':'西北'}
+        result['WENCHANG_BU'] = f'书房宜{fw_map.get(wen, "")}向' if wen in fw_map else '文昌按年寻找。'
+    
     for k in r.get('template_vars', {}):
         if k not in result:
             result[k] = '[' + k + ']'
