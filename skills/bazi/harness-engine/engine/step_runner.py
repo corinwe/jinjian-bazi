@@ -95,6 +95,8 @@ def apply_cai_fu_rules(ds, rule):
             shen_text = sr.get('text',''); break
         elif '身弱' in shen_level and '身弱' in sr.get('name',''):
             shen_text = sr.get('text',''); break
+        elif '中和' in shen_level and '中和' in sr.get('name',''):
+            shen_text = sr.get('text',''); break
     result['shen_analysis'] = shen_text
     has_ss = ds['十神'].get('月','') in ['食神','伤官'] or any(c['十神'] in ['食神','伤官'] for c in ds['藏干十神'].get('日支',[]))
     result['shi_shang'] = rule.get('rule', {}).get('shi_shang_rule', {}).get('text','') if has_ss else ''
