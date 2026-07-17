@@ -1,0 +1,26 @@
+rule:
+  name: 财富分析（盲派）
+  version: '1.0'
+  inputs:
+  - field: DS
+    purpose: 全部数据源
+  analysis_rules:
+  - name: 财星位置
+    condition: 全部
+    text: 财星在年时柱=外面财，靠社会关系赚钱。财星在月日柱=家里财，靠自身能力和家庭资源赚钱。
+  - name: 体用取财
+    condition: 身强
+    text: 身强体旺，财在体内，赚钱需要付出体力或脑力，靠自身能力获取。求财主动积极。
+  - name: 体用取财
+    condition: 身弱或从弱
+    text: 身弱或用神中的财=轻松钱。赚钱不需要太辛苦，多靠机遇和资源。顺势而为。
+  - name: 食伤生财
+    condition: 食伤在月干或日支
+    text: 食伤生财路线。食伤为才华，生财为变现。路线清晰：有才就能有钱。
+  - name: 财做功
+    condition: 财生官
+    text: 财生官=用钱换权。适合用财富换取社会地位和影响力。
+  template_vars:
+    CAI_BIAO: 财星分布
+    LU_XIAN: 财富路线
+    TI_YONG: 体用分析

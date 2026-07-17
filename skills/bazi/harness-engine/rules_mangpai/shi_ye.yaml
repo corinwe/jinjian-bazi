@@ -1,0 +1,20 @@
+rule:
+  name: 事业分析（盲派）
+  version: '1.0'
+  inputs:
+  - field: DS
+    purpose: 全部数据源
+  analysis_rules:
+  - name: 官杀位置
+    condition: 官杀在月日支
+    text: 官杀在体内=事业靠自己打拼。管理能力是自己长出来的，不是靠关系或背景获得的。
+  - name: 官杀位置
+    condition: 官杀在年时柱
+    text: 官杀在体外=事业靠平台和贵人。选对行业跟对人，比自身能力更重要。
+  - name: 印星做功
+    condition: 印星旺
+    text: 印星做功=靠学历、靠证书、靠专业资格证获取事业地位。适合考证、深造路线。
+  template_vars:
+    HANG_YE: 适合行业
+    LU_XIAN: 事业路线
+    TI_YONG_SHIYE: 体用事业分析

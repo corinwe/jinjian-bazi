@@ -1,102 +1,102 @@
-# Harness × Loop Engineering · 八字系统架构蓝图（2026-07-16）
+# Harness Engine x Loop Engineering 架构（2026-07-16 session完整建设）
 
-> 来源：老板发的两篇深度研究报告（Harness Engineering + Loop Engineering）
-> 目标：让八字命理分析系统"持续稳定地按标准流程和标准要求输出"
-
-## 核心公式
+## 架构概览
 
 ```
 Agent = Model + Harness
-稳定 = Harness(空间约束) × Loop(时间进化)
+
+Harness = Everything outside the model:
+  ① Workflow (确定性编排) — YAML/Python定义Phase 0-6
+  ② Guides (前馈) — BAZI_DATASOURCE, rules/*.yaml, templates/*.md
+  ③ Sensors (反馈) — check_ds_alignment, check_min_lines, verify-report-quality
+  ④ Guardrails (护栏) — pre_tool_call hook, pre-commit hook
+  
+Loop = Time dimension:
+  L1 (秒级) — 每§生成后自我反思(self_reflect)
+  L2 (分钟级) — 跨会话状态管理(状态文件+恢复+熔断)
+  L3 (天/周级) — 学习飞轮(失败→规则→测试→回归)
 ```
 
-## Harness Engineering（驾驭工程）— 空间约束
-
-Harness是Agent中除模型以外的一切。目标：提高第一次做对的概率 + 在到人眼前自纠错。
-
-### Guides × Sensors 2×2矩阵
-
-| | Guides（前馈·行动前） | Sensors（反馈·行动后） |
-|:--|:---------------------|:---------------------|
-| **计算型**（便宜·每次跑） | `BAZI_DATASOURCE`, workflow步骤, skill规则, 模板 | `verify-report-quality.py`, 数字对齐检查, 21§完整性 |
-| **推理型**（贵·抽样跑） | 规则注入, 上下文隔离, JIT检索 | LLM评审, 十神语义一致性, 前后矛盾检测 |
-
-### 六层架构
-
-1. **人类掌舵** → 定义标准、裁决异常、迭代驾驭层
-2. **前馈引导** → BAZI_DATASOURCE, skill规则, 模板, workflow定义
-3. **执行编排** → 引擎→数据源→模块→报告（确定性Workflow）
-4. **反馈传感** → verify脚本, 数字对齐, 21§检查
-5. **运行时护栏** → pre_tool_call hook, post_tool_call hook, git hook
-6. **评估与可观测** → 评估飞轮, 失败→规则→传感器
-
-### 设计哲学
-
-- 能用计算型不用推理型（确定性检查优先于LLM判断）
-- 能放前面不放后面（前馈比反馈便宜）
-- 能用代码检查的不用模型判
-- Agent看不见的不存在（所有标准必须落进版本化工件）
-- 地图而非说明书（系统提示压缩到100行，深度知识按需披露）
-
-## Loop Engineering（循环工程）— 时间进化
-
-### 三层嵌套循环
+## 目录结构
 
 ```
-L3 ──────────────────────────────┐
-│ 学习循环（天/周级）            │
-│ 失败→归类→进评测集→修规则     │
-│ →加传感器→回归验证             │
-│ 优化对象：系统本身              │
-├─────────────────────────────────┤
-│ L2 ──────────────────────────── │
-│ │ 跨会话外循环（分钟/小时级）  │
-│ │ 状态落盘、每轮重置上下文     │
-│ │ 接续执行、Ralph Wiggum模式   │
-│ │ 目标：长任务可完成性         │
-│ ├────────────────────────────── │
-│ │ L1 ────────────────────────  │
-│ │ │ 任务内循环（毫秒/秒级）   │
-│ │ │ 生成→验证→修正→再生成   │
-│ │ │ 目标：单次pass@1           │
-│ │ └──────────────────────────  │
-│ └───────────────────────────────│
-└─────────────────────────────────┘
+skills/bazi/harness-engine/
+├── workflow/workflow_v2.yaml    # 流程定义(24§)
+├── rules/*.yaml                 # 独立规则文件(24个)
+├── templates/*.md               # 输出模板(24个)
+├── engine/
+│   ├── workflow_v2.py           # 工作流引擎
+│   └── step_runner.py           # 步骤执行器(v3含L1+L2)
+├── test_suite/
+│   ├── regression.py            # 回归测试运行器
+│   ├── test_zhu_ren.json        # 测试用例(魏启令)
+│   └── test_ziyuan.json         # 测试用例(子源)
+└── output/state/                # L2状态文件
 ```
 
-### L1 — 任务内agentic loop
+## 24§规则映射
 
-- 每次生成一个§时：模型写分析文本→代码传感器检查→失败则返回给模型修正
-- 停止条件：所有传感器通过 + 最大重试次数用尽
-- 防打转：同一错误连续N次→强制下一步降级
+| § | 规则文件 | 模板文件 | 主要规则 |
+|:-:|:---------|:---------|:---------|
+| 1 | overview.yaml | overview.md | 八字排盘/空亡/纳音/起运 |
+| 2 | geju.yaml | geju.md | 月令藏干/透干/杂气格 |
+| 3 | shen_qiang_ruo.yaml | shen_qiang_ruo.md | 身强/中和/身弱判定 |
+| 4 | xi_yong_shen.yaml | xi_yong_shen.md | 喜用神判定 |
+| 5 | zai_huo_ji_bing.yaml | zai_huo_ji_bing.md | 五行过三断病/七杀断病 |
+| 6 | xing_ge.yaml | xing_ge.md | 五重人格 |
+| 7 | wai_mao.yaml | wai_mao.md | 五行主外形 |
+| 8 | cai_fu.yaml | cai_fu.md | 财星+开财库+食伤生财 |
+| 9 | zhi_ye.yaml | zhi_ye.md | 置业方位/大运窗口 |
+| 10 | shi_ye.yaml | shi_ye.md | 月干十神+身强弱+日支十神 |
+| 11 | xue_ye.yaml | xue_ye.md | 文昌/印星/学业趋势 |
+| 12 | hun_yin.yaml | hun_yin.md | 婚姻宫十神/配偶特征 |
+| 13 | zi_nv.yaml | zi_nv.md | 时柱十神/子女特征 |
+| 14 | jian_kang.yaml | jian_kang.md | 五行脏腑对应/养生 |
+| 15 | liu_qin.yaml | liu_qin.md | 四柱六亲分析 |
+| 16 | shi_jian.yaml | shi_jian.md | 大运事件总表 |
+| 17 | da_yun.yaml | da_yun.md | 每运判运精析 |
+| 18 | san_jue_duan.yaml | san_jue_duan.md | 身决/财决/官决 |
+| 19 | yun_cheng.yaml | yun_cheng.md | 一生三段运 |
+| 20 | wu_xing_bu_chong.yaml | wu_xing_bu_chong.md | 五行补充方案 |
+| 21 | ren_sheng_jian_yi.yaml | ren_sheng_jian_yi.md | 综合人生建议 |
+| 22 | bu_wen_chang.yaml | bu_wen_chang.md | 补文昌方位 |
+| 23 | kai_cai_ku.yaml | kai_cai_ku.md | 开财库方案 |
+| 24 | yi_sheng_ding_xing.yaml | yi_sheng_ding_xing.md | 一生定性综评 |
 
-### L2 — 跨会话外循环（Ralph Wiggum模式）
+## 关键教训（本session）
 
-- 每轮以全新上下文启动，从磁盘恢复状态
-- 完成一个§后提交退出，下轮从下一个§开始
-- 状态存文件（/tmp/report_progress.json），不依赖模型记忆
-- 熔断：最大轮数、token预算、失败阈值
+### 1. 8字段/八字段索引Bug
+❌ 错误：`G = [B8[0], B8[2], B8[4], B8[6]]` → 取成[年干,日干,年支,日支]
+✅ 正确：`G = B8[0:4]`（前4=天干）`Z = B8[4:8]`（后4=地支）
+✅ 更安全：直接用DS['年干'], DS['月干']等字段名
+后果：主母月令取成了"壬"（应为"未"），所有报告天干地支数据对调
 
-### L3 — 学习循环/评估飞轮
+### 2. 十神阴阳规则（bazi-data-source.py已修正）
+同阴阳=偏印/劫财/七杀/伤官/偏财
+异阴阳=正印/比肩/正官/食神/正财
+calc_shishen()中偏印/正印和七杀/正官条件反了
+后果：子源年支乙木对丙火=正印(旧代码返回偏印)，主母月支藏干全乱
 
-- 老板每次指出Bug → 立即写一条规则 → 加一条测试用例
-- 每周末回归跑所有测试用例
-- 规则不删改只增 —— 系统随使用次数"变难"而非"变旧"
+### 3. 中和规则缺失（已补充）
+apply_cai_fu_rules和apply_shi_ye_rules的shen_rules匹配链
+原只有身强/从弱/身弱三态，缺中和分支
+子源报告财富和事业显示[待生成]
+已补rules/cai_fu.yaml和rules/shi_ye.yaml + step_runner.py elif链
 
-## 当前八字系统的Harness实现状态
+### 4. 状态文件跨人污染
+魏启令跑完后output/state/pipeline.state残留
+子源启动时检测到[L2恢复:已完成3个§] → 跳过全部(因为state来自魏启令)
+修复：每人独立运行前rm state，或在step_runner中用八字hash校验归属
 
-| 层 | 已实现 | 未实现 |
-|:---|:-------|:-------|
-| **人类掌舵** | 老板指出Bug→手动修复 | 没有自动规则记录 |
-| **前馈引导** | BAZI_DATASOURCE, inject-context.sh | 没有workflow.yaml（流程在Python代码里） |
-| **执行编排** | bazi-data-source.py, report-generator.py | 没有YAML定义，模块间数据传递不标准 |
-| **反馈传感** | verify-report-quality.py, precheck.py | 没有语义检查，只有行数/§完整性 |
-| **运行时护栏** | pre_tool_call hook拦截 | post_tool_call未激活，git hook未加 |
-| **评估飞轮** | 无 | 无评估集，无回归测试 |
+### 5. 传感器适用边界
+check_ds_alignment和check_min_lines针对完整24§报告设计
+只跑2-3个§时false positive(八字在§1不在§8/§10)
+传感器结果仅在full run时采纳，单§调试时忽略
 
-## 下一步（等老板指示）
+### 6. pre_tool_call_hook.py是死文件
+在hooks目录里存在但未被任何config引用（config.yaml只引用precheck.sh）
+已清理确认：实际起作用的只有precheck.sh→precheck.py链路
 
-- ① 将Phase 0-6定义成 workflow.yaml
-- ② 将每§规则拆成独立 rules/ 文件
-- ③ 加评估集（每个历史Bug→一个test case）
-- ④ 实现L3飞轮（失败→规则→传感器）
+### 7. 复制模板Bug
+生成主母/子源报告时复制了魏启令模板只替换名字
+新铁律：每份报告用各自数据源独立生成，独立验证八字不混用

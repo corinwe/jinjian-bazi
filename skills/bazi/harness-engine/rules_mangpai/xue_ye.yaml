@@ -1,0 +1,16 @@
+rule:
+  name: 学业分析（盲派）
+  version: '1.0'
+  inputs:
+  - field: DS
+    purpose: 全部数据源
+  analysis_rules:
+  - name: 文昌位置
+    condition: 文昌在年或月
+    text: 文昌在年月柱的学业运早，越年轻学习能力越强。适合走正统教育路线。
+  - name: 文昌位置
+    condition: 文昌在日或时
+    text: 文昌在日时柱的学业运晚，中年以后学习力更强。适合在职进修或深造。
+  template_vars:
+    WENCHANG: 文昌分析
+    XUEYE: 学业趋势
