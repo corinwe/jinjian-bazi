@@ -1,0 +1,25 @@
+{
+  "name": "财富分析回归测试",
+  "description": "验证财富分析的三个核心规则：财星位置、身强弱匹配、大运窗口",
+  "ds_path": "/tmp/weiqiling_ds.json",
+  "checks": [
+    {
+      "type": "field_value",
+      "field": "日主",
+      "expected": "辛",
+      "desc": "日主正确"
+    },
+    {
+      "type": "field_value",
+      "field": "身强弱.等级",
+      "expected": "身强",
+      "desc": "身强弱等级正确"
+    },
+    {
+      "type": "field_value",
+      "field": "八字",
+      "expected": "庚申 癸未 辛亥 辛卯",
+      "desc": "八字正确"
+    }
+  ]
+}
