@@ -14,7 +14,7 @@
 
 {shen_analysis}
 
-{state}
+### 财富状态
 
 ### 大运财富窗口
 
