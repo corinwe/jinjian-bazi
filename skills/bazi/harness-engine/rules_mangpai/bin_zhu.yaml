@@ -1,0 +1,26 @@
+rule:
+  name: 宾主七层
+  version: '1.0'
+  description: 段建业《命理珍宝》七层宾主判定体系
+  layers:
+  - level: 1
+    main: 日主
+    guest: 他干支
+  - level: 2
+    main: 日柱
+    guest: 他柱
+  - level: 3
+    main: 日时
+    guest: 年月
+  - level: 4
+    main: 贴日主者
+    guest: 远离者
+  - level: 5
+    main: 八字
+    guest: 大运流年
+  - level: 6
+    main: 禄印比肩、食神财星
+    guest: 他神、杀刃劫
+  - level: 7
+    main: 用神喜神
+    guest: 忌神仇神

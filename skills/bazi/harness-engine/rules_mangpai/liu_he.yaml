@@ -1,0 +1,14 @@
+rule:
+  name: 六合三用
+  version: '1.0'
+  description: 段建业《命理珍宝》六合的三种用法
+  rules:
+  - name: 合留
+    condition: 配偶星旺相逢冲刑，逢太岁合
+    conclusion: 主婚成
+  - name: 合绊
+    condition: 两神相合
+    conclusion: 合绊喜神凶，合绊忌神吉。宾合绊忌神吉，主合绊忌神凶
+  - name: 合凶
+    condition: 某字太弱注定死
+    conclusion: 应合之流年死亡

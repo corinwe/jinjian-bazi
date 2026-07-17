@@ -1,0 +1,14 @@
+rule:
+  name: 伤官去官格 & 比动去财格
+  version: '1.0'
+  description: 段建业《命理珍宝》去忌神得喜神格局
+  shang_guan_qu_guan:
+    condition: 以官为忌神，伤官有力去官
+    note: 不论日主衰旺。逐步废弃看身强弱才能跨入命学高境界
+  bi_dong_qu_cai:
+    condition: 以财为忌神，比劫有力去财
+    types:
+    - 财多身弱逢比动去财
+    - 财星虚透比动克合→大富
+    - 财被比动制→富
+    - 比劫为主财为客→动取他人之财

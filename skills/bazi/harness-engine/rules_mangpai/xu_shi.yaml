@@ -1,0 +1,19 @@
+rule:
+  name: 干支虚实喜忌
+  version: '1.0'
+  description: 段建业《命理珍宝》虚实判定
+  definitions:
+    实: 有根
+    虚: 无根
+  rules:
+  - type: 虚忌神
+    judgment: 吉
+  - type: 实用神
+    judgment: 吉
+  - type: 实忌神
+    judgment: 凶
+  - type: 虚用神
+    judgment: 凶
+  exceptions:
+  - 调候用神虚也吉
+  - 泄神虚也吉(秀气宜虚)

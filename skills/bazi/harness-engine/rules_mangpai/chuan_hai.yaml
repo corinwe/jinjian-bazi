@@ -1,0 +1,10 @@
+rule:
+  name: 穿害六组
+  version: '1.0'
+  description: 段建业《命理珍宝》六穿应用
+  pairs: 子未、丑午、寅巳、卯辰、申亥、卯戌
+  principle: 相克又带穿最严重。穿有时比冲还重要
+  key_phrases:
+  - 穿倒正印归不了正
+  - 穿倒偏印走不了偏
+  - 穿倒羊刀一刀之罪

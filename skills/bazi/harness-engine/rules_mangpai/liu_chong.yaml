@@ -1,0 +1,26 @@
+rule:
+  name: 六冲七型
+  version: '1.0'
+  description: 段建业《命理珍宝》六冲的七种判定
+  rules:
+  - name: 冲凶
+    condition: 忌神在大运/流年中得根冲入命中
+    conclusion: 主凶事
+  - name: 冲旺
+    condition: 太岁冲八字极旺之神
+    conclusion: 冲旺喜神吉，冲旺忌神凶。大运冲不为冲旺
+  - name: 冲动
+    condition: 冲静止之字使其发动
+    conclusion: 影响命局或发生该字所象征的事
+  - name: 冲开
+    condition: ①相合两字被冲其一 ②墓库被冲
+    conclusion: 冲合为婚期，冲墓为转折
+  - name: 冲出
+    condition: ①冲年/时支 ②冲用/忌神入墓
+    conclusion: 外出或冲出用神/忌神
+  - name: 冲去
+    condition: 冲八字中衰神
+    conclusion: 主离开不主死亡
+  - name: 冲破
+    condition: 冲极衰受克之神
+    conclusion: 主大凶兆死亡

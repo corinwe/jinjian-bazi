@@ -1,0 +1,21 @@
+rule:
+  name: 忌神三种制法+贼神理论
+  version: '1.0'
+  description: 段建业《命理珍宝》制忌神体系
+  methods:
+  - name: 旺制
+    condition: 忌神弱
+    approach: 彻底制服,称贼神
+  - name: 平衡制
+    condition: 忌神略偏旺
+    approach: 相制衡,化敌为友(印化杀)
+  - name: 弱制
+    condition: 忌神过强我不从
+    approach: 周旋,如阎锡山
+  zei_shen:
+  - type: 客贼神
+    meaning: 忌神被制如警察所中的贼
+    result: 大富贵命
+  - type: 主贼神
+    meaning: 喜神被制自己成了贼
+    result: 凶恶残疾命
