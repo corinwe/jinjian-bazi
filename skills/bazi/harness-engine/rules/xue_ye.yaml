@@ -1,13 +1,30 @@
+# ======
+# 规则: 学业+文昌分析（九龙体系）
+# 版本: 2.0 — 含文昌贵人规则
+# ======
+
 rule:
-  name: xue_ye
-  version: '1.0'
+  name: "学业+文昌分析"
+  version: "2.0"
+
   inputs:
-  - field: DS
-    purpose: 全部数据源
+    - field: "DS['神煞']['文昌贵人']"
+      purpose: "文昌贵人所在位置"
+    - field: "DS['十神']"
+      purpose: "印星强弱=学习力"
+
   analysis_rules:
-  - name: 文昌
-    condition: 文昌贵人在地支
-    text: 文昌贵人决定学习能力的上限。文昌所在的地支对应学习和考试的机遇期。印星强则学习力强，食伤强则表达力强。
+    - name: "文昌位置"
+      condition: "文昌贵人在年或月支"
+      text: "文昌在年月柱，早年学习力强，正统教育路线顺利。"
+    - name: "文昌位置"
+      condition: "文昌贵人在日或时支"
+      text: "文昌在日时柱，学习运较晚，中年以后更适合深造。"
+    - name: "文昌五行"
+      condition: "全部"
+      text: "文昌在寅午戌=火文昌→利好文科/艺术；文昌在申子辰=水文昌→利好理科/技术；文昌在亥卯未=木文昌→利好教育/文化；文昌在巳酉丑=金文昌→利好金融/法律。"
+
   template_vars:
-    WENCHANG: 文昌分析
-    XUELI: 学历趋势
+    WENCHANG_POS: "文昌位置分析"
+    XUELI: "学历趋势"
+    WENCHANG_BU: "补文昌方案"

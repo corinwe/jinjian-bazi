@@ -87,7 +87,7 @@ def generate(ds_path, out_path, label):
     rule = load_rule(os.path.join(HARNESS_DIR, 'rules_mangpai', 'xue_ye.yaml'))
     r = rule.get('rule', {})
     items = [a.get('text', '') for a in r.get('analysis_rules', [])]
-    wen = str(ds.get('神煞', {}).get('文昌', '未找到'))
+    wen = str(ds.get('神煞', {}).get('文昌贵人', '未找到'))
     vars_dict = {
         'WENCHANG': f'文昌贵人：{wen}。' + (items[0] if items else ''),
         'XUEYE': items[1] if len(items) > 1 else '学业趋势分析...',
