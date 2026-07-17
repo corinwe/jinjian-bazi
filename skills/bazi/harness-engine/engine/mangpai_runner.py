@@ -21,7 +21,7 @@ def generate(ds_path, label):
     # ═══ 财富分析 ═══
     cai_items = []
     for pos, lb in [('年','年'),('月','月'),('时','时')]:
-        if '财' in ss.get(pos,''): cai_items.append((f'{lb}干', ds[f'{lb}干'], ss[pos]))
+        if ss.get(pos,'') in ['正财','偏财']: cai_items.append((f'{lb}干', ds[f'{lb}干'], ss[pos]))
     for zk in ['年支','月支','日支','时支']:
         for c in ds['藏干十神'].get(zk,[]):
             if c['十神'] in ['正财','偏财']: cai_items.append((zk, c['天干'], c['十神']))
