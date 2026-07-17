@@ -10,28 +10,29 @@ os.makedirs(STATE_DIR, exist_ok=True)
 
 
 # ═══ L2: 跨会话状态管理 ═══
-def save_state(phase_id, completed_sections):
+def save_state(phase_id, completed_sections, label):
     state = {
         'phase_id': phase_id,
         'completed': completed_sections,
         'timestamp': time.time(),
-        'version': '2.0'
+        'version': '2.0',
+        'label': label
     }
-    sp = os.path.join(STATE_DIR, 'pipeline.state')
+    sp = os.path.join(STATE_DIR, f'pipeline_{label}.state')
     with open(sp, 'w') as f:
         json.dump(state, f, ensure_ascii=False, indent=2)
 
 
-def load_state():
-    sp = os.path.join(STATE_DIR, 'pipeline.state')
+def load_state(label):
+    sp = os.path.join(STATE_DIR, f'pipeline_{label}.state')
     if os.path.exists(sp):
         with open(sp) as f:
             return json.load(f)
     return None
 
 
-def clear_state():
-    sp = os.path.join(STATE_DIR, 'pipeline.state')
+def clear_state(label):
+    sp = os.path.join(STATE_DIR, f'pipeline_{label}.state')
     if os.path.exists(sp):
         os.remove(sp)
 
@@ -186,8 +187,9 @@ def check_min_lines(full_report, min_lines=800):
     return [] if lc >= min_lines else [f"总行数{lc}<{min_lines}"]
 
 
-def execute_pipeline(ds_path, output_path, sections_only=None):
+def execute_pipeline(ds_path, output_path, sections_only=None, label=None):
     ds = json.load(open(ds_path))
+    label = label or ds.get("八字", "unknown")
     results = {}
     rules = {}
     for phase in WORKFLOW['phases']:
@@ -198,7 +200,7 @@ def execute_pipeline(ds_path, output_path, sections_only=None):
                     rules[sec['id']] = load_rule(rp)
 
     # ═══ L2: 检查状态，恢复 ═══
-    state = load_state()
+    state = load_state(label)
     completed = state.get('completed', []) if state else []
     if state:
         sys.stdout.write(f'  [L2] 恢复: 已完成{len(completed)}个§\n')
@@ -232,7 +234,7 @@ def execute_pipeline(ds_path, output_path, sections_only=None):
                 results[sid] = {'name': sec['name'], 'output': output}
                 completed.append(sid)
                 # L2: 保存状态
-                save_state(4, completed)
+                save_state(4, completed, label)
                 sys.stdout.write(f'  {l1_tag} {sec["name"]}: {len(output)}字\n')
 
     full_report = '\n\n'.join([v['output'] for v in results.values()])
@@ -249,7 +251,7 @@ def execute_pipeline(ds_path, output_path, sections_only=None):
     
     # L2: 完成清状态
     if not sections_only:
-        clear_state()
+        clear_state(label)
     return results
 
 
@@ -257,8 +259,9 @@ if __name__ == '__main__':
     ds_path = sys.argv[1] if len(sys.argv) > 1 else '/tmp/weiqiling_ds.json'
     out_path = sys.argv[2] if len(sys.argv) > 2 else '/tmp/harness_output.md'
     only = sys.argv[3].split(',') if len(sys.argv) > 3 else None
+    label = sys.argv[4] if len(sys.argv) > 4 else None
     ds = json.load(open(ds_path))
     sys.stdout.write(f'数据源: {ds["八字"]} | {ds["日主"]}{ds["日主五行"]} | {int(ds["身强弱"]["总分"])}分{ds["身强弱"]["等级"]}\n')
     sys.stdout.write(f'过滤: {only if only else "全部§"}\n')
-    execute_pipeline(ds_path, out_path, only)
+    execute_pipeline(ds_path, out_path, only, label)
     sys.stdout.write(f'输出: {out_path}\n')
