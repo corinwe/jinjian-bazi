@@ -2,28 +2,28 @@
 
 ### 财星分布（含天干+地支）
 
-{CAI_TABLE}
+{cai_table}
 
 ### 财富路线
 
-{CAI_ROAD}
+{cai_road}
 
 ### 财富等级判定
 
-{CAI_GRADE}
+{cai_grade}
 
 ### 发财关键年份
 
-{FA_CAI_YEAR}
+{fa_cai_year}
 
 ### 身强弱对财富的影响
 
-{SHEN_CAI}
+{shen_cai}
 
 ### 大运财富窗口
 
-{DA_YUN_CAI}
+{da_yun_cai}
 
 ### 开财库方案
 
-{KAI_CAI_KU}
+{kai_cai_ku}
