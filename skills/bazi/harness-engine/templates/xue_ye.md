@@ -1,13 +1,21 @@
 ## 学业分析（含补文昌）
 
+### 印星与身强弱
+
+{yin_analysis}
+
 ### 文昌贵人
 
-{WENCHANG_POS}
+{wenchang_pos}
 
-### 学历趋势
+### 18岁前大运
 
-{XUELI}
+{yun_18}
+
+### 学历等级判定
+
+{education_grade}
 
 ### 补文昌方案
 
-{WENCHANG_BU}
+{wenchang_bu}

@@ -82,3 +82,58 @@
 - [ ] 所有算术已逐项加总验证
 - [ ] 文件已写入并git push
 - [ ] 报告包含分析文本（非纯数据表）
+- [ ] 文昌贵人 key 用 '文昌贵人'（非 '文昌'）
+- [ ] L2状态文件按人命名 pipeline_{姓名}.state
+- [ ] Rules覆盖身强/中和/身弱/从弱四态
+
+
+## 2026-07-16 第三轮：Harness Engine + Loop Engineering 体系建成
+
+> 本轮基于两份 Harness Engineering 深度研究报告，搭建了完整工程化体系。
+> 核心：Agent = Model + Harness · Workflow优先于自由Agent · 三层循环(L1/L2/L3)
+
+### 架构文件位置
+```
+skills/bazi/harness-engine/
+├── rules/24个*yaml          # 九龙体系规则
+├── rules_mangpai/3个*yaml   # 盲派体系规则
+├── templates/24个*.md       # 九龙模板
+├── templates_mangpai/3个*.md# 盲派模板
+├── engine/workflow_v2.py    # 工作流定义(3Phase/24§)
+├── engine/step_runner.py    # 通用执行器(含L1+L2)
+├── engine/mangpai_runner.py # 盲派专用生成器
+└── test_suite/              # 回归测试(L3飞轮)
+```
+
+### 运行方式
+```bash
+# 九龙体系
+cd skills/bazi/harness-engine
+python3 engine/step_runner.py /tmp/{ds}.json /tmp/out.md s8,s10,s11 {姓名}
+
+# 盲派体系
+python3 engine/mangpai_runner.py
+
+# L3回归测试
+python3 test_suite/regression.py
+
+# 质量门禁
+python3 /root/.hermes/profiles/jinjian-zhenren/scripts/verify-report-quality.py {报告路径}
+```
+
+### 本session修的重大Bug
+
+| Bug | 影响 | 修复 |
+|:---|:-----|:-----|
+| 十神阴阳颠倒 | 子源乙木对丙火→偏印(实为正印) | calc_shishen()同/异阴阳规则互换 |
+| 8字段索引B8[0,2,4,6] | 月令取了时干而非月支 | 统一用DS['年干']等字段名 |
+| 从弱→误判中和 | 事业/财富分析写"中和" | step_runner加中和条件分支 |
+| L2状态跨人污染 | 子源报告读到了魏启令的状态 | pipeline_{姓名}.state按人隔离 |
+| 文昌key='文昌' | 读取为None→"未找到" | 修正为DS['神煞']['文昌贵人'] |
+
+### 老板校准的工程化纪律
+1. **规则文件独立**：改命理规则=改YAML文件，不动Python代码
+2. **模板标准化**：每§的输出格式由templates/*.md控制
+3. **传感器验证**：check_ds_alignment+check_min_lines+L1 self_reflect
+4. **L3飞轮**：每指一个错误→加一条测试用例→不再发生
+5. **pre_tool_call_hook.py是死文件**：在目录但未被config引用，应删除
