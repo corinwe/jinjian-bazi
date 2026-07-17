@@ -1,20 +1,12 @@
-# ======
-# 规则: 身材外貌
-# 版本: 1.0
-# ======
-
 rule:
-  name: "身材外貌"
-  version: "1.0"
-
+  name: wai_mao
+  version: '1.0'
   inputs:
-    - field: "DS"
-      purpose: "全部数据"
-
+  - field: DS
+    purpose: 全部数据源
   analysis_rules:
-    - name: "基础规则"
-      condition: "始终成立"
-      text: "身材外貌分析基于DS数据源。所有数字从DS取，不凭记忆。"
-
+  - name: 五行主形
+    condition: 全部
+    text: 日主五行主外形。金主骨骼挺拔、肤白；木主修长清秀、发好；水主圆润柔和、肤暗；火主中等身材、面色红润；土主敦实、肤色偏黄。食伤泄秀者气质灵秀。
   template_vars:
-    ANALYSIS: "分析文本"
+    WAIXING: 外貌分析

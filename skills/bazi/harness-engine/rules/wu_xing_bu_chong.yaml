@@ -1,20 +1,12 @@
-# ======
-# 规则: 五行补充
-# 版本: 1.0
-# ======
-
 rule:
-  name: "五行补充"
-  version: "1.0"
-
+  name: wu_xing_bu_chong
+  version: '1.0'
   inputs:
-    - field: "DS"
-      purpose: "全部数据"
-
+  - field: DS
+    purpose: 全部数据源
   analysis_rules:
-    - name: "基础规则"
-      condition: "始终成立"
-      text: "五行补充分析基于DS数据源。所有数字从DS取，不凭记忆。"
-
+  - name: 五行补充
+    condition: 全部
+    text: 五行不足的方面需要日常补充。缺金宜白色/金属饰品/西方位；缺木宜绿色/木质/东方位；缺水宜黑色/水晶/北方位；缺火宜红色/暖色/南方位；缺土宜黄色/陶瓷/居中。
   template_vars:
-    ANALYSIS: "分析文本"
+    BUCHONG: 五行补充方案

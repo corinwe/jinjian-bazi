@@ -1,20 +1,16 @@
-# ======
-# 规则: 灾祸疾病
-# 版本: 1.0
-# ======
-
 rule:
-  name: "灾祸疾病"
-  version: "1.0"
-
+  name: zai_huo_ji_bing
+  version: '1.0'
   inputs:
-    - field: "DS"
-      purpose: "全部数据"
-
+  - field: DS
+    purpose: 全部数据源
   analysis_rules:
-    - name: "基础规则"
-      condition: "始终成立"
-      text: "灾祸疾病分析基于DS数据源。所有数字从DS取，不凭记忆。"
-
+  - name: 五行过三
+    condition: 同一五行出现3次以上
+    text: 五行过三断病法。木过三主肝胆，火过三主心血管，土过三主脾胃，金过三主肺，水过三主肾。多出的五行就是该保养的脏器。
+  - name: 七杀断病
+    condition: 七杀在日支或月支
+    text: 七杀为痣、疤、伤、病。七杀在月支为先天体质隐患，在日支为中年健康转折。
   template_vars:
-    ANALYSIS: "分析文本"
+    ZAIHUO: 灾祸分析
+    JIBING: 疾病预警

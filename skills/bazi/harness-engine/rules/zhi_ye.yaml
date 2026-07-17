@@ -1,20 +1,13 @@
-# ======
-# 规则: 置业买房
-# 版本: 1.0
-# ======
-
 rule:
-  name: "置业买房"
-  version: "1.0"
-
+  name: zhi_ye
+  version: '1.0'
   inputs:
-    - field: "DS"
-      purpose: "全部数据"
-
+  - field: DS
+    purpose: 全部数据源
   analysis_rules:
-    - name: "基础规则"
-      condition: "始终成立"
-      text: "置业买房分析基于DS数据源。所有数字从DS取，不凭记忆。"
-
+  - name: 置业方位
+    condition: 全部
+    text: 喜用神五行决定最适合的置业方位和城市。五行喜火宜南方，喜金宜西方，喜水宜北方，喜木宜东方，喜土宜本地。
   template_vars:
-    ANALYSIS: "分析文本"
+    FANGWEI: 宜选方位
+    SHIJIAN: 最佳购房时间

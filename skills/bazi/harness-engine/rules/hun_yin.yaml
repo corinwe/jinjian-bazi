@@ -1,20 +1,13 @@
-# ======
-# 规则: 婚姻
-# 版本: 1.0
-# ======
-
 rule:
-  name: "婚姻"
-  version: "1.0"
-
+  name: hun_yin
+  version: '1.0'
   inputs:
-    - field: "DS"
-      purpose: "全部数据"
-
+  - field: DS
+    purpose: 全部数据源
   analysis_rules:
-    - name: "基础规则"
-      condition: "始终成立"
-      text: "婚姻分析基于DS数据源。所有数字从DS取，不凭记忆。"
-
+  - name: 婚姻宫
+    condition: 全部
+    text: 日支为婚姻宫，其十神决定配偶特征。食神宫配温和灵秀之人，伤官宫配才华横溢之人，正官宫配稳重担当之人。
   template_vars:
-    ANALYSIS: "分析文本"
+    PEIOU: 配偶特征
+    HUNYIN: 婚姻分析

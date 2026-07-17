@@ -1,20 +1,12 @@
-# ======
-# 规则: 补文昌
-# 版本: 1.0
-# ======
-
 rule:
-  name: "补文昌"
-  version: "1.0"
-
+  name: bu_wen_chang
+  version: '1.0'
   inputs:
-    - field: "DS"
-      purpose: "全部数据"
-
+  - field: DS
+    purpose: 全部数据源
   analysis_rules:
-    - name: "基础规则"
-      condition: "始终成立"
-      text: "补文昌分析基于DS数据源。所有数字从DS取，不凭记忆。"
-
+  - name: 补文昌
+    condition: 全部
+    text: 文昌贵人的方位是学习和考试的最佳位置。文昌在子=北方，丑寅=东北，卯=东方，辰巳=东南，午=南方，未申=西南，酉=西方，戌亥=西北。卧室或书房设在该方位可提升学习运势。
   template_vars:
-    ANALYSIS: "分析文本"
+    WENCHANGBU: 补文昌方案

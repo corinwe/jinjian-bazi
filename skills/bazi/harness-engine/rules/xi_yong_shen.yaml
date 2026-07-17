@@ -1,20 +1,15 @@
-# ======
-# 规则: 喜用神
-# 版本: 1.0
-# ======
-
 rule:
-  name: "喜用神"
-  version: "1.0"
-
+  name: xi_yong_shen
+  version: '1.0'
   inputs:
-    - field: "DS"
-      purpose: "全部数据"
-
+  - field: DS
+    purpose: 全部数据源
   analysis_rules:
-    - name: "基础规则"
-      condition: "始终成立"
-      text: "喜用神分析基于DS数据源。所有数字从DS取，不凭记忆。"
-
+  - name: 喜用神
+    condition: 身强
+    text: 身强喜克泄耗。官杀为事业压力也是动力，食伤为才华输出窗口，财星为财富目标。
+  - name: 喜用神
+    condition: 从弱
+    text: 从弱喜克泄耗。与环境同向，顺势而为。借力使力、资源整合为上策。
   template_vars:
-    ANALYSIS: "分析文本"
+    XIYONG: 喜用神分析

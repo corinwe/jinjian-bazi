@@ -1,20 +1,12 @@
-# ======
-# 规则: 开财库
-# 版本: 1.0
-# ======
-
 rule:
-  name: "开财库"
-  version: "1.0"
-
+  name: kai_cai_ku
+  version: '1.0'
   inputs:
-    - field: "DS"
-      purpose: "全部数据"
-
+  - field: DS
+    purpose: 全部数据源
   analysis_rules:
-    - name: "基础规则"
-      condition: "始终成立"
-      text: "开财库分析基于DS数据源。所有数字从DS取，不凭记忆。"
-
+  - name: 开财库
+    condition: 全部
+    text: 辰戌丑未为财库。辰库开对应龙年，戌库开对应狗年，丑库开对应牛年，未库开对应羊年。财库冲开的年份是财富突破性增长的窗口期。
   template_vars:
-    ANALYSIS: "分析文本"
+    KAIKU: 开财库方案

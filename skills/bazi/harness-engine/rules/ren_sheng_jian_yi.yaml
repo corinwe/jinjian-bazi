@@ -1,20 +1,12 @@
-# ======
-# 规则: 人生建议
-# 版本: 1.0
-# ======
-
 rule:
-  name: "人生建议"
-  version: "1.0"
-
+  name: ren_sheng_jian_yi
+  version: '1.0'
   inputs:
-    - field: "DS"
-      purpose: "全部数据"
-
+  - field: DS
+    purpose: 全部数据源
   analysis_rules:
-    - name: "基础规则"
-      condition: "始终成立"
-      text: "人生建议分析基于DS数据源。所有数字从DS取，不凭记忆。"
-
+  - name: 人生建议
+    condition: 全部
+    text: 基于以上全部§的分析，从事业、财富、人际、健康、婚姻、学习、晚年七个维度给出综合建议。核心逻辑：身强可攻，身弱宜守；从弱顺势，中和平衡。
   template_vars:
-    ANALYSIS: "分析文本"
+    JIANYI: 综合人生建议

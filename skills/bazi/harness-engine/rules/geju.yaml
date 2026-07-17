@@ -1,20 +1,15 @@
-# ======
-# 规则: 格局分析
-# 版本: 1.0
-# ======
-
 rule:
-  name: "格局分析"
-  version: "1.0"
-
+  name: geju
+  version: '1.0'
   inputs:
-    - field: "DS"
-      purpose: "全部数据"
-
+  - field: DS
+    purpose: 全部数据源
   analysis_rules:
-    - name: "基础规则"
-      condition: "始终成立"
-      text: "格局分析分析基于DS数据源。所有数字从DS取，不凭记忆。"
-
+  - name: 杂气格
+    condition: 月令三藏干全不透天干
+    text: 杂气格。月支藏三干但全部不透，格局不稳。命途多变，选择大于努力。大运引出哪个字人生就朝哪个方向走。
+  - name: 透干格
+    condition: 月令藏干至少一个透天干
+    text: 月令藏干透天干，格局有定体。人生主线清晰，大事有定数，奋斗有方向。
   template_vars:
-    ANALYSIS: "分析文本"
+    GEJU: 格局分析

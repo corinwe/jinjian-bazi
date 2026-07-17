@@ -1,20 +1,18 @@
-# ======
-# 规则: 身强弱
-# 版本: 1.0
-# ======
-
 rule:
-  name: "身强弱"
-  version: "1.0"
-
+  name: shen_qiang_ruo
+  version: '1.0'
   inputs:
-    - field: "DS"
-      purpose: "全部数据"
-
+  - field: DS
+    purpose: 全部数据源
   analysis_rules:
-    - name: "基础规则"
-      condition: "始终成立"
-      text: "身强弱分析基于DS数据源。所有数字从DS取，不凭记忆。"
-
+  - name: 身强
+    condition: 大于60分
+    text: 身强格局。日主能量充足，有主见、有行动力。适合有挑战性的事业和主动式的财富获取。忌过度冒进。
+  - name: 中和
+    condition: 40-60分
+    text: 中和格局。身不强不弱，适应性强。喜忌随大运变化，好运积极把握，差运保守经营。
+  - name: 身弱
+    condition: 小于40分
+    text: 身弱格局。日主能量不足，适合合作。依靠贵人、团队、平台成事。不宜独立冒险。
   template_vars:
-    ANALYSIS: "分析文本"
+    SHEN: 身强弱分析

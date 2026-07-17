@@ -1,20 +1,24 @@
-# ======
-# 规则: 一页总览
-# 版本: 1.0
-# ======
-
 rule:
-  name: "一页总览"
-  version: "1.0"
-
+  name: overview
+  version: '1.0'
   inputs:
-    - field: "DS"
-      purpose: "全部数据"
-
+  - field: DS
+    purpose: 全部数据源
   analysis_rules:
-    - name: "基础规则"
-      condition: "始终成立"
-      text: "一页总览分析基于DS数据源。所有数字从DS取，不凭记忆。"
-
+  - name: 八字排盘
+    condition: 全部
+    text: 八字四柱排盘：年柱代表祖上/少年运，月柱代表父母/青年运，日柱代表自身/中年运，时柱代表子女/晚年运。
+  - name: 空亡
+    condition: 全部
+    text: 空亡是地支的能量空缺，代表该柱对应的领域容易出现空缺、不实在或需要后天补足。
+  - name: 纳音
+    condition: 全部
+    text: 纳音五行为八字的气质底色，反映命主与生俱来的气场和天赋倾向。
+  - name: 起运
+    condition: 全部
+    text: 起运年龄决定大运开始的早晚。早运者早年磨砺多，晚运者大器晚成。
   template_vars:
-    ANALYSIS: "分析文本"
+    PAIPAN: 八字四柱排盘表
+    KONGWANG: 空亡分析
+    NAYIN: 纳音分析
+    QIYUN: 起运分析

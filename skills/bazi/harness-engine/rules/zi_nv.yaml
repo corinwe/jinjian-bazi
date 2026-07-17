@@ -1,20 +1,12 @@
-# ======
-# 规则: 子女
-# 版本: 1.0
-# ======
-
 rule:
-  name: "子女"
-  version: "1.0"
-
+  name: zi_nv
+  version: '1.0'
   inputs:
-    - field: "DS"
-      purpose: "全部数据"
-
+  - field: DS
+    purpose: 全部数据源
   analysis_rules:
-    - name: "基础规则"
-      condition: "始终成立"
-      text: "子女分析基于DS数据源。所有数字从DS取，不凭记忆。"
-
+  - name: 子女宫
+    condition: 全部
+    text: 时柱为子女宫。时干十神=外在亲子关系，时支十神=子女内在性格。食伤宫子女才华好，官杀宫子女有出息。
   template_vars:
-    ANALYSIS: "分析文本"
+    ZINV: 子女分析

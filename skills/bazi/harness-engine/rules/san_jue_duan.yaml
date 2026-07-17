@@ -1,20 +1,14 @@
-# ======
-# 规则: 三决断
-# 版本: 1.0
-# ======
-
 rule:
-  name: "三决断"
-  version: "1.0"
-
+  name: san_jue_duan
+  version: '1.0'
   inputs:
-    - field: "DS"
-      purpose: "全部数据"
-
+  - field: DS
+    purpose: 全部数据源
   analysis_rules:
-    - name: "基础规则"
-      condition: "始终成立"
-      text: "三决断分析基于DS数据源。所有数字从DS取，不凭记忆。"
-
+  - name: 三决断
+    condition: 全部
+    text: 一决身：身强弱定根基，身强有本钱折腾，身弱宜借助外力。二决财：财星多寡和位置定财富路线。三决官：官杀强弱和透干定事业上限。
   template_vars:
-    ANALYSIS: "分析文本"
+    JUEDUAN1: 身决
+    JUEDUAN2: 财决
+    JUEDUAN3: 官决

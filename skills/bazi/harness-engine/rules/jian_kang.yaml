@@ -1,20 +1,13 @@
-# ======
-# 规则: 健康
-# 版本: 1.0
-# ======
-
 rule:
-  name: "健康"
-  version: "1.0"
-
+  name: jian_kang
+  version: '1.0'
   inputs:
-    - field: "DS"
-      purpose: "全部数据"
-
+  - field: DS
+    purpose: 全部数据源
   analysis_rules:
-    - name: "基础规则"
-      condition: "始终成立"
-      text: "健康分析基于DS数据源。所有数字从DS取，不凭记忆。"
-
+  - name: 五行脏腑
+    condition: 全部
+    text: 五行对应脏腑养生。金不足润肺补气，木不足养肝明目，水不足补肾养血，火不足养心护脉，土不足健脾养胃。
   template_vars:
-    ANALYSIS: "分析文本"
+    ZANGFU: 五脏分析
+    YANGSHENG: 养生建议

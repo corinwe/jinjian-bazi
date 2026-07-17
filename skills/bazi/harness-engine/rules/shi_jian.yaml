@@ -1,20 +1,13 @@
-# ======
-# 规则: 事件总表
-# 版本: 1.0
-# ======
-
 rule:
-  name: "事件总表"
-  version: "1.0"
-
+  name: shi_jian
+  version: '1.0'
   inputs:
-    - field: "DS"
-      purpose: "全部数据"
-
+  - field: DS
+    purpose: 全部数据源
   analysis_rules:
-    - name: "基础规则"
-      condition: "始终成立"
-      text: "事件总表分析基于DS数据源。所有数字从DS取，不凭记忆。"
-
+  - name: 大运表
+    condition: 全部
+    text: 大运每十年一步。好运年积极进取，平运年稳中求进，差运年保守经营。每个大运有明确的年龄窗口和预判。
   template_vars:
-    ANALYSIS: "分析文本"
+    SHIJIANBIAO: 事件总表
+    GUANJIAN: 关键节点

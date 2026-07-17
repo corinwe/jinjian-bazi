@@ -1,20 +1,14 @@
-# ======
-# 规则: 运程总评
-# 版本: 1.0
-# ======
-
 rule:
-  name: "运程总评"
-  version: "1.0"
-
+  name: yun_cheng
+  version: '1.0'
   inputs:
-    - field: "DS"
-      purpose: "全部数据"
-
+  - field: DS
+    purpose: 全部数据源
   analysis_rules:
-    - name: "基础规则"
-      condition: "始终成立"
-      text: "运程总评分析基于DS数据源。所有数字从DS取，不凭记忆。"
-
+  - name: 一生定性
+    condition: 全部
+    text: 综合八字十神组合和大运走势，定性一生三段运（少年/中年/晚年）。出运早晚决定人生节奏，喜用运多则顺遂，忌神运多则磨砺。
   template_vars:
-    ANALYSIS: "分析文本"
+    SHAONIAN: 少年运
+    ZHONGNIAN: 中年运
+    WANNIAN: 晚年运
