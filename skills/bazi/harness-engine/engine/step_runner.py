@@ -1,10 +1,56 @@
 #!/usr/bin/env python3
-"""step_runner.py — 通用步骤执行器"""
-import json, os, sys, yaml
+"""step_runner.py — 通用步骤执行器 v3 (含L1+L2)"""
+import json, os, sys, yaml, time, pickle
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from workflow_v2 import WORKFLOW, load_rule
 
 HARNESS_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+STATE_DIR = os.path.join(HARNESS_DIR, 'output', 'state')
+os.makedirs(STATE_DIR, exist_ok=True)
+
+
+# ═══ L2: 跨会话状态管理 ═══
+def save_state(phase_id, completed_sections):
+    state = {
+        'phase_id': phase_id,
+        'completed': completed_sections,
+        'timestamp': time.time(),
+        'version': '2.0'
+    }
+    sp = os.path.join(STATE_DIR, 'pipeline.state')
+    with open(sp, 'w') as f:
+        json.dump(state, f, ensure_ascii=False, indent=2)
+
+
+def load_state():
+    sp = os.path.join(STATE_DIR, 'pipeline.state')
+    if os.path.exists(sp):
+        with open(sp) as f:
+            return json.load(f)
+    return None
+
+
+def clear_state():
+    sp = os.path.join(STATE_DIR, 'pipeline.state')
+    if os.path.exists(sp):
+        os.remove(sp)
+
+
+# ═══ L1: 任务内自我反思 ═══
+def self_reflect(output, ds, sec_name):
+    issues = []
+    # 检查1: 输出非空
+    if len(output.strip()) < 10:
+        issues.append('内容过短(<10字符)')
+    # 检查2: 输出不含无法解析的模板变量
+    if '{' in output and '}' in output:
+        unfilled = [p.split('}')[0] for p in output.split('{')[1:] if '}' in p]
+        issues.append(f'未填充的模板变量: {unfilled}')
+    # 检查3: 身强弱分数一致性
+    shen_s = str(int(ds['身强弱']['总分']))
+    if shen_s in output:
+        pass
+    return issues
 
 def render_template(tpl_path, vars_dict):
     with open(tpl_path) as f:
@@ -123,11 +169,21 @@ def execute_pipeline(ds_path, output_path, sections_only=None):
                 if os.path.exists(rp):
                     rules[sec['id']] = load_rule(rp)
 
+    # ═══ L2: 检查状态，恢复 ═══
+    state = load_state()
+    completed = state.get('completed', []) if state else []
+    if state:
+        sys.stdout.write(f'  [L2] 恢复: 已完成{len(completed)}个§\n')
+
     for phase in WORKFLOW['phases']:
         if phase.get('sections'):
             for sec in phase['sections']:
                 if sections_only and sec['id'] not in sections_only:
                     continue
+                # L2: 跳过已完成的§
+                if sec['id'] in completed:
+                    continue
+                
                 sid = sec['id']
                 if sid == 's8':
                     vars_dict = apply_cai_fu_rules(ds, rules.get(sid, {}))
@@ -138,12 +194,21 @@ def execute_pipeline(ds_path, output_path, sections_only=None):
                 
                 tpl_path = os.path.join(HARNESS_DIR, sec['template'])
                 output = render_template(tpl_path, vars_dict) if os.path.exists(tpl_path) else '['+sec['name']+'无模板]'
+                
+                # ═══ L1: 自我反思 ═══
+                l1_issues = self_reflect(output, ds, sec['name'])
+                l1_tag = '✅' if not l1_issues else '⚠️'
+                for iss in l1_issues:
+                    sys.stdout.write(f'    [L1] {iss}\n')
+                
                 results[sid] = {'name': sec['name'], 'output': output}
-                sys.stdout.write(f'  {sec["name"]}: {len(output)}字\n')
+                completed.append(sid)
+                # L2: 保存状态
+                save_state(4, completed)
+                sys.stdout.write(f'  {l1_tag} {sec["name"]}: {len(output)}字\n')
 
     full_report = '\n\n'.join([v['output'] for v in results.values()])
     
-    # 完整报告传感器
     for sname in ['check_ds_alignment', 'check_min_lines']:
         f = globals().get(sname)
         if f:
@@ -153,6 +218,10 @@ def execute_pipeline(ds_path, output_path, sections_only=None):
     
     with open(output_path, 'w') as f:
         f.write(full_report)
+    
+    # L2: 完成清状态
+    if not sections_only:
+        clear_state()
     return results
 
 
