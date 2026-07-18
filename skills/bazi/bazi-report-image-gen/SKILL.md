@@ -12,7 +12,15 @@ triggers:
 # 八字报告自动配图生成
 
 ## 触发机制
-完整报告生成后 → gen_report_images.py 自动读取DS → 生成prompt文件到 /tmp/bazi_report_images/ → agent自动调用image_generate工具出图。
+完整报告生成后 → gen_report_images.py 自动读取DS → 调用火山引擎豆包API → 出JPG到人物档案目录。
+
+## 后端配置
+- Provider: 火山引擎豆包 (volcengine)
+- Endpoint: ep-20260718232041-dslrc
+- Model: doubao-seedream-5-0-pro
+- API: https://ark.cn-beijing.volces.com/api/v3/images/generations
+- Size: 1920x1920
+- ARK_API_KEY 存于 ~/.bashrc
 
 ## 日主五行配色方案
 
