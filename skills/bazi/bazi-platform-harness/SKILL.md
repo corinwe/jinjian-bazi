@@ -42,6 +42,7 @@ cd /root/.hermes/profiles/jinjian-zhenren && git add -A && git commit -m "🧮 .
 | 文件 | 说明 |
 |:-----|:------|
 | `references/arkclaw-engineering-patterns-20260716.md` | 🆕 外部工程模式参考：ArkClaw财报分析工具的工程学方法（错误隔离屏障+多入口设计） |
+| `references/session-lessons-20260718.md` | 🆕 2026-07-18会话经验：财星检测铁律/三决断原则/丙火巳月特例/文昌公式/佩戴数字/更新下沉规则 |
 
 ## §5. 关键注意事项
 
