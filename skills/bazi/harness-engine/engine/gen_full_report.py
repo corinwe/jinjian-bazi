@@ -345,6 +345,9 @@ def gen(ds_path, label):
     elif '中和' in shen_lv: a('中和平衡。好运攻差运守，能屈能伸。')
     a('命理珍宝·六冲七型：逢中先辨七型，非概凶。')
     a('命理珍宝·忌神三制：弱忌彻底制，强忌弱制。')
+    a('')
+    # 配图prompt（供agent自动调用image_generate生成）
+    a('<!-- 配图信息：报告生成完毕，自动触发配图 -->')
     
     return '\n'.join(lines)
 
@@ -362,3 +365,5 @@ if __name__ == '__main__':
         lc = len(report.splitlines())
         cc = len(report)
         print(label + ': ' + str(lc) + '行 ' + str(cc) + '字')
+        # 触发配图生成（prompt写入配图目录，agent自动调用image_generate）
+        os.system(f'python3 {os.path.dirname(os.path.abspath(__file__))}/gen_report_images.py 2>&1')
