@@ -10,8 +10,8 @@ GAN_WX = {'庚':'金','辛':'金','甲':'木','乙':'木','壬':'水','癸':'水
 ZHI_WX = {'申':'金','酉':'金','寅':'木','卯':'木','亥':'水','子':'水','巳':'火','午':'火','辰':'土','戌':'土','丑':'土','未':'土'}
 WX_COLOR = {'金':'白/银/金','木':'绿/青/翠','水':'蓝/墨/黑','火':'红/橙/紫','土':'黄/棕/赭'}
 WX_ELE = {'金':'金属/刀剑/珠宝','木':'树木/花草/竹','水':'溪流/江海/云','火':'火焰/阳光/灯','土':'山峦/大地/沙'}
-DZ_SHAPE = {'申':'刀剑','酉':'宝珠','寅':'古松','卯':'藤蔓','亥':'深潭','子':'长河',
-            '巳':'熔炉','午':'烈日','辰':'湿地','戌':'火山','丑':'冻土','未':'田园'}
+DZ_SHAPE = {'申':'刀剑','酉':'宝珠','寅':'参天古松','卯':'低矮藤蔓花草灌木','亥':'深潭','子':'蜿蜒长河',
+            '巳':'熔炉窑火','午':'烈日当空','辰':'水库湿地','戌':'砖窑燥土城墙','丑':'冻土寒冰','未':'田园沃土'}
 
 
 def build_prompt(ds):
@@ -20,43 +20,47 @@ def build_prompt(ds):
     G = [p[0] for p in b]; Z = [p[1] for p in b]
     rizhu = ds['日主']; ti = int(ds['身强弱']['总分']); yong = max(100-ti,1)
     
-    # 五行统计
+    # 每个地支的正确形态
+    dz_shape = {'寅':'参天古松(高树)','卯':'低矮藤蔓花草灌木(非高树)','辰':'水库湿地',
+                '巳':'熔炉窑火','午':'烈日当空','未':'田园沃土',
+                '申':'金属刀剑','酉':'宝珠','戌':'砖窑燥土城墙(非高山)','亥':'深潭',
+                '子':'蜿蜒长河','丑':'冻土寒冰'}
+    
+    # 逐柱描述
+    col_desc = []
+    for i,(g,z) in enumerate(zip(G,Z)):
+        pos = ['年柱','月柱','日柱','时柱'][i]
+        gw = GAN_WX.get(g,'')
+        zw = ZHI_WX.get(z,'')
+        zd = dz_shape.get(z,'')
+        col_desc.append(f'{pos}{g}{z}:{g}为{WX_ELE.get(gw,"")}({WX_COLOR.get(gw,"")})，{z}为{zd}')
+    
     wxc = {}
     for g,z in zip(G,Z):
         for ch in [g,z]:
             wx = GAN_WX.get(ch,'') or ZHI_WX.get(ch,'')
             if wx: wxc[wx] = wxc.get(wx,0)+1
-    wx_rank = sorted(wxc.items(), key=lambda x:-x[1])  # 主次排序
-    
-    # 画布主色调 = 最多五行
+    wx_rank = sorted(wxc.items(), key=lambda x:-x[1])
     main_wx = wx_rank[0][0] if wx_rank else '金'
     main_color = WX_COLOR.get(main_wx, '白')
     
-    # 画面主要元素描述（有机整体）
-    elements = []
-    for wx, cnt in wx_rank:
-        if cnt >= 2: elements.append(f'{WX_ELE[wx]}为主要元素')
-        elif cnt >= 1: elements.append(f'点缀{WX_ELE[wx]}')
-    
-    # 五行的生克关系视觉化
     relations = []
     wx_set = set(w for w,_ in wx_rank)
-    if '金' in wx_set and '水' in wx_set: relations.append('金属山石缝隙中涌出清泉(金生水)')
-    if '水' in wx_set and '木' in wx_set: relations.append('溪流两岸草木繁茂(水生木)')
-    if '木' in wx_set and '火' in wx_set: relations.append('枯木燃烧化作火焰(木生火)')
-    if '火' in wx_set and '土' in wx_set: relations.append('火焰熄灭归于尘土(火生土)')
-    if '土' in wx_set and '金' in wx_set: relations.append('大地深处蕴藏金属矿脉(土生金)')
+    if '金' in wx_set and '水' in wx_set: relations.append('金属缝隙涌清泉(金生水)')
+    if '水' in wx_set and '木' in wx_set: relations.append('溪流旁藤蔓花草繁茂(水生木)')
+    if '木' in wx_set and '火' in wx_set: relations.append('藤蔓枯枝燃烧化火焰(木生火)')
+    if '火' in wx_set and '土' in wx_set: relations.append('火焰熄灭归砖窑燥土(火生土)')
+    if '土' in wx_set and '金' in wx_set: relations.append('砖窑燥土中蕴藏金属(土生金)')
+    if '水' in wx_set and '火' in wx_set: relations.append('溪流水汽蒸腾与火焰交融(水克火亦相济)')
     
     prompt = (
-        f"一幅中国传统水墨山水画，八字命理象法全图："
-        f"八字{ds['八字']}，日主{rizhu}居中，其他七字符散落画面各方位，"
-        f"整体色调以{main_color}为主，融合{', '.join([WX_COLOR.get(w,w) for w,c in wx_rank])}，"
-        f"画面核心关系：{'；'.join(relations)}，"
-        f"画中元素：{', '.join([f'{WX_ELE[w]}' for w,c in wx_rank])}，"
-        f"天干符号悬浮空中，地支符号坐落大地，体用比{ti}:{yong}通过山水比例暗示，"
-        f"阴阳鱼图案为背景底纹，每柱的天地人三才关系通过上下位置展现，"
-        f"整体是一幅有机相连的生命画卷，每个符号与其他符号有互动关系，"
-        f"传统中国水墨风格，意境深远，细节丰富，竖版公众号配图，高级质感"
+        f"中国传统水墨山水画八字象法全图，八字{ds['八字']}，日主{rizhu}居中。"
+        f"四柱描述：{'；'.join(col_desc)}。"
+        f"注意：卯木为低矮藤蔓花草灌木非高树，戌土为砖窑燥土城墙非高山。"
+        f"生克关系：{'；'.join(relations)}。"
+        f"体用比{ti}:{yong}通过山水比例暗示。"
+        f"天干符号悬浮空中对应的自然元素中，地支符号坐落大地对应的地貌。"
+        f"整体画面有机统一，八个字不是孤立标签而是自然融合在一幅山水里，竖版公众号配图。"
     )
     return prompt
 
