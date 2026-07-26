@@ -1,24 +1,4 @@
----
-name: bazi-destiny-analysis
-description: 八字命理深度分析 Skill。基于九龙道长原始理论体系，提供格局判定、日主强弱分析、五行十神分析、大运流年推演、 性格/命运综合判断。涵盖五重人格分析法（日主底色+十神人格+刑冲合害+神煞天赋+成长建议）、十神吉恶平比例分析、五行旺衰对性格的影响、阴阳比例/纯阳纯阴特征、燥湿平衡对性格的影响。
-tags: [八字, 命运分析, 性格, 人格, 十神, 五行, 阴阳, 燥湿, 神煞]
-related_skills:
-  - bazi-foundation-analysis
-  - bazi-fortune-analysis
-  - bazi-marriage-analysis
-  - bazi-career-analysis
-  - bazi-wealth-analysis
-  - bazi-liunian-analysis
-  - bazi-paipan-sop
-references:
-  - bazi-foundation-analysis §23 外貌/性格判断
-  - bazi-foundation-analysis §9.5 十神深度详解
-  - bazi-foundation-analysis 四吉神vs四恶神体系
-  - bazi-foundation-analysis 36种命格心性类速查
-  - bazi-foundation-analysis 十神性格速查表
-  - bazi-foundation-analysis 五行性格轨迹
-  - bazi-fortune-analysis §9.5 十神深度详解
-  - bazi-fortune-analysis §6 格局判定
+---\nname: bazi-destiny-analysis\ndescription: 八字命理深度分析 Skill。基于九龙道长原始理论体系，提供格局判定、日主强弱分析、五行十神分析、大运流年推演、 性格/命运综合判断。涵盖五重人格分析法（日主底色+十神人格+刑冲合害+神煞天赋+成长建议）、十神吉恶平比例分析、五行旺衰对性格的影响、阴阳比例/纯阳纯阴特征、燥湿平衡对性格的影响。\ntags: [八字, 命运分析, 性格, 人格, 十神, 五行, 阴阳, 燥湿, 神煞]\nrelated_skills:\n  - bazi-foundation-analysis\n  - bazi-fortune-analysis\n  - bazi-marriage-analysis\n  - bazi-career-analysis\n  - bazi-wealth-analysis\n  - bazi-liunian-analysis\n  - bazi-paipan-sop\nreferences:\n  - bazi-foundation-analysis §23 外貌/性格判断\n  - bazi-foundation-analysis §9.5 十神深度详解\n  - bazi-foundation-analysis 四吉神vs四恶神体系\n  - bazi-foundation-analysis 36种命格心性类速查\n  - bazi-foundation-analysis 十神性格速查表\n  - bazi-foundation-analysis 五行性格轨迹\n  - bazi-foundation-analysis §38 六体系协同分析框架（元方法论——做分析前必须先加载）\n  - bazi-foundation-analysis §37 实证反推12项通用分析逻辑\n  - bazi-fortune-analysis §9.5 十神深度详解\n  - bazi-fortune-analysis §6 格局判定\n\n---\n\n# 八字命运分析 Skill · 金鉴真人体系\n\n> **⚠️ 元方法论提醒**：在做任何深度分析前，必须先加载 `bazi-foundation-analysis §38 六体系协同分析框架`。\n> 六体系调用顺序：格局法→扶抑法→调候法→从格法→刑冲合害开库法→大运流年应期法。\n> 喜忌判断必须用条件化表述（见 §37.5），流年判断必须用分线断法（见 §38.5）。\n> 详细方法论参考：`bazi-foundation-analysis/references/深度分析方法论_二读四份文档_20260722.md`\n\n> **用途：** 对八字进行全面性格/命运分析，输出命运综合判断。\n> **加载方式：** 写报告§6性格分析前必须加载本skill，列出核心规则后再写。\n> **核心原则：** 性格分析不是独立模块，必须与格局、身强弱、十神分布交叉验证。
 ---
 
 # 八字命运分析 Skill · 金鉴真人体系
