@@ -136,7 +136,7 @@ jinjian-bazi       程序（SOP/代码/引擎/配置）          程序库
 ## 架构代码路径
 所有架构代码在 `skills/bazi/bazi-foundation-analysis/architecture/` 下：
 - `report_template_21s.md` — 21§标准报告模板SOP
-- `workflow_engine_v2.py` — **主流程**（LangGraph状态图+Instructor强制结构化+引擎集成+校验）
+- `workflow_engine_v3.py` — **主流程**（引擎→Chroma检索→LLM生成21§→§完整性校验→输出，全21§验证通过）
 - `pre_retrieval_hook.py` — Chroma前置检索（强制注入知识）
 - `structured_output.py` — Pydantic输出模型（Instructor）
 - `gatekeeper.py` — 校验门禁（全量硬性拦截）
