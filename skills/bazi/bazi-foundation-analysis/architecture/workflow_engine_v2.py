@@ -55,13 +55,24 @@ class GegangOut(BaseModel):
     condition: str = Field(min_length=5)
     qingzhuo: str = Field(default="")
 
+class TwentyOneSectionReport(BaseModel):
+    """完整21§报告"""
+    raw_markdown: str = Field(min_length=500, description="完整21§报告markdown全文")
+    sections_present: List[str] = Field(description="报告中实际存在的§编号列表")
+
+STD_21_SECTIONS = [
+    "§1 一页总览表", "§2 格局分析", "§3 身强弱详解", "§4 喜用神详解",
+    "§5 灾祸/疾病/搬迁专项", "§6 性格分析", "§7 身材外貌分析",
+    "§8 财富分析", "§9 置业/买房分析", "§10 事业分析",
+    "§11 学历分析", "§12 婚姻/感情分析", "§13 子女分析",
+    "§14 健康分析", "§15 六亲分析", "§16 全生命周期重点事件总表",
+    "§17 大运精析", "§18 三决断", "§19 人生运程总评",
+    "§20 五行补充建议", "§21 人生建议"
+]
+
 class AnalysisReport(BaseModel):
-    """Instructor强制LLM必须完整输出此结构"""
-    gegang: GegangOut
-    xiyong: str = Field(min_length=5)
-    san_jueduan: SanJue
-    lines: List[LineOutput] = Field(min_length=5, max_length=5)
-    knowledge_used: List[str] = Field(min_length=1)
+    """21§标准报告"""
+    report: TwentyOneSectionReport
 
 # ====== 场景定义（路由隔离） ======
 SCENE_CONFIGS = {

@@ -125,22 +125,26 @@ jinjian-bazi       程序（SOP/代码/引擎/配置）          程序库
 报告开头**不**加流派声明段落。综合给出分析结论即可。
 流派信息仅在报告中通过用词和判断方式自然体现（子平体系用术语、九龙用比例法）。
 
-## 输出格式铁律（2026-07-29 老板校准）
+## 输出格式铁律（2026-07-29 老板校准·两次修正）
 - 报告必须使用标准21§格式输出，不可只输出§2+§18就结束
-- 格式必须包含正确换行（`\n`）、Markdown表格（`| 序号 | 项目 | 内容 |`）、清晰的分段标题
+- 格式必须包含正确换行（`\\n`）、Markdown表格（`| 序号 | 项目 | 内容 |`）、清晰的分段标题
 - **不可揉在一起无换行无格式**（老板多次纠正此问题）
+- **报告开头不加流派声明段落**，直接进入§1总览表
+- 参考：`architecture/report_template_21s.md`（21§标准SOP）
 - 报告末尾注明：*基于传统子平命理框架，仅供文化娱乐参考。*
 
 ## 架构代码路径
 所有架构代码在 `skills/bazi/bazi-foundation-analysis/architecture/` 下：
+- `report_template_21s.md` — 21§标准报告模板SOP
+- `workflow_engine_v2.py` — **主流程**（LangGraph状态图+Instructor强制结构化+引擎集成+校验）
 - `pre_retrieval_hook.py` — Chroma前置检索（强制注入知识）
 - `structured_output.py` — Pydantic输出模型（Instructor）
 - `gatekeeper.py` — 校验门禁（全量硬性拦截）
-- `workflow_engine.py` — 工作流引擎（集成引擎+Chroma+LLM+校验）
+- `workflow_engine.py` — 旧版v1工作流引擎（线性函数，已弃用，保留参考）
 - `pipeline.py` — Prefect编排（定时任务调度）
 - `langfuse_client.py` — LangFuse观测+Golden Dataset评估
-- `langfuse_client.py` — LangFuse观测+Golden Dataset评估
 - `run_test.py` — 端到端测试入口
+- `trigger_layer.py` — 触发层（场景路由+上下文隔离+工具白名单）
 
 **v2.0关键升级（2026-07-29）**：
 - Instructor `response_model=AnalysisReport` 强制LLM输出固定JSON结构，非软约束
