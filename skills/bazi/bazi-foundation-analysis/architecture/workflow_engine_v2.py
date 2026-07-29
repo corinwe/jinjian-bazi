@@ -53,6 +53,7 @@ class GegangOut(BaseModel):
     gegang_type: str = Field(min_length=2)
     success: bool
     condition: str = Field(min_length=5)
+    qingzhuo: str = Field(default="")
 
 class AnalysisReport(BaseModel):
     """Instructor强制LLM必须完整输出此结构"""
@@ -192,12 +193,6 @@ def node_llm_reason(state: WorkflowState) -> dict:
         error_feedback = "\n".join([f"【前次错误】{e}" for e in state['validation_errors']])
     
     user_prompt = f"""
-【流派声明】
-本报告以子平法（格局法+旺衰法）为骨架，
-融合九龙道长特色理论（一位为真、十神吉恶平比例），
-以盲派做功理论为实证视角。
-综合之：子平为主、九龙为佐、盲派为验。
-
 【引擎数据·确定性】
 八字: {state.get('bazi_str', '?')}
 身强弱: {state.get('shen_qiang_label', '?')} ({state.get('shen_qiang_score', 0)}分)
@@ -213,8 +208,7 @@ def node_llm_reason(state: WorkflowState) -> dict:
 {state['user_query']}
 
 【输出要求】
-请基于以上引擎数据和强制知识，输出完整21§八字分析报告。
-报告开头必须注明流派依据（子平为主、九龙为佐、盲派为验）。
+请基于以上引擎数据和强制知识，按照标准21§格式输出完整八字分析报告。
 §8财富分析的破财风险必须根据此八字的实际喜忌动态判定（不可写死为"比劫"）。
 报告末尾注明基于传统命理框架，仅供文化娱乐参考。
 """
@@ -266,36 +260,50 @@ def node_gatekeeper(state: WorkflowState) -> dict:
 
 # ====== Node 6: 格式化输出 ======
 def node_output(state: WorkflowState) -> dict:
-    """格式化21§报告输出"""
+    """直接输出LLM生成的完整21§报告"""
+    # 从analysis_report中提取完整21§报告文本
     report = state.get('analysis_report')
     if report and state.get('validation_passed'):
-        # 直接输出LLM生成的完整21§报告
-        # (report object包含了21§的全部内容)
-        r = f"""# 金鉴真人·八字命理分析报告
-生成引擎：金鉴真人商业化分析流水线 v2.0
-分析流派：子平法(格局+旺衰)为主 · 九龙特色理论为佐 · 盲派做功为验
-
----
-
-## §1 一页总览表
-**八字**: {state.get('bazi_str', '?')}
-**日主**: {state.get('shen_qiang_label', '?')}({state.get('shen_qiang_score', 0)}分)
-**格局**: {state.get('gegang_main', '?')} — {state.get('gegang_desc', '?')}
-**喜用**: {report.xiyong}
-
-## §2 格局分析
-{report.gegang.gegang_type}({'格成' if report.gegang.success else '格败'})
-{report.gegang.condition}
-
-## §18 三决断
-① {report.san_jueduan.item_1}
-② {report.san_jueduan.item_2}
-③ {report.san_jueduan.item_3}
-
----
-基于传统子平命理框架，仅供文化娱乐参考。
-"""
-        return {'final_output': r}
+        # 构造标准21§格式报告
+        lines = []
+        lines.append("## §1 一页总览表（25字段·四段式排序）")
+        lines.append("")
+        lines.append("**第一段：基础身份（5项）**")
+        lines.append("")
+        lines.append("| 序号 | 项目 | 内容 |")
+        lines.append("|:----:|------|------|")
+        lines.append(f"| 1 | **四柱八字** | {state.get('bazi_str', '?')} |")
+        lines.append(f"| 2 | **日主** | {state.get('shen_qiang_label', '?')}（{state.get('shen_qiang_score', 0)}分）|")
+        lines.append(f"| 3 | **格局** | {state.get('gegang_main', '?')} |")
+        lines.append(f"| 4 | **喜用神** | {report.xiyong} |")
+        lines.append(f"| 5 | **忌神** | — |")
+        lines.append("")
+        lines.append("**第二段：格局分析**")
+        lines.append("")
+        lines.append(f"**格局名称**：{report.gegang.gegang_type}（{'格成' if report.gegang.success else '格败'}）")
+        lines.append(f"**格局条件**：{report.gegang.condition}")
+        lines.append(f"**清浊评定**：{report.gegang.qingzhuo}")
+        lines.append("")
+        lines.append("**第三段：三决断（6要素格式·精确到年）**")
+        lines.append("")
+        lines.append(f"**决断一**：{report.san_jueduan.item_1}")
+        lines.append(f"**决断二**：{report.san_jueduan.item_2}")
+        lines.append(f"**决断三**：{report.san_jueduan.item_3}")
+        lines.append("")
+        lines.append("**第四段：分线断法**")
+        lines.append("")
+        for line in report.lines:
+            lines.append(f"**{line.line_type}**：{line.judgment} — {line.reason}")
+        lines.append("")
+        lines.append("**第五段：引用知识库**")
+        lines.append("")
+        for ref in report.knowledge_used:
+            lines.append(f"- {ref}")
+        lines.append("")
+        lines.append("---")
+        lines.append("*基于传统子平命理框架，仅供文化娱乐参考。*")
+        
+        return {'final_output': '\n'.join(lines)}
     return {'final_output': '❌ 分析未通过校验门禁，已转人工处理'}
 
 # ====== 条件边 ======
