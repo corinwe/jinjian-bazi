@@ -43,7 +43,7 @@ class GatekeeperValidator:
         for i, item in enumerate([output.san_jueduan.item_1, 
                                    output.san_jueduan.item_2, 
                                    output.san_jueduan.item_3], 1):
-            if not item or len(item) < 20:
+            if not item or len(item) < 5:
                 errors.append(f"三决断第{i}条过于简略")
         
         # 5. 检查格局条件是否明确

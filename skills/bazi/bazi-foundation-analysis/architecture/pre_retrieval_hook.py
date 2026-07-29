@@ -49,7 +49,7 @@ class PreRetrievalHook:
             section = meta.get('section', '?')
             title = meta.get('title', '?')
             knowledge_parts.append(f"[知识块{i+1}] §{section} {title}\n{doc[:500]}")
-            references.append(f"§{section}/{title}")
+            references.append(f"{section}/{title}")
         
         knowledge_block = f"""
 【强制知识 — 你必须严格遵循以下内容】
