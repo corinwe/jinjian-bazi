@@ -5,41 +5,126 @@ tags: [八字, 排盘, SOP, 金鉴真人, pipeline, 物理化]
 related_skills: [bazi-engine-workflow, bazi-foundation-analysis, bazi-report-template, bazi-platform-harness, bazi-task-dispatch, maker-checker-workflow, bazi-auto-verify, bazi-calibration, bazi-report-engine-audit, bazi-data-source]
 ---
 
-# 金鉴真人·八字排盘SOP
+# 金鉴真人·八字排盘SOP v2.0
 
-> **核心变化（2026-07-27）**：从「Agent自主决定检索」改为「代码层前置强检索+校验门禁」。
-> 完整架构文件在 `skills/bazi/bazi-foundation-analysis/architecture/` 目录下。
-> - pre_retrieval_hook.py — 强制检索知识库注入上下文
-> - structured_output.py — Instructor/Pydantic强制JSON输出
-> - gatekeeper.py — 每步后硬性校验（不通过则驳回重做）
-> - workflow_engine.py — 确定性状态图
-> - pipeline.py — Prefect编排
-> - langfuse_client.py — LangFuse观测+GoldenDataset
+> **2026-07-29 架构转型完成**：从「Agent自主Loop」转型为「确定性引擎+代码层前置检索+LLM叙事合成+校验门禁」。
+> 完整架构代码在 `skills/bazi/bazi-foundation-analysis/architecture/`
 
-## Phase 0 — 系统就绪
-（原有Phase 0-7内容保持不变，详见skills库旧版）
+## 核心架构（三层四步）
 
-## Phase 1-7 通用流程
-所有原有Phase（排盘/校验/报告/验证/归档）不变。
-仅在Phase 4中增加一步：调用pre_retrieval_hook.retrieve()强制注入知识。
-仅在Phase 5中增加栅栏：gatekeeper结构化输出校验。
+```
+[输入]
+   │
+   ▼
+┌─────────────────────────────────────┐
+│ Step 1: 引擎计算层（确定性Python代码）│ ← paipan.py / shen_qiang_ruo.py / ge_ju.py
+│   排盘 → 身强弱 → 格局 → 喜用 → 十神  │   全部代码层直接调用，LLM不参与计算
+└────────────────┬────────────────────┘
+                 ▼
+┌─────────────────────────────────────┐
+│ Step 2: 知识检索层（代码层强制）      │ ← pre_retrieval_hook.py → Chroma
+│   根据任务类型自动检索相关知识块注入    │   220个知识块，Agent无选择权
+└────────────────┬────────────────────┘
+                 ▼
+┌─────────────────────────────────────┐
+│ Step 3: LLM叙事合成层（仅合成不计算）  │ ← workflow_engine.py → DeepSeek API
+│   基于引擎数据+知识库规则合成流动报告    │   温度0.1，结构化JSON输出
+└────────────────┬────────────────────┘
+                 ▼
+┌─────────────────────────────────────┐
+│ Step 4: 校验门禁层（代码层拦截）       │ ← gatekeeper.py → Instructor+Pydantic
+│   分线完整性/知识引用/三决断具体性      │   不通过则驳回重试（最多3次）
+└────────────────┬────────────────────┘
+                 ▼
+              输出
+```
 
-## Phase 0.5 — 三决断（新增·2026-07-27）
-所有分析的第一步不是全面报告，而是"先验过去，再看当下选择"。
-1. 根据八字给出3条可验证的过去判断（覆盖三个不同阶段/领域）
-2. 标注"条1/条2/条3，您可以对照看看"
-3. 等用户确认后再进入详细分析
-参考：products/three-verifications-methodology.md
+## 执行顺序（先验过去→再看当下选择）
 
-## 多流派分析模式（新增·2026-07-27）
-可选：同时输出子平/盲派/九龙三个流派的简版三决断。
-用户反馈哪个流派的判断最准 → 以该流派为主体做深度分析。
-参考：products/multi-school-flow.md
+### Phase 0 — 三决断（免费）
+任何分析的第一步：给3条可验证的过去判断。
+参考：`products/flow.md`, `products/three-verifications-methodology.md`
+
+### Phase 1 — 排盘校验
+调用引擎 `paipan.py` 排盘，比对四柱是否正确。
+
+### Phase 2 — 引擎计算
+调用 `shen_qiang_ruo.py` → `ge_ju.py` → `da_yun.py` → 各领域模块。
+所有计算由确定性Python代码完成，LLM不参与计算。
+
+### Phase 3 — 前置检索
+调用 `pre_retrieval_hook.retrieve()` 从Chroma检索相关知识。
+检索结果强制注入上下文，标注【强制知识】。
+
+### Phase 4 — LLM叙事合成
+调用 `workflow_engine.node_reasoning()`，基于Phase 1-3的数据合成报告。
+LLM只做翻译和叙述，不做计算和判断。
+
+### Phase 5 — 校验门禁
+调用 `gatekeeper.validate_full_analysis()` 校验输出。
+必检项：分线完整性（5条缺一不可）、知识引用、三决断具体性。
+不通过则驳回重试（最多3次），3次都不过则转人工。
+
+### Phase 6 — 归档推库
+见下「文件归档铁律」。
 
 ## 文件归档铁律（2026-07-27 老板校准·两次修正）
-- 人物报告 → `02-人物档案/编号-姓名/`
-- 外部素材 → `00-原始素材/`
-- 体系化文件（SOP/代码/配置）→ `04-金鉴真人体系/`
-- 架构代码 → `04-金鉴真人体系/architecture/`
-- 两仓库分工：weiwuji = 知识库（报告/知识/人物档案），jinjian = 程序（SOP/代码/引擎）
-- 禁止混放·两次犯错后已固化此规则
+
+### 两仓库分工
+仓库名            存放内容                          归属
+──────            ──────                            ────
+weiwuji-knowledge  知识库（报告/知识/人物档案/素材）   主库
+jinjian-bazi       程序（SOP/代码/引擎/配置）          程序库
+
+### 知识库目录规则
+路径                                                               用途
+────                                                                ────
+`07-国学哲学/八字命格/00-原始素材/`                                 外部导入的原始材料
+`07-国学哲学/八字命格/02-人物档案/编号-姓名/`                       人物分析报告
+`07-国学哲学/八字命格/04-金鉴真人体系/`                             体系性文件（SOP/代码/架构）
+`07-国学哲学/八字命格/04-金鉴真人体系/architecture/`                 架构代码（.py文件）
+`07-国学哲学/八字命格/01-理论体系/`                                 理论体系
+`07-国学哲学/八字命格/00-索引/`                                     索引文件
+
+### 推送铁律（必做清单）
+□ 文件写到磁盘后，必须立刻 git add + git commit + git push
+□ 涉及人物报告/知识文档 → 推 weiwuji 仓库
+□ 涉及程序代码/SOP/引擎 → 推 jinjian 仓库
+□ 两者都涉及 → 两个仓库都推（这是常见情况）
+□ 推完后告知老板具体文件路径
+□ 避免硬编码API key到代码中（用环境变量注入）
+
+### 人物报告命名规范
+`{日柱天干地支}_{内容}_{日期}.md`（如 `乾造辛亥_完整多流派报告_20260727.md`）
+
+## 多流派分析模式
+支持同时输出子平/盲派/九龙三个流派的简版分析。
+用户反馈哪个流派准→以该流派为主体深度分析。
+参考：`products/multi-school.md`
+
+## 商业化收费标准
+- 免费：基础排盘+旺衰+格局+三决断+后续方向选择
+- 付费：六体系完整分析+条件喜忌+分线断法+大运流年总表+风险日历
+参考：`products/pricing.md`
+
+## 架构代码路径
+所有架构代码在 `skills/bazi/bazi-foundation-analysis/architecture/` 下：
+- `pre_retrieval_hook.py` — Chroma前置检索（强制注入知识）
+- `structured_output.py` — Pydantic输出模型（Instructor）
+- `gatekeeper.py` — 校验门禁（全量硬性拦截）
+- `workflow_engine.py` — 工作流引擎（集成引擎+Chroma+LLM+校验）
+- `pipeline.py` — Prefect编排（定时任务调度）
+- `langfuse_client.py` — LangFuse观测+Golden Dataset评估
+- `run_test.py` — 端到端测试入口
+
+## 引擎路径
+`/root/.hermes/profiles/jinjian-zhenren/projects/bazi-platform/engine/`
+- `paipan.py` — 排盘（年柱/月柱/日柱/时柱计算+五虎遁+五鼠遁）
+- `shen_qiang_ruo.py` — 身强弱（月令+天干+地支综合评分）
+- `ge_ju.py` — 格局判定+喜用神+调候
+- `shi_shen.py` — 十神转换
+- `da_yun.py` — 大运排盘
+- `liu_nian_v2.py` — 流年分析
+- `xing_chong_he_hua.py` — 刑冲合害
+- `generate_deep_report.py` — 21§深度报告生成器
+- `pipeline_v5.py` — 引擎全量管线
