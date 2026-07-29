@@ -95,6 +95,12 @@ SCENE_CONFIGS = {
 class WorkflowState(TypedDict):
     user_query: str
     task_type: str              # 场景路由key
+    # 出生数据（由run_analysis_pipeline传入）
+    birth_year: int
+    birth_month: int
+    birth_day: int
+    birth_hour: int
+    gender: str
     # 引擎数据
     bazi_str: str
     shen_qiang_label: str
@@ -128,7 +134,14 @@ def node_validate_input(state: WorkflowState) -> dict:
 def node_engine(state: WorkflowState) -> dict:
     """确定性引擎计算"""
     try:
-        p = get_full_paipan(1980, 8, 6, 6, '男', '未知')
+        # 从state获取出生数据（通过state传递的参数，实际需要从user_query解析或外部传入）
+        p = get_full_paipan(
+            state.get('birth_year', 1980),
+            state.get('birth_month', 8),
+            state.get('birth_day', 6),
+            state.get('birth_hour', 6),
+            state.get('gender', '男'), '未知'
+        )
         bazi = BaZi(
             Pillar(gan=p['year_pillar']['gan'], zhi=p['year_pillar']['zhi']),
             Pillar(gan=p['month_pillar']['gan'], zhi=p['month_pillar']['zhi']),
@@ -310,6 +323,8 @@ def run_analysis_pipeline(user_query: str, task_type: str = '通用',
     initial = WorkflowState(
         user_query=user_query,
         task_type=task_type,
+        birth_year=birth_year, birth_month=birth_month,
+        birth_day=birth_day, birth_hour=birth_hour, gender=gender,
         bazi_str='', shen_qiang_label='', shen_qiang_score=0.0,
         gegang_main='', gegang_desc='', xiyong_str='',
         forced_knowledge='', knowledge_refs=[],
