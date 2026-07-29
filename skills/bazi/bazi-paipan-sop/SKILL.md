@@ -115,7 +115,21 @@ jinjian-bazi       程序（SOP/代码/引擎/配置）          程序库
 - `workflow_engine.py` — 工作流引擎（集成引擎+Chroma+LLM+校验）
 - `pipeline.py` — Prefect编排（定时任务调度）
 - `langfuse_client.py` — LangFuse观测+Golden Dataset评估
+- `langfuse_client.py` — LangFuse观测+Golden Dataset评估
 - `run_test.py` — 端到端测试入口
+
+**v2.0关键升级（2026-07-29）**：
+- Instructor `response_model=AnalysisReport` 强制LLM输出固定JSON结构，非软约束
+- LangGraph有向图+条件边（校验通过→输出 / 不通过→重试 / 3次不过→转人工）
+- Pre-hook：`node_validate_input`为首节点，输入合法性校验
+- Post-hook：3次重试不过→`human_intervention`节点，输出转人工标记
+- 重试时错误反馈注入下一轮LLM prompt
+- 场景路由：`SCENE_CONFIGS`按场景（事业/婚姻/财富/健康/通用）隔离System Prompt
+- 上下文隔离：`TaskSession`每任务reset，杜绝Memory污染
+- 工具白名单：`SCENE_TOOLS`按场景限制LLM节点可用工具
+- 触发层：`TaskDispatcher`路由请求到对应场景+session分配
+- LangFuse集成：dispatch时自动log各阶段
+- Golden Dataset：含6个测试用例，自动评估检索覆盖率
 
 ## 引擎路径
 `/root/.hermes/profiles/jinjian-zhenren/projects/bazi-platform/engine/`

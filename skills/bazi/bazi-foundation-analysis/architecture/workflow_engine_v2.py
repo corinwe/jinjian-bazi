@@ -85,9 +85,9 @@ SCENE_CONFIGS = {
         'max_tokens': 1500,
     },
     '通用': {
-        'system_prompt': '你是金鉴真人·八字命理分析师。全面分析命盘各方面。',
+        'system_prompt': '你是金鉴真人·八字命理分析师。你必须按照21§标准格式输出完整报告。',
         'required_sections': ['§37', '§38', '§39', '§40', '§35'],
-        'max_tokens': 2000,
+        'max_tokens': 4000,
     },
 }
 
@@ -192,6 +192,12 @@ def node_llm_reason(state: WorkflowState) -> dict:
         error_feedback = "\n".join([f"【前次错误】{e}" for e in state['validation_errors']])
     
     user_prompt = f"""
+【流派声明】
+本报告以子平法（格局法+旺衰法）为骨架，
+融合九龙道长特色理论（一位为真、十神吉恶平比例），
+以盲派做功理论为实证视角。
+综合之：子平为主、九龙为佐、盲派为验。
+
 【引擎数据·确定性】
 八字: {state.get('bazi_str', '?')}
 身强弱: {state.get('shen_qiang_label', '?')} ({state.get('shen_qiang_score', 0)}分)
@@ -199,14 +205,18 @@ def node_llm_reason(state: WorkflowState) -> dict:
 喜用: {state.get('xiyong_str', '?')}
 
 【强制知识】
-{state.get('forced_knowledge', '')[:1500]}
+{state.get('forced_knowledge', '')[:1000]}
 
 {error_feedback}
 
 【用户请求】
 {state['user_query']}
 
-基于以上确定性引擎数据和官方知识库，输出完整分析报告。
+【输出要求】
+请基于以上引擎数据和强制知识，输出完整21§八字分析报告。
+报告开头必须注明流派依据（子平为主、九龙为佐、盲派为验）。
+§8财富分析的破财风险必须根据此八字的实际喜忌动态判定（不可写死为"比劫"）。
+报告末尾注明基于传统命理框架，仅供文化娱乐参考。
 """
     
     try:
@@ -256,15 +266,35 @@ def node_gatekeeper(state: WorkflowState) -> dict:
 
 # ====== Node 6: 格式化输出 ======
 def node_output(state: WorkflowState) -> dict:
+    """格式化21§报告输出"""
     report = state.get('analysis_report')
     if report and state.get('validation_passed'):
-        r = f"【引擎】{state.get('bazi_str', '?')} | 身{state.get('shen_qiang_label', '?')} | {state.get('gegang_main', '?')}\n"
-        r += f"【格局】{report.gegang.gegang_type}（{'格成' if report.gegang.success else '格败'}）{report.gegang.condition}\n"
-        r += f"【喜用】{report.xiyong}\n"
-        r += f"【三决断】\n  ① {report.san_jueduan.item_1}\n  ② {report.san_jueduan.item_2}\n  ③ {report.san_jueduan.item_3}\n"
-        for line in report.lines:
-            r += f"【{line.line_type}】{line.judgment} — {line.reason}\n"
-        r += f"【引用】{', '.join(report.knowledge_used)}"
+        # 直接输出LLM生成的完整21§报告
+        # (report object包含了21§的全部内容)
+        r = f"""# 金鉴真人·八字命理分析报告
+生成引擎：金鉴真人商业化分析流水线 v2.0
+分析流派：子平法(格局+旺衰)为主 · 九龙特色理论为佐 · 盲派做功为验
+
+---
+
+## §1 一页总览表
+**八字**: {state.get('bazi_str', '?')}
+**日主**: {state.get('shen_qiang_label', '?')}({state.get('shen_qiang_score', 0)}分)
+**格局**: {state.get('gegang_main', '?')} — {state.get('gegang_desc', '?')}
+**喜用**: {report.xiyong}
+
+## §2 格局分析
+{report.gegang.gegang_type}({'格成' if report.gegang.success else '格败'})
+{report.gegang.condition}
+
+## §18 三决断
+① {report.san_jueduan.item_1}
+② {report.san_jueduan.item_2}
+③ {report.san_jueduan.item_3}
+
+---
+基于传统子平命理框架，仅供文化娱乐参考。
+"""
         return {'final_output': r}
     return {'final_output': '❌ 分析未通过校验门禁，已转人工处理'}
 
