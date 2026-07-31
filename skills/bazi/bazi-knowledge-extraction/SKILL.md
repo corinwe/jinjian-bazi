@@ -1628,5 +1628,53 @@ SOP同步更新好，最后双库一起推
 | R16 | bazi-foundation-analysis/references/盲派十二神煞完整知识提取_20260714.md | 盲派神煞15组+串宫十二神（334行） | 维基·time.actor·算准网 |
 | R17 | bazi-foundation-analysis/references/盲派寻根基_十神归属权知识点提取_20260714.md | 寻根基+归属权21字诀（67条） | 搜狐·bazitalk·163
 | **R18** | **bazi-knowledge-extraction/references/ocr-correction-table.md** | **命理PDF·OCR常见错别字修正表（300+条）** | **易道知识应用7+6实战萃取**
-| **R19** | **bazi-knowledge-extraction/references/杨清娟盲派知识结构_20260729.md** | **杨清娟盲派命理结构全貌+差距分析（做功九法/功必归主/宾主六重/四宫划分·待吸收）** | **杨清娟盲派命理.pdf·扫描件OCR**
+| **R19** | **bazi-knowledge-extraction/references/杨清娟盲派知识结构_20260729.md** | **杨清娟盲派命理结构全貌+差距分析（做功九法/功必归主/宾主六重/四宫划分·待吸收）** | **杨清娟盲派命理.pdf·扫描件OCR** |
+
+## §14. 经典/书籍三落点吸收工作流（2026-07-29·五经典实战验证）
+
+> **适用场景**：吸收一部完整经典/书籍（如三命通会/滴天髓/穷通宝鉴/子平真诠/渊海子平）到体系，要求知识库+技能库+自动化三处都落地。
+> **与§6全量精读的区别**：§6吸收"内容知识点"进技能；§14是"整本书"的系统化吸收，必须同时落到自动化引擎。
+
+### 14.1 三落点工作流
+
+```yaml
+落点① — 确定性数据 → 引擎模块
+  书里可确定化的数据必须建成Python模块（LLM不得临场发挥）：
+  ├─ 穷通宝鉴调候表 → engine/tiaohou.py（10干×12月=120组全量）
+  ├─ 查表函数 + explain() 自然语言说明 + 自测main
+  └─ 验证：python3 模块自测，全表完整性检查（12/12月）
+
+落点② — 知识文档 → 技能库references/
+  ├─ references/classic_{书名拼音}_20260729.md
+  ├─ 结构：核心原理→速查表→实战应用规则→与引擎对接代码
+  └─ 并行委派：4本经典delegate_task并行写，自己写最核心的1本
+
+落点③ — 向量库重建 + 检索验证（最易出错）
+  ├─ index_knowledge.py 重建Chroma（删旧collection重建，逐文件打印块数）
+  ├─ ⚠️ 入库成功≠检索命中：必须跑真实查询验证经典块能被检索到
+  └─ 陷阱详见 bazi-foundation-analysis/references/chroma-vectorization-pitfalls_20260729.md
+      （section白名单过滤 / 文件名拼音→中文映射 / 经典文档标题不含书名）
+```
+
+### 14.2 调候用神接入工作流
+
+```yaml
+workflow_engine_v3.py 接入：
+  ├─ node_engine 计算后调用 get_tiaohou(ri_gan, yue_zhi)
+  ├─ 结果注入prompt："调候用神(穷通宝鉴):壬、甲、庚 — 壬淘洗，甲疏土，庚助"
+  ├─ SKILL.md调候节升级为"穷通宝鉴·确定性"（引用引擎，LLM不得自行发明）
+  └─ 端到端验证：报告§4中出现调候用神标注
+```
+
+### 14.3 验证清单（交付前逐项核对）
+
+```yaml
+□ 引擎模块自测通过（全表完整性）
+□ 知识文档在 references/ 存在且含可操作规则
+□ Chroma重建后 count 正确（220→635）
+□ 检索验证：真实查询能命中经典块（refs含"经典-XX"）
+□ pre_retrieval_hook 白名单含新section前缀（否则永不命中）
+□ workflow 接入确定性数据（prompt注入+LLM不计算）
+□ 双库推送（weiwuji知识 + jinjian程序）
+```
 

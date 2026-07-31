@@ -37,6 +37,23 @@ SOURCES = [
         "path": "/root/.hermes/profiles/jinjian-zhenren/skills/bazi/bazi-foundation-analysis/references/classic_yuanhaiziping_20260729.md",
         "type": "classic",
     },
+    # 盲派知识文档
+    {
+        "path": "/root/.hermes/profiles/jinjian-zhenren/skills/bazi/bazi-foundation-analysis/references/classic_yangqingjuan_20260729.md",
+        "type": "classic",
+    },
+    {
+        "path": "/root/.hermes/profiles/jinjian-zhenren/skills/bazi/bazi-knowledge-extraction/references/段建业盲派核心知识提取_20260714.md",
+        "type": "classic",
+    },
+    {
+        "path": "/root/.hermes/profiles/jinjian-zhenren/skills/bazi/bazi-knowledge-extraction/references/盲派做功方式知识点提取_20260714.md",
+        "type": "classic",
+    },
+    {
+        "path": "/root/.hermes/profiles/jinjian-zhenren/skills/bazi/bazi-knowledge-extraction/references/盲派寻根基_十神归属权知识点提取_20260714.md",
+        "type": "classic",
+    },
     # 方法论参考
     {
         "path": "/root/.hermes/profiles/jinjian-zhenren/skills/bazi/bazi-foundation-analysis/references/ziping-theory-schools_20260722.md",
@@ -59,6 +76,10 @@ def chunk_by_sections(content: str, source_path: str, source_type: str):
             'zipingzhenquan': '经典-子平真诠',
             'sanmingtonghui': '经典-三命通会',
             'yuanhaiziping': '经典-渊海子平',
+            'yangqingjuan': '经典-杨清娟盲派',
+            '段建业': '经典-段建业盲派',
+            '盲派做功方式': '经典-盲派做功',
+            '盲派寻根基': '经典-盲派寻根基',
         }
         base = os.path.basename(source_path)
         for pinyin, prefix in pinyin_map.items():
