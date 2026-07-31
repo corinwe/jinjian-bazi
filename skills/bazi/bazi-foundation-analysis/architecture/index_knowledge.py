@@ -76,6 +76,10 @@ SOURCES = [
         "type": "classic",
     },
     {
+        "path": "/root/.hermes/profiles/jinjian-zhenren/skills/bazi/bazi-foundation-analysis/references/段建业_盲派初级命理学_全文_20260731.md",
+        "type": "classic",
+    },
+    {
         "path": "/root/.hermes/profiles/jinjian-zhenren/skills/bazi/bazi-knowledge-extraction/references/盲派做功方式知识点提取_20260714.md",
         "type": "classic",
     },
@@ -114,6 +118,7 @@ def chunk_by_sections(content: str, source_path: str, source_type: str):
             'yangqingjuan': '经典-杨清娟盲派',
             'shishang': '经典-杨清娟盲派',
             '段建业': '经典-段建业盲派',
+            '盲派初级命理学': '经典-段建业盲派',
             '盲派做功方式': '经典-盲派做功',
             '盲派寻根基': '经典-盲派寻根基',
         }
