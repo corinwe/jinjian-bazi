@@ -34,6 +34,10 @@ SOURCES = [
         "type": "classic",
     },
     {
+        "path": "/root/.hermes/profiles/jinjian-zhenren/skills/bazi/bazi-foundation-analysis/references/三命通会_全文12卷_384章_20260731.md",
+        "type": "classic",
+    },
+    {
         "path": "/root/.hermes/profiles/jinjian-zhenren/skills/bazi/bazi-foundation-analysis/references/classic_yuanhaiziping_20260729.md",
         "type": "classic",
     },
@@ -80,6 +84,7 @@ def chunk_by_sections(content: str, source_path: str, source_type: str):
             'zipingzhenquan': '经典-子平真诠',
             'sanmingtonghui': '经典-三命通会',
             'yuanhaiziping': '经典-渊海子平',
+            '三命通会_全文': '经典-三命通会',
             'yangqingjuan': '经典-杨清娟盲派',
             'shishang': '经典-杨清娟盲派',
             '段建业': '经典-段建业盲派',

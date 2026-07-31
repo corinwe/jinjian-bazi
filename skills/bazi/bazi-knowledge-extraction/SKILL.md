@@ -1630,6 +1630,7 @@ SOP同步更新好，最后双库一起推
 | **R18** | **bazi-knowledge-extraction/references/ocr-correction-table.md** | **命理PDF·OCR常见错别字修正表（300+条）** | **易道知识应用7+6实战萃取**
 | **R19** | **bazi-knowledge-extraction/references/杨清娟盲派知识结构_20260729.md** | **杨清娟盲派命理结构全貌+差距基线（✅已吸收，正文见R20）** | **杨清娟盲派命理.pdf·扫描件OCR** |
 | **R20** | **bazi-foundation-analysis/references/classic_yangqingjuan_20260729.md** | **杨清娟盲派完整正文知识（做功九法/功必归主/四宫划分家里家外/宾主六重境界/假做功/无功之命/土阴阳转化/合克得财定律·14KB）** | **杨清娟盲派命理.pdf·2026-07-29全量吸收** |
+| **R21** | **bazi-foundation-analysis/references/classic_yangqingjuan_shishang_20260729.md** | **杨清娟盲派食伤做功解读（食伤生财升官断法/职业层次决策树/十神做功关系/四凶神转吉/断灾应期·12.8KB）** | **杨清娟盲派食伤做功解读.pdf·2026-07-29全量吸收** |
 
 ## §14. 经典/书籍三落点吸收工作流（2026-07-29·五经典实战验证）
 
@@ -1650,6 +1651,7 @@ SOP同步更新好，最后双库一起推
   ├─ references/classic_{书名拼音}_20260729.md
   ├─ 结构：核心原理→速查表→实战应用规则→与引擎对接代码
   └─ 并行委派：4本经典delegate_task并行写，自己写最核心的1本
+  └─ ⚠️ 续篇识别：OCR页号不从1开始（如44-48）= 同一来源的续篇，用 `classic_{源名}_{主题}` 命名并挂同一 `经典-{源名}` section，与主文档互补不重复
 
 落点③ — 向量库重建 + 检索验证（最易出错）
   ├─ index_knowledge.py 重建Chroma（删旧collection重建，逐文件打印块数）
