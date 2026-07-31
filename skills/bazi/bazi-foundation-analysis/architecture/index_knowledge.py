@@ -51,7 +51,15 @@ SOURCES = [
         "type": "classic",
     },
     {
+        "path": "/root/.hermes/profiles/jinjian-zhenren/skills/bazi/bazi-foundation-analysis/references/渊海子平_全文302章_评注_20260731.md",
+        "type": "classic",
+    },
+    {
         "path": "/root/.hermes/profiles/jinjian-zhenren/skills/bazi/bazi-foundation-analysis/references/滴天髓阐微_全文64篇_20260731.md",
+        "type": "classic",
+    },
+    {
+        "path": "/root/.hermes/profiles/jinjian-zhenren/skills/bazi/bazi-foundation-analysis/references/穷通宝鉴_全文11篇_20260731.md",
         "type": "classic",
     },
     # 盲派知识文档
@@ -100,7 +108,9 @@ def chunk_by_sections(content: str, source_path: str, source_type: str):
             '三命通会_全文': '经典-三命通会',
             '子平真诠_全文': '经典-子平真诠',
             '渊海子平_全文': '经典-渊海子平',
+            '渊海子平_全文302': '经典-渊海子平',
             '滴天髓阐微_全文': '经典-滴天髓',
+            '穷通宝鉴_全文': '经典-穷通宝鉴',
             'yangqingjuan': '经典-杨清娟盲派',
             'shishang': '经典-杨清娟盲派',
             '段建业': '经典-段建业盲派',

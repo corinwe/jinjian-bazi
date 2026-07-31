@@ -1633,6 +1633,9 @@ SOP同步更新好，最后双库一起推
 | **R21** | **bazi-foundation-analysis/references/classic_yangqingjuan_shishang_20260729.md** | **杨清娟盲派食伤做功解读（食伤生财升官断法/职业层次决策树/十神做功关系/四凶神转吉/断灾应期·12.8KB）** | **杨清娟盲派食伤做功解读.pdf·2026-07-29全量吸收** |
 | **R22** | **bazi-knowledge-extraction/references/guji-fulltext-acquisition-20260731.md** | **公版古籍全文抓取配方（gushiwen.cn单页索引+contson提取+0.5s间隔·三命通会384章实战）** | **2026-07-31三命通会全文补全** |
 | **R23** | **bazi-foundation-analysis/references/三命通会_全文12卷_384章_20260731.md** | **三命通会全文12卷384章（32.6万字·966KB·含120章六X日X时断）** | **gushiwen.cn·2026-07-31全文抓取** |
+| **R24** | **bazi-foundation-analysis/references/子平真诠_全文48章_徐注_20260731.md** | **子平真诠全文48章+序凡例（11.8万字·含徐乐吾评注·337KB）** | **ab.newdu.com·2026-07-31全文抓取** |
+| **R25** | **bazi-foundation-analysis/references/渊海子平_全文12卷_20260731.md** | **渊海子平全文12卷（7.5万字·225KB·基础/十神/神煞/六亲/女命/赋论/格局/诗诀）** | **gushiwen.cn·2026-07-31全文抓取** |
+| **R26** | **bazi-foundation-analysis/references/滴天髓阐微_全文64篇_20260731.md** | **滴天髓阐微全文64篇（13.8万字·398KB·通神论/十干体象/衰旺/征验全）** | **gushiwen.cn·2026-07-31全文抓取** |
 
 ## §14. 经典/书籍三落点吸收工作流（2026-07-29·五经典实战验证）
 
@@ -1699,7 +1702,7 @@ workflow_engine_v3.py 接入：
 
 回答"收全了吗"时，必须按此三档列表格逐本汇报，不得笼统说"收全了"。
 
-### 15.2 全文来源选择（按质量排序）
+### 15.2 全文来源选择（按质量排序·2026-07-31五经典全量验证扩充）
 
 ```yaml
 ① ctext.org（中国哲学书电子化计划）— 质量最高（四库全书本），但⚠️部分书只收录部分卷
@@ -1708,10 +1711,29 @@ workflow_engine_v3.py 接入：
 ② gushiwen.cn（古诗文网·移动版 m.gushiwen.cn）— 完整章节索引，一次性可抓全书 ✅首选
    获取：https://m.gushiwen.cn/guwen/book_{hash}.aspx → 单页含全部章节链接（三命通会384个）
    章节URL：/guwen/bookv_{hash}.aspx → 正文在 <div class="contson">
-③ 8bei8.com / httpcn.com — 备选；httpcn会302重定向到首页（JS渲染），8bei8需浏览器
+   实测：三命通会384章/32.6万字；渊海子平12章/7.5万字（基础/十神/神煞/六亲/女命/赋论1-5/格局/诗诀）；滴天髓64篇/13.8万字
+③ ab.newdu.com（国学典籍网）— 分章节URL，**子平真诠原文+徐乐吾评注首选**（2026-07-31新增验证）
+   获取：http://ab.newdu.com/book/mb4327.html → 章节 /book/ms{id}.html
+   ⚠️ 必须用 http:// 前缀（https会超时）；正文在 <div id="detail_content">（含原文+徐注）
+   实测：子平真诠51篇（48章+序+凡例+后记）/11.8万字/含徐乐吾评注
+   注意：正文含 &nbsp; 需替换；URL请求需带 Referer 头
+④ 8bei8.com / httpcn.com — 备选；httpcn会302重定向到首页（JS渲染），8bei8需浏览器
 ```
 
-**结论**：抓公版古籍全文，先试 gushiwen.cn（单页全索引+curl可抓），ctext作为质量对照。
+**结论**：抓公版古籍全文，先试 gushiwen.cn（单页全索引+curl可抓），ctext作为质量对照；子平真诠评注（带徐注）用 ab.newdu.com；其他源（中华典藏/东里书斋/算准网）均因 meta description 截断或章节不全降级为不可用。
+
+### 15.2a 古籍全文来源避坑（2026-07-31新增）
+
+```yaml
+❌ 中华典藏 diancang.xyz — 正文藏在 <meta name="description"> 里且被截断（每章仅几百字），不可用
+❌ 东里书斋 donglishuzhai.net — 正文同样在 meta description（繁体全本但截断），不可用
+❌ 算准网 suanzhun.net — 正文完整但只有25章（缺论行运/正官/财/印/食神后半），章节不全，不可用
+❌ 太极书馆 8bei8 — JS渲染，curl拿不到章节链接
+✅ 国学典籍网 ab.newdu.com — 分章完整正文，子平真诠（原文+徐注）11.8万字全量
+✅ 古诗文网 m.gushiwen.cn — 单页全索引，curl可抓，正文完整
+
+繁体转简体：opencc（pip install opencc-python-reimplemented）→ OpenCC('t2s').convert(text)
+```
 
 ### 15.3 批量抓取流水线（三命通会384章验证）
 
