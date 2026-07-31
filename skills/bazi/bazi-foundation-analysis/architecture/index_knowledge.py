@@ -50,6 +50,22 @@ SOURCES = [
 
 def chunk_by_sections(content: str, source_path: str, source_type: str):
     """按##或§标题切分知识块"""
+    # 经典文档的固定section前缀（文件名拼音→中文书名映射）
+    classic_prefix = None
+    if source_type == "classic":
+        pinyin_map = {
+            'qiongtongbaojian': '经典-穷通宝鉴',
+            'ditiansui': '经典-滴天髓',
+            'zipingzhenquan': '经典-子平真诠',
+            'sanmingtonghui': '经典-三命通会',
+            'yuanhaiziping': '经典-渊海子平',
+        }
+        base = os.path.basename(source_path)
+        for pinyin, prefix in pinyin_map.items():
+            if pinyin in base:
+                classic_prefix = prefix
+                break
+    
     # 提取标题行
     lines = content.split('\n')
     chunks = []
@@ -63,7 +79,7 @@ def chunk_by_sections(content: str, source_path: str, source_type: str):
             chunks.append({
                 'text': text,
                 'title': current_title[:60],
-                'section': _extract_section(current_title),
+                'section': _extract_section(current_title, classic_prefix),
             })
         current_buf = []
     
@@ -77,15 +93,14 @@ def chunk_by_sections(content: str, source_path: str, source_type: str):
     flush()
     return chunks
 
-def _extract_section(title: str) -> str:
+def _extract_section(title: str, classic_prefix: str = None) -> str:
     """从标题提取§编号"""
+    # 经典文档直接用前缀（无需逐标题判断）
+    if classic_prefix:
+        return classic_prefix
     m = re.search(r'§(\d+)', title)
     if m:
         return f"§{m.group(1)}"
-    # 经典文档用固定标识
-    for key in ['穷通宝鉴', '滴天髓', '子平真诠', '三命通会', '渊海子平']:
-        if key in title:
-            return f"经典-{key}"
     return "§37"
 
 def index_all():
