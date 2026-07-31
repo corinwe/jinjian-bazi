@@ -9,6 +9,7 @@ from paipan import get_full_paipan
 from constants import BaZi, Pillar
 from shen_qiang_ruo import compute_shen_qiang_ruo
 from ge_ju import determine_ge_ju, determine_xi_yong_shen
+from tiaohou import get_tiaohou, explain_tiaohou, MONTH_TO_ZHI
 from pre_retrieval_hook import PreRetrievalHook
 
 STD_21 = [
@@ -59,7 +60,17 @@ def run(user_query: str, task_type: str = '通用',
         xt = determine_xi_yong_shen(bazi)
         xys = f"喜:{','.join(xt[0])} 忌:{','.join(xt[1])}" if isinstance(xt, tuple) else str(xt)
         bazi_str = p['bazi']
-        print(f'{bazi_str} | {label}({score}分) | {gm}')
+        
+        # 调候用神（穷通宝鉴·确定性）
+        ri_gan = bazi.ri_zhu
+        yue_zhi = bazi.month.zhi
+        try:
+            th_gods, th_note = get_tiaohou(ri_gan, yue_zhi, with_detail=True)
+            th_str = f"调候用神(穷通宝鉴):{'、'.join(th_gods)} — {th_note}"
+        except Exception as e:
+            th_str = f"调候用神:查询失败({str(e)[:40]})"
+        
+        print(f'{bazi_str} | {label}({score}分) | {gm} | {th_str[:40]}')
     except Exception as e:
         return {'status': 'error', 'message': f'引擎失败: {str(e)[:100]}'}
     
@@ -85,6 +96,7 @@ def run(user_query: str, task_type: str = '通用',
         
         prompt = f"""八字: {bazi_str} | {label}({score}分) | {gm}
 喜用: {xys}
+{th_str}
 
 【强制知识】
 {kb[:800]}

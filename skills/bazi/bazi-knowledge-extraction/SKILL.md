@@ -1628,4 +1628,5 @@ SOP同步更新好，最后双库一起推
 | R16 | bazi-foundation-analysis/references/盲派十二神煞完整知识提取_20260714.md | 盲派神煞15组+串宫十二神（334行） | 维基·time.actor·算准网 |
 | R17 | bazi-foundation-analysis/references/盲派寻根基_十神归属权知识点提取_20260714.md | 寻根基+归属权21字诀（67条） | 搜狐·bazitalk·163
 | **R18** | **bazi-knowledge-extraction/references/ocr-correction-table.md** | **命理PDF·OCR常见错别字修正表（300+条）** | **易道知识应用7+6实战萃取**
+| **R19** | **bazi-knowledge-extraction/references/杨清娟盲派知识结构_20260729.md** | **杨清娟盲派命理结构全貌+差距分析（做功九法/功必归主/宾主六重/四宫划分·待吸收）** | **杨清娟盲派命理.pdf·扫描件OCR**
 
