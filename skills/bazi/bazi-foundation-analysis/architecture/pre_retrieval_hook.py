@@ -3,7 +3,7 @@ import chromadb
 from chromadb.utils import embedding_functions
 
 CHROMA_PATH = "/root/.hermes/profiles/jinjian-zhenren/data/chroma_db"
-TOP_K = 5
+TOP_K = 8
 
 class PreRetrievalHook:
     """在Agent收到任务前，强制检索相关知识注入上下文"""
