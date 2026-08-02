@@ -1,6 +1,6 @@
 ---
 name: bazi-paipan-sop
-description: 金鉴真人·八字排盘标准作业程序（SOP）。封装排盘全流程：技能加载顺序→排盘源头校验→引擎评分→分析报告→发布前校验→归档推库。2026-07-14重写。2026-07-27新增商业化架构转型参考。
+description: 金鉴真人·八字排盘标准作业程序（SOP）。封装排盘全流程：技能加载顺序→排盘源头校验→引擎评分→分析报告→发布前校验→归档推库。2026-07-14重写。2026-07-27新增商业化架构转型参考。2026-07-31新增人物档案归档规范+五行生克全息/应期断事参考指针。
 tags: [八字, 排盘, SOP, 金鉴真人, pipeline, 物理化]
 related_skills: [bazi-engine-workflow, bazi-foundation-analysis, bazi-report-template, bazi-platform-harness, bazi-task-dispatch, maker-checker-workflow, bazi-auto-verify, bazi-calibration, bazi-report-engine-audit, bazi-data-source]
 ---
@@ -96,6 +96,15 @@ jinjian-bazi       程序（SOP/代码/引擎/配置）          程序库
 
 ### 人物报告命名规范
 `{日柱天干地支}_{内容}_{日期}.md`（如 `乾造辛亥_完整多流派报告_20260727.md`）
+
+### 人物档案归档规范（2026-07-31 老板校准）
+- `02-人物档案/编号-姓名/` 目录下**只保留当前有效报告**，历史版本（v1.0-v31.0/九龙版/泉师兄版/盲派体用各版/象法图）**全部移入同目录 `archive/` 子目录**——归档后该人物目录只剩 `archive/`
+- 已归档：家主/主母/子源/外甥-胜源/立（2026-07-31）
+- 归属目录命名前**必须用姓名验证亲属关系**（老板抓错：胜源=杨胜源=**外甥**，非少爷）——不可盲信旧目录名"04-少爷-胜源"，按姓氏（杨姓≠魏姓）+ 老板确认定归属
+
+### 2026-07-31 新增知识参考（位于 bazi-foundation-analysis/references/）
+- ⚠️ 五行生克全息铁律（老板校准）：金生水壬癸皆生、水生木甲乙皆生；做功线路=天干明线/地支刑冲合害（申亥害不是生）/合局流通；主位财=做功主目标。见 `bazi-foundation-analysis/references/wuxing-shengke-quanxi-luxian-20260731.md`
+- 🔮 刑冲合害应期断大事件模型（实战断验）：冲月令=事业变动·冲年柱=长辈/破财·冲时柱=子女/财务·官合身=名分确立·夺食=思虑健康。见 `bazi-foundation-analysis/references/yingqi-duanshi-dashi-20260731.md`
 
 ## 多流派分析模式
 支持同时输出子平/盲派/九龙三个流派的简版分析。

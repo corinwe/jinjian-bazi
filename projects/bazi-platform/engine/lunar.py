@@ -61,7 +61,7 @@ LUNAR_INFO = [
     0x0B557,  # 1940-1949
     0x06CA0,
     0x0B550,
-    0x15355,
+    0xB6A50,  # 1952 修正: 月份[29,30,29,30,30,29,30,30,29,30,29,30] 闰5月29天 (lunar-python校准)
     0x04DA0,
     0x0A5B0,
     0x14573,
@@ -399,6 +399,19 @@ def lunar_to_solar(year: int, month: int, day: int, is_leap: bool = False) -> da
     day: 农历日
     is_leap: 是否闰月
     """
+    # 优先使用权威库 lunar-python（数据准确，lunar-python用闰月传 month+0.5 或 fromYmdHms）
+    try:
+        from lunar_python import Lunar
+        if is_leap:
+            # lunar-python 闰月处理：用 month+0.5 表示闰月
+            lunar = Lunar.fromYmd(year, month + 0.5, day)
+        else:
+            lunar = Lunar.fromYmd(year, month, day)
+        solar = lunar.getSolar()
+        return date(solar.getYear(), solar.getMonth(), solar.getDay())
+    except Exception:
+        pass  # 回退到手写农历表
+
     if year not in LUNAR_NEW_YEAR:
         raise ValueError(f"不支持{year}年转换")
 
@@ -407,35 +420,24 @@ def lunar_to_solar(year: int, month: int, day: int, is_leap: bool = False) -> da
 
     # 计算从正月初一到目标日期的天数
     days = 0
-    leap_encountered = False
 
+    # 累加目标月之前的正常月天数
     for m in range(1, month):
-        if m == info["leap_month"]:
-            # 闰月在小月之前
-            days += info["months"][m - 1]
-            if is_leap and month == info["leap_month"]:
-                days += info["leap_days"]
-                leap_encountered = True
-        elif not leap_encountered and info["leap_month"] > 0 and m > info["leap_month"]:
-            # 过了闰月，但目标月不是闰月
-            pass  # 正常月份
         days += info["months"][m - 1]
 
-    # 处理闰月特殊
-    if is_leap:
-        if month != info["leap_month"]:
-            raise ValueError(f"{year}年{month}月不是闰月")
-        # 加完正常月份后再加闰月天数
-        days = 0
-        for m in range(1, info["leap_month"]):
-            days += info["months"][m - 1]
-        days += info["leap_days"]  # 闰月本身
-        days += day - 1
-    else:
-        # 如果目标月在闰月之后，需要加上闰月
-        if info["leap_month"] > 0 and month > info["leap_month"]:
+    # 处理闰月
+    if info["leap_month"] > 0:
+        if is_leap:
+            # 目标是闰月本身：正常月已加完，再加闰月天数
+            if month != info["leap_month"]:
+                raise ValueError(f"{year}年{month}月不是闰月")
             days += info["leap_days"]
-        days += day - 1
+        else:
+            # 目标月在闰月之后：加上闰月天数
+            if month > info["leap_month"]:
+                days += info["leap_days"]
+
+    days += day - 1
 
     return spring + timedelta(days=days)
 
