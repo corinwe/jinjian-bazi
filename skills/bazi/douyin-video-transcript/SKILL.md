@@ -77,9 +77,34 @@ for seg in segments:
 | **移动端分享页** | ✅ **成功** | **分享页无登录墙，SSR直出数据** |
 
 ## 验证
-- 转写文本与视频时长匹配（45秒≈200-300字口播）
+- 转写文本与视频时长匹配（45秒≈200-300字口播；16分钟≈4000-5000字）
 - 修正同音字后保存文案到知识库（04-金鉴真人体系/ 或对应目录）
 - 汇报时附：视频时长+口播字数+核心论点提炼
 
+## 实战Pitfalls（2026-08-02实战发现）
+
+### P1: 一键脚本可能静默失败/超时 → 分步调试
+- extract_douyin.py 对部分视频会无输出直接退出（短链解析或页面加载hang）
+- **对策**：脚本失败时不要反复重跑，改为分步手动：
+  1. 短链解析：Playwright移动端goto短链→page.url取aweme_id（正则\d{15,20}）
+  2. 拿video_url：访问`https://www.iesdouyin.com/share/video/{id}`→提取`window._ROUTER_DATA`→搜`play_addr.url_list[0]`（playwm链接）；或读video标签src
+  3. curl下载（移动端UA+Referer: https://www.iesdouyin.com/）
+  4. ffmpeg提音频 → whisper转写
+
+### P2: 长视频转写必须用后台任务
+- medium模型CPU转写约**1分钟音频≈1分钟计算**（16分钟视频≈17分钟）
+- 前台terminal timeout=600s会杀进程（**被杀时输出文件可能未写入**）
+- **对策**：写转写脚本到文件→`terminal(background=true, notify_on_complete=true)`→process wait/poll等待；或加`vad_filter=True`（跳过静音段，明显加速）
+- 转写后先检查输出文件是否生成（`ls -la`），不要只信stdout
+
+### P3: 同音字必须人工修正
+- whisper中文同音字错误常见：真权→真诠、伦语→论语、银身→寅申、挡口→档口、洗用→喜用、声望→身旺、硬→印、纪神→忌神、才心→财星、相关→伤官
+- **对策**：转写后通读修正同音字再入库；命理术语尤其要校（印/杀/官/财/食伤/身强弱/喜用忌神）
+
+### P4: stdout被tail截断≠转写失败
+- `python3 x.py 2>&1 | tail -70`只显示末尾——长视频文案要看完整文件
+- **对策**：转写同时写入txt文件，用read_file分段读取完整内容
+
 ## 案例
 - 2026-08-02 荀太虚《详解〈子平真诠〉》第1集：45.5秒/236字——playwm URL下载10.7MB MP4 → medium转写成功
+- 2026-08-02 荀太虚《深度分析人生能量》：15分54秒/4778字——75MB MP4 → 后台转写成功（案例八字庚申壬午己巳丙寅，方法论沉淀到 bazi-foundation-analysis/references/taixu-duanming-method_20260802.md）

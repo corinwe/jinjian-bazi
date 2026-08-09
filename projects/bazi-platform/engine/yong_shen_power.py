@@ -99,6 +99,91 @@ def assess_yong_shen_power(bazi: BaZi, xi_yong: list[str]) -> dict:
     }
 
 
+def check_tong_guan_duan(bazi: BaZi, xi_yong: list[str]) -> str:
+    """关键通关断检测（老板校准·2026-08-02）
+
+    规则：喜用链条（通关）是否被截断
+      食伤生财：食伤(金)生财(水)——水生木？按五行生克查链条
+      杀印相生：官杀(木)生印(火)——木生火
+      伤官配印：伤官(金)佩印(火)——金被火制=配印
+    返回: 通关状态描述
+    """
+    gans = [bazi.year.gan, bazi.month.gan, bazi.day.gan, bazi.hour.gan]
+    zhis = [bazi.year.zhi, bazi.month.zhi, bazi.day.zhi, bazi.hour.zhi]
+    wuxing_counts = {}
+    for g in gans:
+        wuxing_counts[GAN_WX.get(g, "")] = wuxing_counts.get(GAN_WX.get(g, ""), 0) + 1
+    for z in zhis:
+        wuxing_counts[ZHI_WX.get(z, "")] = wuxing_counts.get(ZHI_WX.get(z, ""), 0) + 1
+
+    # 关键通关链（按喜用判断主线）
+    chain_desc = []
+    # 食伤→财链：金生水（食伤金→财水）
+    if "金" in xi_yong and "水" in xi_yong:
+        jin = wuxing_counts.get("金", 0)
+        shui = wuxing_counts.get("水", 0)
+        huo = wuxing_counts.get("火", 0)
+        if jin > 0 and shui > 0:
+            if huo >= 3:
+                chain_desc.append(f"食伤生财链(金→水)被火克截断(火{huo}处)")
+            else:
+                chain_desc.append(f"食伤生财链(金→水)通畅(金{jin}水{shui})")
+        elif shui == 0:
+            chain_desc.append("食伤生财链断：原局无财(水)")
+    # 杀印相生链：木生火（官杀木→印火）
+    if "木" in xi_yong and "火" in xi_yong:
+        mu = wuxing_counts.get("木", 0)
+        huo = wuxing_counts.get("火", 0)
+        if mu > 0 and huo > 0:
+            chain_desc.append(f"杀印相生链(木→火)存在(木{mu}火{huo})")
+        elif mu == 0:
+            chain_desc.append("杀印相生链断：原局无官杀(木)")
+
+    return "；".join(chain_desc) if chain_desc else "无典型通关链"
+
+
+def determine_ge_ju_level(bazi: BaZi, xi_yong: list[str], ji_shen: list[str]) -> dict:
+    """原局格局层次三档判定（老板校准·2026-08-02）
+
+    (a) 原局有用神且未被破坏 → 格局层次不低（高）
+    (b) 喜用神被破坏 → 层次打折扣（中）
+    (c) 原局没有喜用神 → 格局很低（低）
+    返回: {"level": "高"|"中"|"低", "reason": 判定理由, "xi_yong_power": ..., "tong_guan": ...}
+    """
+    power = assess_yong_shen_power(bazi, xi_yong)
+    tong_guan = check_tong_guan_duan(bazi, xi_yong)
+
+    # 判断喜用是否被破坏：喜用力量弱 + 被克 + 冲用神
+    broken_parts = []
+    if power["level"] == "缺失":
+        return {"level": "低", "reason": f"原局无喜用神({','.join(xi_yong) if xi_yong else '无'})→格局很低",
+                "xi_yong_power": power, "tong_guan": tong_guan}
+    if power["level"] == "弱":
+        broken_parts.append(f"喜用力量弱({power['score']}分)")
+    # 被克检测（喜用五行被忌神克）
+    for wx in xi_yong:
+        ke_wx = KE.get(wx)
+        if ke_wx and ke_wx in ji_shen:
+            ke_count = sum(1 for g in [bazi.year.gan, bazi.month.gan, bazi.day.gan, bazi.hour.gan] if GAN_WX.get(g) == ke_wx) + \
+                        sum(1 for z in [bazi.year.zhi, bazi.month.zhi, bazi.day.zhi, bazi.hour.zhi] if ZHI_WX.get(z) == ke_wx)
+            if ke_count >= 2:
+                broken_parts.append(f"{wx}喜用被{ke_wx}忌神克({ke_count}处)")
+    # 通关断检测
+    if "断" in tong_guan or "截断" in tong_guan:
+        broken_parts.append(f"通关断: {tong_guan}")
+
+    if not broken_parts and power["level"] in ("强", "中"):
+        return {"level": "高", "reason": f"原局有喜用({','.join(xi_yong)})且未被破坏→格局层次不低",
+                "xi_yong_power": power, "tong_guan": tong_guan}
+    elif power["level"] == "强" and len(broken_parts) <= 1:
+        # 喜用强但轻度受扰 → 中偏高
+        return {"level": "中", "reason": f"喜用有力但受扰: {'；'.join(broken_parts)}→层次打折扣",
+                "xi_yong_power": power, "tong_guan": tong_guan}
+    else:
+        return {"level": "中", "reason": f"喜用被破坏: {'；'.join(broken_parts) if broken_parts else '力量弱'}→层次打折扣",
+                "xi_yong_power": power, "tong_guan": tong_guan}
+
+
 def assess_ji_shen_zuoshi(bazi: BaZi, ji_shen: list[str], xi_yong: list[str] | None = None,
                           liu_nian_gan: str | None = None,
                           liu_nian_zhi: str | None = None) -> dict:
