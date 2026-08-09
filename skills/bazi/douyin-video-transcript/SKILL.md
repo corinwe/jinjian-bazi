@@ -108,3 +108,4 @@ for seg in segments:
 ## 案例
 - 2026-08-02 荀太虚《详解〈子平真诠〉》第1集：45.5秒/236字——playwm URL下载10.7MB MP4 → medium转写成功
 - 2026-08-02 荀太虚《深度分析人生能量》：15分54秒/4778字——75MB MP4 → 后台转写成功（案例八字庚申壬午己巳丙寅，方法论沉淀到 bazi-foundation-analysis/references/taixu-duanming-method_20260802.md）
+- 2026-08-02 荀太虚《滴天髓》：13分32秒/3972字——122MB MP4 → 后台转写成功（脚本静默→手动通道；讲解沉淀到 bazi-foundation-analysis/references/wuxing-guowang-guoruo-duanyu_20260802.md）
