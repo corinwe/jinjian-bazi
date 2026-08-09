@@ -56,16 +56,28 @@ def determine_ge_ju(bazi: BaZi) -> tuple[str, str]:
     # ⚠️ 特殊格局优先判断：从弱/从旺优先级高于月令本气定的正八格
     sqr_score, sqr_label, _ = compute_shen_qiang_ruo(bazi)
     if sqr_label == "从弱":
-        # 从弱格细分：取克泄耗五行中能量最强的
+        # 从弱格细分：取克泄耗五行中能量最强的（2026-08-02修正·动态按日主五行映射）
         from energy import compute_energy_profile
         ep = compute_energy_profile(bazi)
         wx_energy = ep.get("wu_xing_energy", {})
-        # 从弱喜克泄耗：官杀(土)>财(火)>食伤(木)
-        energy_map = {"土": wx_energy.get("土", 0),
-                      "火": wx_energy.get("火", 0),
-                      "木": wx_energy.get("木", 0)}
+        # 动态映射：克我=官杀(从官/从杀)，我克=财(从财)，我生=食伤(从儿)
+        ri_wx = TIAN_GAN_WU_XING[ri_zhu]
+        sheng_mu = {"木": "火", "火": "土", "土": "金", "金": "水", "水": "木"}
+        ke_mu = {"木": "土", "土": "水", "水": "火", "火": "金", "金": "木"}
+        ke_wo = {v: k for k, v in ke_mu.items()}      # 反向：谁克我
+        guan_sha_wx = ke_wo[ri_wx]                    # 克我=官杀
+        cai_wx = ke_mu[ri_wx]                         # 我克=财
+        shi_shang_wx = sheng_mu[ri_wx]                # 我生=食伤
+        energy_map = {guan_sha_wx: wx_energy.get(guan_sha_wx, 0),
+                      cai_wx: wx_energy.get(cai_wx, 0),
+                      shi_shang_wx: wx_energy.get(shi_shang_wx, 0)}
         strongest = max(energy_map, key=lambda k: energy_map[k])
-        sub_type = {"土": "从杀格", "火": "从财格", "木": "从儿格"}.get(strongest, "从杀格")
+        if strongest == guan_sha_wx:
+            sub_type = "从官杀格"
+        elif strongest == cai_wx:
+            sub_type = "从财格"
+        else:
+            sub_type = "从儿格"
         return "从弱格", f"从弱格({sub_type})"
     if sqr_label == "从旺":
         return "从旺格", "从旺格(专旺)"
@@ -97,12 +109,25 @@ def determine_ge_ju(bazi: BaZi) -> tuple[str, str]:
         if hui_ge:
             main_ge_ju, ge_ju_source = hui_ge
 
-    # 规则② 本气兜底：不透不会，取月支本气为用神（比肩劫财不入格局→维持杂气格）
+    # 规则② 本气兜底：不透不会，取月支本气为用神（比肩劫财不入格局→查建禄/阳刃）
     if main_ge_ju == "杂气格" and yue_cangs:
         ben_qi_ss = get_shi_shen_for_cang_gan(yue_cangs[0][0], ri_zhu)
         if ben_qi_ss in GE_JU_BY_YUE_LING:
             main_ge_ju = GE_JU_BY_YUE_LING[ben_qi_ss]
             ge_ju_source = f"月令{yue_zhi}本气{yue_cangs[0][0]}={ben_qi_ss}(本气兜底)"
+        else:
+            # 本气比劫不入正八格 → 查建禄格/阳刃格（2026-08-02·子平法修正）
+            # 建禄：日主禄在月支（甲禄寅乙禄卯丙禄巳丁禄午戊禄巳己禄午庚禄申辛禄酉壬禄亥癸禄子）
+            jian_lu = {"甲": "寅", "乙": "卯", "丙": "巳", "丁": "午", "戊": "巳", "己": "午",
+                       "庚": "申", "辛": "酉", "壬": "亥", "癸": "子"}
+            # 阳刃：阳干帝旺在月支（甲刃卯丙刃午戊刃午庚刃酉壬刃子）
+            yang_ren = {"甲": "卯", "丙": "午", "戊": "午", "庚": "酉", "壬": "子"}
+            if jian_lu.get(ri_zhu) == yue_zhi:
+                main_ge_ju = "建禄格"
+                ge_ju_source = f"月令{yue_zhi}={ri_zhu}禄地(建禄格·另取财官煞食为用)"
+            elif yang_ren.get(ri_zhu) == yue_zhi:
+                main_ge_ju = "阳刃格"
+                ge_ju_source = f"月令{yue_zhi}={ri_zhu}羊刃(阳刃格·喜官杀制伏)"
 
     # 规则③ 用神变化：取用天干被天干五合 → 标记格局变化（《论用神变化》）
     yong_shen_change = ""
