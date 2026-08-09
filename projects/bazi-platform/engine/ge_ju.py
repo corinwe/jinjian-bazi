@@ -75,6 +75,7 @@ def determine_ge_ju(bazi: BaZi) -> tuple[str, str]:
     # 月令本气→中气→余气依次看何者透干
     main_ge_ju = "杂气格"  # 默认
     ge_ju_source = ""
+    yong_shen_gan = None  # 取用之神的天干（用于用神变化检测）
 
     for cg, ratio in yue_cangs:
         ss = get_shi_shen_for_cang_gan(cg, ri_zhu)
@@ -82,7 +83,40 @@ def determine_ge_ju(bazi: BaZi) -> tuple[str, str]:
             main_ge_ju = GE_JU_BY_YUE_LING[ss]
             level = "本气" if ratio == 100 else "中气" if ratio == 60 else "余气"
             ge_ju_source = f"月令{yue_zhi}{level}{cg}={ss}透干"
+            # 找到透干用神的天干（在四柱天干中找该十神）
+            for p in [bazi.year, bazi.month, bazi.day, bazi.hour]:
+                if get_shi_shen_for_gan(p.gan, ri_zhu) == ss:
+                    yong_shen_gan = p.gan
+                    break
             break
+
+    # ──《子平真诠》规则补充（2026-08-02 荀太虚讲解交叉验证沉淀）──
+    # 规则① 会支取用：月令藏干不透，但月支与他支三合/三会成局 → 取会局十神为用神
+    if main_ge_ju == "杂气格":
+        hui_ge = _get_hui_zhi_ge_ju(bazi)
+        if hui_ge:
+            main_ge_ju, ge_ju_source = hui_ge
+
+    # 规则② 本气兜底：不透不会，取月支本气为用神（比肩劫财不入格局→维持杂气格）
+    if main_ge_ju == "杂气格" and yue_cangs:
+        ben_qi_ss = get_shi_shen_for_cang_gan(yue_cangs[0][0], ri_zhu)
+        if ben_qi_ss in GE_JU_BY_YUE_LING:
+            main_ge_ju = GE_JU_BY_YUE_LING[ben_qi_ss]
+            ge_ju_source = f"月令{yue_zhi}本气{yue_cangs[0][0]}={ben_qi_ss}(本气兜底)"
+
+    # 规则③ 用神变化：取用天干被天干五合 → 标记格局变化（《论用神变化》）
+    yong_shen_change = ""
+    if yong_shen_gan:
+        change = _check_yong_shen_he(bazi, yong_shen_gan, main_ge_ju)
+        if change:
+            yong_shen_change = change
+
+    # 顺逆用标记（《论用神》善顺用/不善逆用）
+    shun_ni = ""
+    if main_ge_ju in ("正官格", "正印格", "偏印格", "正财格", "偏财格", "食神格"):
+        shun_ni = "顺用"
+    elif main_ge_ju in ("七杀格", "伤官格"):
+        shun_ni = "逆用"
 
     # 若本中余气都未透干，则为杂气格（已默认）
 
@@ -141,12 +175,106 @@ def determine_ge_ju(bazi: BaZi) -> tuple[str, str]:
             extra_info.append("食神制杀(不成格-需身强)")
 
     detail_parts = [main_ge_ju]
+    if ge_ju_source:
+        detail_parts.append(ge_ju_source)
+    if shun_ni:
+        detail_parts.append(shun_ni)
+    if yong_shen_change:
+        detail_parts.append(yong_shen_change)
     if extra_info:
         detail_parts.extend(extra_info)
 
     detail = "+".join(detail_parts)
 
     return main_ge_ju, detail
+
+
+# ──《子平真诠》规则辅助函数（2026-08-02 沉淀）──
+
+def _get_shi_shen_by_wuxing(wx: str, ri_zhu: str) -> str:
+    """合局五行 → 十神（正神取向·会支取用兜底）"""
+    ri_wx = TIAN_GAN_WU_XING[ri_zhu]
+    sheng_mu = {"木": "火", "火": "土", "土": "金", "金": "水", "水": "木"}
+    ke_mu = {"木": "土", "土": "水", "水": "火", "火": "金", "金": "木"}
+    if wx == ri_wx:
+        return "比肩"  # 比劫不入格局
+    if sheng_mu[ri_wx] == wx:
+        return "食神"  # 我生=食伤（取正神）
+    if sheng_mu[wx] == ri_wx:
+        return "正印"  # 生我=印
+    if ke_mu[wx] == ri_wx:
+        return "正官"  # 克我=官
+    if ke_mu[ri_wx] == wx:
+        return "正财"  # 我克=财
+    return "比肩"
+
+
+def _get_hui_zhi_ge_ju(bazi: BaZi) -> tuple[str, str] | None:
+    """会支取用（《子平真诠·论用神》）：月令藏干不透，但月支与他支三合/三会成局 → 取会局十神为用神
+
+    优先级：三合（完整15倍/虚邀7倍）> 三会（20倍）> 半合（5倍）
+    返回: (格局名, 来源描述) 或 None
+    """
+    try:
+        from xing_chong_he_hua import check_san_he, check_san_hui, check_ban_he
+    except ImportError:
+        return None
+
+    zhis = [bazi.year.zhi, bazi.month.zhi, bazi.day.zhi, bazi.hour.zhi]
+    yue_zhi = bazi.month.zhi
+    ri_zhu = bazi.ri_zhu
+
+    # 1. 完整三合（含虚邀）：能量15/7
+    try:
+        sanhe_results = check_san_he(zhis)
+        for item in sanhe_results:
+            he_type, wx, energy = item  # ("申子辰三合水局", "水", 15.0)
+            if yue_zhi in he_type and energy >= 7:
+                ss = _get_shi_shen_by_wuxing(wx, ri_zhu)
+                if ss in GE_JU_BY_YUE_LING:
+                    return GE_JU_BY_YUE_LING[ss], f"月令{yue_zhi}会支{he_type}→{ss}格"
+    except Exception:
+        pass
+
+    # 2. 三会局
+    try:
+        sanhui_results = check_san_hui(zhis)
+        for item in sanhui_results:
+            he_type = item.get("type", "")
+            wx = item.get("wx", "")
+            if yue_zhi in he_type:
+                ss = _get_shi_shen_by_wuxing(wx, ri_zhu)
+                if ss in GE_JU_BY_YUE_LING:
+                    return GE_JU_BY_YUE_LING[ss], f"月令{yue_zhi}会支{he_type}→{ss}格"
+    except Exception:
+        pass
+
+    # 注：半合（能量5）不作取格依据——月令本气兜底优先（避免酉月伤官被半合误判）
+
+    return None
+
+
+def _check_yong_shen_he(bazi: BaZi, yong_shen_gan: str, ge_ju: str) -> str:
+    """用神变化（《子平真诠·论用神变化》）：取用天干被邻干天干五合 → 用神被合去/合绊
+
+    返回: 变化描述 或 ""
+    """
+    try:
+        from xing_chong_he_hua import check_tian_gan_he
+    except ImportError:
+        return ""
+
+    gans = [bazi.year.gan, bazi.month.gan, bazi.day.gan, bazi.hour.gan]
+    pos_names = ["年", "月", "日", "时"]
+    for i, g in enumerate(gans):
+        if g != yong_shen_gan:
+            try:
+                ok, he_wx = check_tian_gan_he(g, yong_shen_gan)
+                if ok:
+                    return f"用神{yong_shen_gan}被{pos_names[i]}干{g}合绊({g}{yong_shen_gan}合)"
+            except Exception:
+                continue
+    return ""
 
 
 def determine_xi_yong_shen(bazi: BaZi) -> tuple[list[str], list[str]]:
