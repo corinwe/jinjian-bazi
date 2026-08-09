@@ -99,6 +99,32 @@ Step 5 — 双库同步
 - 解决方案B: 让老板直接从手机端使用anxinxia类工具提取粘贴
 - 无cookies/非黑名单IP时，只能用Playwright获取标题/描述/合集，做主题级缺口分析
 
+### 2.0a 抖音详情API实测更新（2026-08-02·荀太虚《子平真诠》讲解验证）
+
+```yaml
+抖音web详情API（2026-08-02实测·全部❌需签名/登录）：
+  ├─ /aweme/v1/web/aweme/detail/?aweme_id=... → ❌ 需a_bogus签名（返回 encrypt_data_miss）
+  ├─ www.iesdouyin.com/web/api/v2/aweme/iteminfo/?item_ids=... → ❌ 同样 encrypt_data_miss
+  ├─ 页面 #RENDER_DATA script 标签（~184KB URL编码）→ decodeURIComponent 后只有配置信息，无视频desc/字幕
+  ├─ browser_console 里 fetch → ❌ 被Hermes安全策略拦截（"sensitive browser JavaScript primitive (network request)"，需 config.yaml browser.allow_unsafe_evaluate: true 且仅限可信页面）
+  └─ Playwright 监听 network response → ❌ 详情API需登录+签名，捕获不到
+  结论：无登录态cookies时，抖音口播文案仍不可得——方法栈②③（第三方转录/yt-dlp+whisper）是唯一正路
+```
+
+### 2.0b 经典主题讲解的交叉验证fallback（2026-08-02 成功范式·荀太虚《子平真诠》）
+
+拿不到口播时，若视频主题是**已入库的经典**（子平真诠/滴天髓/三命通会等），走"交叉验证+自动化审计"而非空转：
+
+```yaml
+范式（本会话验证成功）：
+  Step ① 确认经典全文已在知识库（子平真诠48章徐注版已入库·R24）
+  Step ② 用讲解主题（标题）审计自动化体系与经典规则的差距
+       例：荀太虚《子平真诠》→ 审计引擎 ge_ju.py → 发现3缺口（会支取用/本气兜底/用神变化）
+  Step ③ 修复引擎 + 全家族八字回归验证（6人：家主杂气格→正财格·胜源/燃凤→伤官格·用神合绊×2）
+  Step ④ 沉淀 references/zipingzhenquan_auto_impl_20260802.md + 双库推送
+关键：§3主题级缺口分析对象是"技能库覆盖"；此范式对象是"自动化引擎规则实现"——两者都要做
+```
+
 ### 2.1 Playwright方案（当前最可行）
 
 ### 2.1 适用场景
