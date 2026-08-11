@@ -12,7 +12,7 @@ metadata:
   hermes:
     tags: [computer-use, desktop, automation, gui, cross-platform]
     category: desktop
-    related_skills: [browser]
+    related_skills: []
 ---
 
 # Computer Use (universal, any-model, cross-platform)
@@ -100,6 +100,99 @@ focus_app         app="<app name>"   raise_window=false   (default: don't raise)
 All actions accept optional `capture_after=True` to get a follow-up
 screenshot in the same tool call. All actions that target an element
 accept `modifiers=[…]` for held keys.
+
+The input actions (`click`, `double_click`, `right_click`, `middle_click`,
+`drag`, `scroll`, `type`, `key`) also accept `delivery_mode`. The optional
+`bring_to_front=True` request invokes a separately approved standalone focus
+tool before foreground input; it is never an input-action property.
+
+## The verify → escalate ladder (background-first)
+
+cua-driver delivers input in the **background** by default (no focus steal),
+but that is the first rung, not the only one. Every input action returns a
+structured verdict; read it and climb only when the driver tells you to.
+
+Returned fields (present when the driver supports them):
+- `effect`: `"confirmed"` (driver read the result back — done), `"unverifiable"`
+  (delivered, but confirm it yourself by re-capturing), or `"suspected_noop"`
+  (ran but almost certainly did nothing).
+- `escalation`: `{recommended: "px" | "foreground" | "page", reason}` — present
+  only when there's a next rung to try.
+- `code`: a structured refusal like `"background_unavailable"` or
+  `"foreground_unsupported"`.
+- `verified`: `true` only on AX read-back.
+
+Walk it in order:
+
+1. **Element, background (default).** `click(element=N)`. If `effect:"confirmed"`,
+   you're done.
+2. **Fresh verification.** `effect:"unverifiable"` means inspect a fresh
+   capture/state before any retry. Do this even when `escalation.recommended`
+   is present; it is advisory, not proof that successful input should repeat.
+3. **Pixel, background.** After `effect:"suspected_noop"` or a structured
+   refusal recommends `"px"` (or a `degraded` capture has no elements), click
+   by `coordinate=[x,y]` instead of `element`.
+4. **Typed page.** When `escalation.recommended == "page"` and the exact
+   browser-page contract below is available, use the namespaced typed route
+   before native foreground. This is not the legacy `page` workflow.
+5. **Foreground.** After `effect:"suspected_noop"`,
+   `code:"background_unavailable"`, or a verified pixel no-op,
+   re-issue the SAME action with `delivery_mode="foreground"`. This briefly
+   raises the window and restores focus after; pair with `bring_to_front=True`
+   for a short sequence to avoid per-call flashes. It needs its own approval
+   (it's a visible focus change) and is only appropriate when the user isn't
+   actively working. Classic cases: Electron/Chromium consent dialogs (e.g.
+   tldraw offline's "Run Script"), DirectInput games, raw-input canvases.
+
+```
+computer_use(action="click", element=7)
+# → {effect: "suspected_noop", escalation: {recommended: "foreground", ...}}
+computer_use(action="click", element=7, delivery_mode="foreground")
+# → {effect: "unverifiable", path: "x11_pixel_fg"}   then re-capture to confirm
+```
+
+**Escalate to foreground as a REACTION to a returned signal, never as a
+prediction** from the app being Electron/Chromium/GTK. A confirmed effect is
+done and must not be duplicated. Different controls in
+the same app behave differently. Do NOT silently retry the same rung, and do
+NOT conclude "cua-driver can't drive this app" — climb the ladder. If
+`delivery_mode="foreground"` returns `code:"foreground_unsupported"`, the live
+action schema lacks that property; choose another verified rung without
+inferring support from the executable's reported version.
+
+## Typed browser page rung
+
+For page content in a supported GUI browser, the same `computer_use` tool
+exposes namespaced `cua_browser_*` actions. They do not collide with other
+browser tools. The contract is capability-based:
+
+1. Discover the exact native browser `(pid, window_id)` with `list_windows` or
+   native capture, then call `cua_browser_state` with both values.
+2. Continue only when it returns `status:"ok"`, `binding_quality:"exact"`, and
+   `mutation_allowed:true`. Select an opaque `tab_id` from that response.
+3. Call `cua_browser_state` with the `tab_id` for a fresh `semantic_v2`
+   snapshot. Use only refs from that newest snapshot and only for their
+   declared actions.
+4. Use the matching namespaced action (`cua_browser_click`,
+   `cua_browser_type`, `cua_browser_navigate`, or `cua_browser_pointer`).
+   Trusted input is the default. `input_route="dom_event"` is an explicit
+   trust downgrade; never choose it silently after a refusal.
+5. Every mutation invalidates refs. Take a fresh state snapshot before another
+   typed action. Never chain actions from remembered refs.
+
+`cua_browser_prepare` is a separate approved setup action. Driver-owned
+`isolated_new`/`isolated_named` profiles require explicit `allow_launch=true`.
+An `existing_profile` is decided by cua-driver's immutable permission mode.
+Normal Hermes sessions use `standard`, which requires a certified protected
+host and fails closed when Hermes has none. Explicit Hermes YOLO (`--yolo`,
+`/yolo`, or `approvals.mode: off`) launches a private embedded cua-driver in
+`unrestricted` after that risk acceptance, so there are no runtime Cua
+approval prompts. Never invent, store, log, or reuse a grant token.
+
+Use the native capture/AX/pixel/foreground ladder for browser chrome, browser
+permission UI, OS prompts, native dialogs, extension surfaces, unsupported
+engines, and any typed route that cannot prove exact binding or mutation
+permission. `cua_browser_dialog` covers page JavaScript dialogs only.
 
 ### Key shortcuts vary per platform
 
@@ -205,14 +298,14 @@ in your conversation context.
 | `cua-driver not installed` | Run `hermes computer-use install`, or `hermes tools` and enable Computer Use |
 | Captures consistently return empty / "no on-screen window" | On Linux: DISPLAY may not be set (X11) or you're on pure Wayland — ask the user to run `hermes computer-use doctor`. On Windows: you may be in Session 0 (SSH session) instead of the interactive desktop — see the cua-driver `WINDOWS.md` deep-dive |
 | Element index stale ("Element N not in cache") | SOM indices are only valid until the next `capture`. Re-capture before clicking. The wrapper carries opaque `element_token`s for stale-detection; you'll see an explicit error rather than a wrong click |
-| Click had no effect | Re-capture and verify. A modal that wasn't visible before may be blocking input. Dismiss it (usually `escape` or click its close button) before retrying |
+| Click had no effect | Read the structured verdict. `effect:"unverifiable"` → fresh capture/state before retry, even with an escalation hint. `effect:"suspected_noop"` or a structured refusal → climb the recommended ladder: coordinate (px), typed page route when exact, then foreground. Browser chrome/native prompts remain native. Don't conclude the app is undrivable |
 | Type text disappears into a terminal emulator | cua-driver detects terminals (Ghostty, iTerm2, Terminal.app, Windows Terminal, mintty, etc.) and routes through key-event synthesis — should "just work" on a recent cua-driver. If it doesn't, ask the user to run `hermes computer-use doctor` |
 | `blocked pattern in type text` | You tried to `type` a shell command matching the dangerous-pattern block list (`curl ... \| bash`, `sudo rm -rf`, etc.). Break the command up or reconsider |
 | Anything else weird | **First action: ask the user to run `hermes computer-use doctor`.** It runs the cua-driver `health_report` MCP tool and prints a structured per-check matrix. Their output tells you (and them) exactly what's wrong |
 
 ## When NOT to use `computer_use`
 
-- **Web automation you can do via `browser_*` tools** — those use a
+- **Web automation you can do via separate headless `browser_*` tools** — those use a
   real headless Chromium and are more reliable than driving the user's
   GUI browser. Reach for `computer_use` specifically when the task
   needs the user's actual native apps (Finder/Explorer/Files, Mail/
