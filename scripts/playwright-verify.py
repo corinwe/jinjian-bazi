@@ -19,6 +19,8 @@ FORBIDDEN_PINYIN = ["nian支", "yue支", "透干=True", "透干=False"]
 def audit_report(report_text, name, exp_score, exp_level):
     """逐项审计报告内容"""
     ok = True
+    fail_msgs = []
+    engine_str = "未找到身强弱"
     print(f"\n{'='*60}")
     print(f"📋 报告审计: {name}")
 
@@ -27,15 +29,20 @@ def audit_report(report_text, name, exp_score, exp_level):
     if ba_zi_match:
         print(f"  八字: {ba_zi_match.group(1)}")
 
-    # 分数验证
-    score_match = re.search(r'(\\d+\\.?\\d*)\\s*分[·\\s]\\s*(身强|身弱|中和|从弱|从强)', report_text)
+    # 分数验证（兼容两种格式：旧"64.0分·身强" / 现行"身强（64.0分）"）
+    score_match = None
+    m1 = re.search(r'(\d+\.?\d*)\s*分[·\s]\s*(身强|身弱|中和|从弱|从强)', report_text)
+    m2 = re.search(r'(身强|身弱|中和|从弱|从强)[（(]\s*(\d+\.?\d*)\s*分[）)]', report_text)
+    score_match = m1 or m2
     if score_match:
         gs, gl = score_match.group(1), score_match.group(2)
+        engine_str = f"{gs}分·{gl}"
         if gs == exp_score and gl == exp_level:
             print(f"  ✅ 身强弱: {gs}分·{gl}")
         else:
             print(f"  ❌ 期望 {exp_score}分·{exp_level}, 实际 {gs}分·{gl}")
             ok = False
+            fail_msgs.append(f"身强弱期望{exp_score}分·{exp_level}实际{gs}分·{gl}")
 
     # §1-§20完整性
     sections = sorted(set(int(s) for s in re.findall(r'## §(\d+)', report_text)))
@@ -43,6 +50,7 @@ def audit_report(report_text, name, exp_score, exp_level):
     if missing:
         print(f"  ❌ 缺§{missing}")
         ok = False
+        fail_msgs.append(f"缺§{missing}")
     else:
         print(f"  ✅ §1-§20完整 ({len(sections)}个)")
 
@@ -51,24 +59,30 @@ def audit_report(report_text, name, exp_score, exp_level):
         if word in report_text:
             print(f"  ❌ 禁止词'{word}'残留")
             ok = False
+            fail_msgs.append(f"禁止词'{word}'残留")
     for word in FORBIDDEN_PINYIN:
         if word in report_text:
             print(f"  ❌ 拼音残留'{word}'")
             ok = False
+            fail_msgs.append(f"拼音残留'{word}'")
 
     # 财富一致性
     if "54.7" in report_text:
         print(f"  ❌ 残留自创分数54.7")
         ok = False
+        fail_msgs.append("残留自创分数54.7")
     if "身弱系数" in report_text:
         print(f"  ❌ 身弱系数标签残留")
         ok = False
+        fail_msgs.append("身弱系数标签残留")
     if "三定律" in report_text:
         print(f"  ❌ 三定律残留")
         ok = False
+        fail_msgs.append("三定律残留")
     if "围克反成助力" in report_text:
         print(f"  ❌ 围克反成助力残留")
         ok = False
+        fail_msgs.append("围克反成助力残留")
 
     # 财富等级验证（身强财弱→中富）
     if name == "魏无记":
@@ -110,7 +124,10 @@ def audit_report(report_text, name, exp_score, exp_level):
     print(f"  报告行数: {len(report_text.splitlines())}")
     if ok:
         print(f"  🎉 全部通过!")
-    return ok
+        conclusion = "PASS: 全部检查通过"
+    else:
+        conclusion = "FAIL: " + "; ".join(fail_msgs) if fail_msgs else "FAIL: 存在未通过检查项"
+    return ok, engine_str, conclusion
 
 
 async def verify_via_api(name, gender, y, m, d, h, lunar, exp_score, exp_level):
@@ -159,14 +176,37 @@ async def verify_via_api(name, gender, y, m, d, h, lunar, exp_score, exp_level):
         await browser.close()
 
         # 3. 审计报告内容
-        return audit_report(report_md, name, exp_score, exp_level)
+        ok, engine_str, conclusion = audit_report(report_md, name, exp_score, exp_level)
+        return ok, engine_str, conclusion, f"/tmp/playwright_{name}.png"
+
+
+def record_trace(name, y, m, d, h, exp_score, exp_level, ok, engine_str, conclusion, evidence):
+    """将验证结果写入 verification_evidence.db traces 表（借鉴 DeepSeek Trajectory）"""
+    case_map = {"魏无记": "laoban", "主母": "taitai", "Joe": "shaoye"}
+    case_id = case_map.get(name, name)
+    input_str = f"{y}-{m:02d}-{d:02d} {h:02d}:00"
+    golden = f"{exp_score}分·{exp_level}"
+    import subprocess
+    subprocess.run(
+        [
+            "python3", "/root/hermes-harness/verify/verification_trace.py", "record",
+            "--product", "jinjian", "--case", case_id,
+            "--input", input_str, "--engine", engine_str, "--golden", golden,
+            "--match", "1" if ok else "0", "--conclusion", conclusion,
+            "--evidence", evidence, "--verifier", "playwright-verify",
+        ],
+        capture_output=True, text=True, timeout=30,
+    )
+    print(f"  🧾 轨迹已记录: {case_id} {'PASS' if ok else 'FAIL'}")
 
 
 async def main():
     results = []
     for test in TESTS:
-        result = await verify_via_api(*test)
-        results.append(result)
+        ok, engine_str, conclusion, evidence = await verify_via_api(*test)
+        name = test[0]
+        record_trace(name, test[2], test[3], test[4], test[5], test[7], test[8], ok, engine_str, conclusion, evidence)
+        results.append(ok)
 
     passed = sum(1 for r in results if r)
     print(f"\n{'='*60}")
