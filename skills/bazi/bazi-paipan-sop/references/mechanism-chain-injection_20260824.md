@@ -189,3 +189,49 @@ python3 /root/.hermes/profiles/jinjian-zhenren/scripts/mechanism-chain-generator
 | 版本 | 日期 | 变更 |
 |:-----|:-----|:-----|
 | v1.0 | 2026-08-24 | 初版：机制链定义+生成器+注入格式+物理门禁 |
+| v1.1 | 2026-08-24 | 新增产物溯源(PIPELINE-SIG签名)+强制入口(report-pipeline-entry.py)+强制5法对照 |
+
+---
+
+## 十、强制5法落地清单（2026-08-24 老板校准）
+
+> 老板提供「强制5法」框架（入口收敛/物理门禁/产物溯源/Maker-Checker/Hook注入SOP），
+> 逐项对照我们八字体系，确保"规则被执行"不再依赖Agent自觉。
+
+| # | 强制法 | 我们落地 | 状态 |
+|:-:|:-------|:---------|:----:|
+| 1 | **入口收敛** | `report-pipeline-entry.py` 唯一入口：引擎JSON→机制链→骨架→报告。手写JSON翻译无入口文件→pre-commit拒绝（无机制链标记） | ✅ |
+| 2 | **物理门禁** | pre-commit v3.3：quotepath修复+死代码修复+机制链检查+签名校验+质量门禁(≥800行/21§) | ✅ |
+| 3 | **产物溯源** | `mechanism-chain-generator.py` 生成PIPELINE-SIG=sha256(八字+身强弱+格局+喜用+财星+最佳大运)，`verify-pipeline-sig.py` 独立校验 | ✅ |
+| 4 | **Maker/Checker** | 生成器(确定性代码)=Maker；`verify-pipeline-sig.py`+`verify-report-quality.py`+pre-commit=Checker。人写人审需用maker-checker-workflow技能 | ⚠️ 半自动 |
+| 5 | **Hook注入SOP** | pre_llm_call hook(inject-context.sh)注入物理约束提醒 + pre_tool_call hook(precheck.py)拦截未验证写文件 | ✅ |
+
+### 关键文件索引
+
+| 文件 | 作用 |
+|:-----|:-----|
+| `scripts/mechanism-chain-generator.py` | 机制链+签名生成（确定性） |
+| `scripts/verify-pipeline-sig.py` | 签名验证（pre-commit调用） |
+| `scripts/report-pipeline-entry.py` | 深度报告强制入口（骨架+机制链） |
+| `scripts/verify-report-quality.py` | 质量门禁（≥800行/21§/DS引用） |
+| `.git/hooks/pre-commit` (v3.3) | 物理门禁主入口 |
+| `config/hooks-backup/pre-commit-knowledge-base-v3.2` | hook备份 |
+
+### 产物溯源原理
+
+```
+引擎JSON → mechanism-chain-generator.py
+  → sha256(八字+身强弱+格局+喜用+财星+最佳大运) = PIPELINE-SIG
+  → 注入报告头部 # PIPELINE-SIG: <hash>
+
+验证: verify-pipeline-sig.py <报告> <引擎JSON>
+  → 重算hash vs 报告中hash
+  → 一致=确由该引擎JSON生成（可溯源）
+  → 不一致=手写/篡改 → pre-commit拒绝
+```
+
+### 遗留项（下一轮补齐）
+
+- [ ] Maker/Checker 全自动：生成→独立Checker Agent按质量清单校验→不合格自动打回
+- [ ] report-pipeline-entry.py 集成进 bazi-pipeline.sh 主流程
+- [ ] 深析报告骨架模板（旧报告1842行提炼）固化到 detailed-skeleton.md

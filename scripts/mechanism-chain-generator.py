@@ -20,7 +20,7 @@ mechanism-chain-generator.py — 机制链注入生成器 v1.0
   【机制链·财星】...
   ...
 """
-import sys, os, json, datetime, re
+import sys, os, json, datetime, re, hashlib
 
 # ─────────────────────────────────────────────
 # 机制链构建（全部确定性逻辑，无LLM参与）
@@ -168,11 +168,33 @@ def build_all_chains(d):
         build_jian_kang_chain(d),
         build_best_worst_da_yun(d),
     ]
+    # 产物溯源签名（2026-08-24新增·强制5法之产物溯源）
+    # PIPELINE-SIG = sha256(八字+身强弱+格局+喜用+财星+最佳大运) 确定性计算
+    try:
+        bazi = d.get('paipan', {}).get('bazi', '') or d.get('result', {}).get('sec_1_overview', {}).get('bazi', '')
+        sq = d.get('analysis', {}).get('shen_qiang_ruo', {})
+        gj = d.get('analysis', {}).get('ge_ju', {})
+        xys = d.get('analysis', {}).get('xi_yong_shen', {})
+        cx = d.get('analysis', {}).get('cai_xing', {})
+        s1 = d.get('result', {}).get('sec_1_overview', {})
+        sig_src = json.dumps({
+            'bazi': bazi,
+            'shen_qiang': f"{sq.get('label','')}{sq.get('score','')}",
+            'ge_ju': gj.get('main', ''),
+            'xi': xys.get('xi', []),
+            'ji': xys.get('ji', []),
+            'cai': cx.get('total', 0),
+            'best_da_yun': s1.get('best_da_yun', ''),
+        }, ensure_ascii=False, sort_keys=True)
+        pip_sig = hashlib.sha256(sig_src.encode('utf-8')).hexdigest()
+        sig_line = f"# PIPELINE-SIG: {pip_sig}  # 溯源签名: sha256(八字+身强弱+格局+喜用+财星+最佳大运)"
+    except Exception as e:
+        sig_line = f"# PIPELINE-SIG: ERROR-{str(e)[:40]}"
     # 头部标记
     now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
     header = f"<!-- 【机制链注入】 v1.0 {now} 确定性引擎生成，LLM须照链展开论述，禁止跳过 -->\n"
     body = "\n".join([f"【机制链】{c}" for c in chains])
-    return header + body + "\n"
+    return header + sig_line + "\n" + body + "\n"
 
 def main():
     if len(sys.argv) < 2:
