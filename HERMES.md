@@ -57,3 +57,34 @@
 - 引擎JSON → SKILL.md(含§35-§39完整规则库) → 报告生成 → 推库
 - 验证：validate_analysis.py 抽样验证
 - 参考：references/下所有方法论文件
+
+## 🚨 强制5法·物理执行铁律（2026-08-24老板校准·违反即违规）
+
+> 教训：2026-08-24 七七/左左报告仅0.9万字=合格基准(3.7万字)的24%。根因不是知识缺失，而是"规则只有建议权没有执法权"——Agent绕过流水线手写，门禁是坏的没人拦。
+
+### 法1·入口收敛（写报告唯一入口）
+- 写八字深析报告**必须**先跑：`python3 /root/.hermes/profiles/jinjian-zhenren/scripts/report-pipeline-entry.py <引擎JSON> --name <姓名> --out <报告路径>`
+- 禁止：直接调引擎JSON后手写markdown翻译（绕过入口=违规）
+- 证据：报告头部必须有【机制链注入】标记（pre-commit强制检查）
+
+### 法2·物理门禁（pre-commit五层）
+- pre-commit v3.3 检查：①机制链标记 ②PIPELINE-SIG产物溯源 ③待填残留 ④大运/审计 ⑤质量门禁(≥800行/21§/DS引用)
+- 不通过 → commit被拒，禁止 `--no-verify` 强行跳过
+
+### 法3·产物溯源（PIPELINE-SIG签名）
+- 机制链生成器从引擎JSON确定性计算 `sha256(八字+身强弱+格局+喜用+财星+最佳大运)` 写入报告头部
+- `verify-pipeline-sig.py` 独立校验，不匹配=手写/篡改→拒绝
+
+### 法4·Maker/Checker
+- 生成器(确定性代码)=Maker；verify-pipeline-sig+verify-report-quality+pre-commit=Checker
+- 人工写报告时须用 maker-checker-workflow 技能，禁止自写自审
+
+### 法5·Hook注入SOP
+- pre_llm_call hook 注入物理约束提醒（inject-context.sh）
+- pre_tool_call hook 拦截未验证写文件（precheck.sh）
+- ⚠️ config.yaml hooks 必须是 mapping 格式 `{command: ..., matcher: ..., timeout: N}`，字符串格式导致hooks从未加载（2026-08-24已修复）
+
+### 深度报告硬指标（写报告时对照）
+- 总行数 ≥1500行（合格基准1842行）、纯字数 ≥30000字
+- 每§ ≥500字 + ##子结构（§16按大运分段/§17每运5小节/§8风险+应期表/§12时间线）
+- 每§对照机制链展开论述（机制链=推理骨架，禁止跳过直接贴标签）
