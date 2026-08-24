@@ -102,11 +102,23 @@ jinjian-bazi       程序（SOP/代码/引擎/配置）          程序库
 - 已归档：家主/主母/子源/外甥-胜源/立（2026-07-31）
 - 归属目录命名前**必须用姓名验证亲属关系**（老板抓错：胜源=杨胜源=**外甥**，非少爷）——不可盲信旧目录名"04-少爷-胜源"，按姓氏（杨姓≠魏姓）+ 老板确认定归属
 
-### 2026-07-31 新增知识参考（位于 bazi-foundation-analysis/references/）
+### 2026-08-02 新增知识参考（位于 bazi-foundation-analysis/references/）
 - ⚠️ 五行生克全息铁律（老板校准）：金生水壬癸皆生、水生木甲乙皆生；做功线路=天干明线/地支刑冲合害（申亥害不是生）/合局流通；主位财=做功主目标。见 `bazi-foundation-analysis/references/wuxing-shengke-quanxi-luxian-20260731.md`
 - 🔮 刑冲合害应期断大事件模型（实战断验）：冲月令=事业变动·冲年柱=长辈/破财·冲时柱=子女/财务·官合身=名分确立·夺食=思虑健康。见 `bazi-foundation-analysis/references/yingqi-duanshi-dashi-20260731.md`
 - 📐 三流派合参工作流（2026-07-31）：引擎确定性数据→子平层次格局→段建业做功/宾主→杨清娟食伤做功/闲神逻辑→合参结论。见 `bazi-foundation-analysis/references/sanliupai-hecan-workflow-20260731.md`
 - 📖 《子平真诠》讲解交叉验证+引擎实现（2026-08-02·荀太虚讲解触发）：判格五步=定月令→透干取用→会支取用→本气兜底→顺逆用标记；取用天干被天干五合=用神变化标记。引擎 `ge_ju.py` v3.1 已实现（会支取用仅限完整三合/三会·半合不取格·本气兜底比劫不入格）。全家族回归验证：家主 杂气格→正财格（亥卯未会支取用）、胜源/燃凤→伤官格（本气兜底）、家主母亲/子源→用神合绊检测。见 `bazi-foundation-analysis/references/zipingzhenquan_auto_impl_20260802.md`
+
+### 🚨 机制链注入法（2026-08-24 老板校准·报告质量根因修复）
+**教训**：七七/左左 v3.0 报告仅8,926/10,246字 = 合格基准（37,227/42,408字）的**24%**。Agent 已加载全部技能却产出标签——证明"知识在库 ≠ 知识可用"。
+**核心原则**：**给 Agent 的不是知识库，是【用知识的路径】。** 把命理推理链用确定性代码生成（mechanism-chain-generator.py），直接注入报告头部【机制链注入】标记，LLM 照着链展开论述，禁止让 LLM 自己检索规则拼推理。
+**强制流程**（写报告必走）：
+1. 跑引擎 → 保存 `/tmp/{姓名}_engine.json`
+2. 跑 `python3 /root/.hermes/profiles/jinjian-zhenren/scripts/mechanism-chain-generator.py /tmp/{姓名}_engine.json --out /tmp/{姓名}_chain.txt`
+3. 机制链粘贴到报告头部（含【机制链注入】标记）
+4. 每§对照机制链展开论述（禁止贴标签）
+5. pre-commit 强制检查标记，无标记拒绝commit
+**9条标准链**：身强弱/财星/格局/婚姻/学业/子女/事业/健康/大运——全部确定性代码，无LLM参与。
+详见 `references/mechanism-chain-injection_20260824.md`
 
 ### 农历转公历闰月验证铁律（2026-08-01 老板抓错·引擎修复）
 **教训**：家主母亲"农历1952-7-6"被换算成公历9-22（错），老板纠正。正确=公历8-25（lunar-python权威库验证）。闰月年份整月偏移，不验证必错。
