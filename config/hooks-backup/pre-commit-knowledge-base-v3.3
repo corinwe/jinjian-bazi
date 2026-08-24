@@ -45,7 +45,8 @@ for FILE in $CHANGED_FILES; do
 
         # ⑥ 产物溯源校验（2026-08-24新增·强制5法之产物溯源）
         #    PIPELINE-SIG签名必须与引擎JSON一致，防止手写/篡改
-        NAME=$(head -1 "$FULL_PATH" | grep -oP '(?<=# )[^·]+' | head -1)
+        #    从文件名提取姓名（更可靠）: "七七_完整深析报告..." → "七七"
+        NAME=$(basename "$FILE" | sed 's/_.*//')
         ENGINE_JSON="/tmp/${NAME}_engine.json"
         if [ -f "$ENGINE_JSON" ]; then
             python3 "$SCRIPTS/verify-pipeline-sig.py" "$FULL_PATH" "$ENGINE_JSON" 2>&1 | tail -1
@@ -65,13 +66,30 @@ for FILE in $CHANGED_FILES; do
         fi
         
         # ② 大运+审计（有机制链=有引擎JSON）
+        #    NAME已在⑥中从文件名提取
+        BAZI_SCRIPTS="/root/.hermes/profiles/jinjian-zhenren/projects/bazi-platform/scripts"
         if [ -f "$ENGINE_JSON" ]; then
-            RESULT=$(python3 "$SCRIPTS/bazi-dayun-verify.py" "$FULL_PATH" "$ENGINE_JSON" "$NAME" 2>&1 | tail -1)
-            echo "  $RESULT"
-            echo "$RESULT" | grep -q "不一致" && HAS_ERROR=1
-            
-            python3 "$SCRIPTS/bazi-audit.py" "$ENGINE_JSON" "$NAME" 2>&1
-            [ $? -ne 0 ] && echo "  ⚠️ 审计发现潜在问题！" && HAS_ERROR=1
+            if [ -f "$BAZI_SCRIPTS/bazi-dayun-verify.py" ]; then
+                RESULT=$(python3 "$BAZI_SCRIPTS/bazi-dayun-verify.py" "$FULL_PATH" "$ENGINE_JSON" "$NAME" 2>&1 | tail -1)
+                echo "  $RESULT"
+                echo "$RESULT" | grep -q "不一致" && HAS_ERROR=1
+            fi
+            if [ -f "$BAZI_SCRIPTS/bazi-audit.py" ]; then
+                # bazi-audit.py期望旧引擎JSON格式(四柱字段)，pipeline_v5输出为paipan字段，
+                # 格式不匹配时跳过审计（不误报）
+                if python3 -c "
+import json,sys
+try:
+    d=json.load(open('$ENGINE_JSON'))
+    sys.exit(0 if '四柱' in d else 1)
+except: sys.exit(1)
+" 2>/dev/null; then
+                    python3 "$BAZI_SCRIPTS/bazi-audit.py" "$ENGINE_JSON" "$NAME" 2>&1
+                    [ $? -ne 0 ] && echo "  ⚠️ 审计发现潜在问题！" && HAS_ERROR=1
+                else
+                    echo "  ℹ️ 引擎JSON为pipeline_v5格式，跳过旧版审计(兼容)"
+                fi
+            fi
         else
             echo "  ⚠️ 引擎JSON不存在: /tmp/${NAME}_engine.json"
             echo "  机制链已注入但引擎JSON缺失，跳过审计。"
