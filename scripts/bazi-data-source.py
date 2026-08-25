@@ -42,8 +42,12 @@ def calc_shishen(tg, rizhu):
 
 
 def get_xunkong(ganzhi):
-    """计算日柱空亡"""
-    return XUN_KONG.get(XUN_MAP.get(ganzhi[0], '甲子'), '')
+    """计算日柱空亡（旬空）
+    正确算法：旬首地支 = (zi - gi) % 12，空亡 = (旬首+10)%12 和 (旬首+11)%12
+    """
+    gi = TIANGAN.index(ganzhi[0]); zi = DIZHI.index(ganzhi[1])
+    xun_start = (zi - gi) % 12
+    return DIZHI[(xun_start + 10) % 12] + DIZHI[(xun_start + 11) % 12]
 
 
 def calc_shensha(DS):
