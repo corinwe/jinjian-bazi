@@ -23,6 +23,7 @@ from ziwei_rules import (PALACE_BASE, STAR_BASE, STAR_PALACE, SIHUA_BASE,
 from ziwei_star_combo import DOUBLE_STAR, SANFANG_RULES, double_star_of, sanfang_combo
 from ziwei_weight import (weight_section, all_scores, key_combos, current_daxian,
                           PALACE_HINT as PALACE_HINT_PLAIN)
+from ziwei_liunian import liunian_section
 
 ZHI = "子丑寅卯辰巳午未申酉戌亥"
 MIAO_STRONG = {"庙", "旺", "得", "利"}
@@ -412,7 +413,8 @@ def ziwei_detail_section(name, ds, zw) -> str:
             pass
         L.append(f"| {p['宫位']} | {p['大限']} | {'；'.join([t for t in theme if t]) or '—'} | {match or '—'} |")
     L.append("")
-    return "\n".join(L) + "\n" + weight_section(name, ds, zw)
+    return ("\n".join(L) + "\n" + weight_section(name, ds, zw)
+            + liunian_section(name, ds, zw))
 
 
 def _dayun_of(ds) -> list:

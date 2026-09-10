@@ -16,9 +16,20 @@
 
 import sys
 import os
+import json
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ziwei_star_combo import DOUBLE_STAR, _DS_LOOKUP
+
+# ── 标定参数（scripts/calibrate_ziwei_weight.py 产出；缺省回落默认值）──
+_CALIB = {"BASE": 50.0, "a": 1.0, "b": 1.0, "c": 1.0, "d": 1.0}
+try:
+    _cp = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ziwei_weight_calib.json")
+    if os.path.exists(_cp):
+        with open(_cp, encoding="utf-8") as _f:
+            _CALIB.update((json.load(_f) or {}).get("参数") or {})
+except Exception:
+    pass
 
 # ── 参数区（可调）──────────────────────────────────────────
 MIAO_COEF = {"庙": 1.30, "旺": 1.20, "得": 1.10, "利": 1.00,
@@ -56,7 +67,10 @@ PALACE_HINT = {
 
 
 def _miao_coef(m):
-    return MIAO_COEF.get(m or "", MIAO_DEFAULT)
+    """庙旺系数（可被标定参数 k 调整幅度：1 + k*(coef-1)）"""
+    c = MIAO_COEF.get(m or "", MIAO_DEFAULT)
+    k = float(_CALIB.get("k", 1.0) or 1.0)
+    return 1.0 + k * (c - 1.0)
 
 
 def palace_score(palace: dict) -> dict:
@@ -82,7 +96,10 @@ def palace_score(palace: dict) -> dict:
     for s in mains:
         if s.get("四化"):
             bd["四化"] += SIHUA_SCORE.get(s["四化"], 0)
-    score = max(0.0, min(100.0, 50 + sum(bd.values())))
+    # 用标定参数合成（默认 BASE=50, a=b=c=d=1 即原实现）
+    raw = (_CALIB["BASE"] + _CALIB["a"] * bd["主星"] + _CALIB["b"] * bd["双星加成"]
+           + _CALIB["c"] * (bd["辅星"] + bd["空宫"]) + _CALIB["d"] * bd["四化"])
+    score = max(0.0, min(100.0, raw))
     grade = ("强" if score >= 75 else "偏强" if score >= 62 else "中" if score >= 48
              else "偏弱" if score >= 35 else "弱")
     return {"分": round(score, 1), "等级": grade, "明细": {k: round(v, 1) for k, v in bd.items()},
