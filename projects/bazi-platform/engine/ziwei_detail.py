@@ -20,6 +20,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ziwei_rules import (PALACE_BASE, STAR_BASE, STAR_PALACE, SIHUA_BASE,
                          PALACE_SIHUA, FU_XING, GEJU)
+from ziwei_star_combo import DOUBLE_STAR, SANFANG_RULES, double_star_of, sanfang_combo
 
 ZHI = "子丑寅卯辰巳午未申酉戌亥"
 MIAO_STRONG = {"庙", "旺", "得", "利"}
@@ -329,8 +330,45 @@ def ziwei_detail_section(name, ds, zw) -> str:
         L.append("- 本盘未匹配到库内典型格局（三方四正未见成套组合）→ 以单宫细断为准。")
     L.append("")
 
-    # 22.6 大限细断
-    L.append("### 22.6 大限细断（每十年一步，看宫位主题）\n")
+    # 22.6 双星同宫断
+    L.append("### 22.6 双星同宫断（两颗星同宫的化学反应 · 比单星更准）\n")
+    L.append("| 宫位 | 双星组合 | 标准落宫 | 术语 | **大白话** | 怎么办 |")
+    L.append("|:---|:---|:---|:---|:---|:---|")
+    _found_ds = False
+    for gname in ORDER:
+        p = zmap.get(gname)
+        if not p:
+            continue
+        _dx = double_star_of(p["主星"])
+        if _dx:
+            _found_ds = True
+            L.append(f"| **{gname}** | **{_dx['格']}** | {_dx['宫']} | {_dx['术语']} | {_dx['白话']} | {_dx['怎么办']} |")
+    if not _found_ds:
+        L.append("| — | — | — | — | 本盘无标准双星同宫（主星单守或空宫）→ 以单星细断＋辅星组合为准 | — |")
+    L.append("")
+
+    # 22.7 三方四正组合断
+    L.append("### 22.7 三方四正组合断（重点宫看它的「朋友圈」）\n")
+    L.append("> 三方四正 = 本宫 + 三合两宫 + 对宫。一个宫不能只看自己，要看它拉来的是助力还是阻力。\n")
+    for _key in ("命宫", "财帛", "官禄", "夫妻", "田宅"):
+        _p = zmap.get(_key)
+        if not _p:
+            continue
+        _sf = _san_fang(_p, zmap)
+        _hits = sanfang_combo(_p, zmap, _sf)
+        _stars = _stars_in(zmap, _sf)
+        L.append(f"**{_key}** ｜ 三方四正：{'、'.join(_sf)} ｜ 星曜：{'、'.join(_stars) or '—'}\n")
+        if _hits:
+            L.append("| 组合 | 成立条件 | **大白话** | 怎么办 |")
+            L.append("|:---|:---|:---|:---|")
+            for _h in _hits:
+                L.append(f"| **{_h['名']}** | {_h['条件']} | {_h['白话']} | {_h['怎么办']} |")
+        else:
+            L.append("- 未见库内典型组合 → 以单宫＋双星断为准。")
+        L.append("")
+
+    # 22.8 大限细断
+    L.append("### 22.8 大限细断（每十年一步，看宫位主题）\n")
     dyl = _dayun_of(ds)
     L.append("| 大限宫 | 年龄 | 紫微大限主题（白话） | 八字对应大运 |")
     L.append("|:---|:---|:---|:---|")
