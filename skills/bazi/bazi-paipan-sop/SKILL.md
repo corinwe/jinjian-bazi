@@ -45,6 +45,28 @@ related_skills: [bazi-engine-workflow, bazi-foundation-analysis, bazi-report-tem
 任何分析的第一步：给3条可验证的过去判断。
 参考：`products/flow.md`, `products/three-verifications-methodology.md`
 
+### Phase 0.5 — 🚨 双引擎数据源准备（强制·默认不可跳过）
+
+**老板铁律（2026-09-10）**：每跑一个八字，**默认必须**同时结合「传统八字技能 + 紫微斗数」一起评估。
+
+```bash
+bash projects/bazi-platform/scripts/bazi-dual-prepare.sh <姓名> <性别> <YYYY-MM-DD> <HH:MM> [出生地]
+# → 同时产出 /tmp/{名}_ds.json（八字）+ /tmp/{名}_ziwei.json（紫微·第四引擎）
+# → 自动做四柱交叉校验，不一致直接 abort（exit 2）
+touch /tmp/.bazi_verified
+```
+
+| 情形 | 命令 | 条件 |
+|:---|:---|:---|
+| **默认（双引擎合参）** | `bazi-dual-prepare.sh 名 性别 日期 时间` | 无条件默认 |
+| 只用传统八字 | `… --bazi-only` | **仅老板明确说明时** |
+| 只用紫微斗数 | `… --ziwei-only` | **仅老板明确说明时** |
+| 恢复默认 | `… --reset` | 随时 |
+
+**物理拦截**：`pre_tool_call` hook（`precheck.py` v2.0）会在写报告前检查 —— 缺紫微数据源 → block；双引擎四柱不一致 → block；缺 `.bazi_verified` → block。**规则写进文件≠被遵守，拦截才算数**。
+
+**报告结构**：八字照 21§ + 紫微并列专章 + **交叉印证专章（≥6组对照，冲突须标注「⚠️双引擎分歧」）**。
+
 ### Phase 1 — 排盘校验
 调用引擎 `paipan.py` 排盘，比对四柱是否正确。
 
