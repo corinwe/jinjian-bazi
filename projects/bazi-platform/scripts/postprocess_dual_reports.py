@@ -206,6 +206,9 @@ def cross_section(name, zw, ds) -> str:
 
 def main():
     names = sys.argv[1:] or ["家主", "主母", "少爷"]
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "engine"))
+    from ziwei_detail import plain_intro, ziwei_detail_section, cross_section_plain
+    from plain_glossary import glossary_block
     for name in names:
         src = f"/tmp/{name}_report.md"
         if not os.path.exists(src):
@@ -218,10 +221,18 @@ def main():
         if "【机制链注入】" not in body:
             header = (chain + "\n\n") if chain else ""
         header += ds_ref_block(name, ds, zw) + "\n"
-        out = header + body + ziwei_section(name, zw, ds) + cross_section(name, zw, ds)
+        # 结构：机制链+数据源 → §0白话导读 → 八字21§ → §22紫微细断 → §23交叉印证 → 附录A术语快查
+        out = (header
+               + plain_intro(name, ds, zw)
+               + body
+               + ziwei_detail_section(name, ds, zw)
+               + cross_section_plain(name, ds, zw)
+               + glossary_block())
         dst = f"/tmp/{name}_报告_双引擎.md"
         open(dst, "w", encoding="utf-8").write(out)
-        print(f"✅ {name}: {len(out.splitlines())}行 → {dst}（机制链={'有' if '【机制链注入】' in out else '无'} 紫微专章={'有' if '§22' in out else '无'} 交叉印证={'有' if '§23' in out else '无'}）")
+        print(f"✅ {name}: {len(out.splitlines())}行 → {dst}"
+              f"（白话导读={'有' if '白话导读' in out else '无'} 紫微细断={'有' if '逐宫细断' in out else '无'}"
+              f" 交叉印证={'有' if '§23' in out else '无'} 术语快查={'有' if '附录A' in out else '无'}）")
 
 
 if __name__ == "__main__":
