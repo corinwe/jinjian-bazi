@@ -145,7 +145,7 @@ def build(name, gender, date_str, time_str, location=None, longitude=None,
             '生肖': zw.get('zodiac'),
             '星座': zw.get('sign'),
             '时辰': f"{zw.get('time')}（{zw.get('timeRange')}）",
-            '生年四化': cli_raw.get('ziwei', {}).get('shengnianSihua') or _si_hua(zw),
+            '生年四化': _merge_sihua(cli_raw.get('ziwei', {}).get('shengnianSihua'), _si_hua(zw)),
             '十二宫': palaces,
         },
         '八字同源摘要': {
@@ -156,14 +156,32 @@ def build(name, gender, date_str, time_str, location=None, longitude=None,
     return out
 
 
+def _merge_sihua(cli_list, bridge_list) -> list:
+    """合并两个来源的生年四化（去重，取并集，按 禄权科忌 排序）→ 防止任一来源漏字段"""
+    ORDER = {'禄': 0, '权': 1, '科': 2, '忌': 3}
+    s = set()
+    for lst in (cli_list or [], bridge_list or []):
+        for x in lst or []:
+            if x:
+                s.add(str(x))
+    return sorted(s, key=lambda t: ORDER.get(t[-1] if t else '', 9))
+
+
 def _si_hua(zw: dict) -> list:
-    """从12宫主星mutagen反推生年四化（桥接层无该字段时兜底）"""
-    out = []
+    """
+    从12宫星曜mutagen汇总生年四化（桥接层/三方CLI缺该字段时兜底）。
+    🚨 2026-09-10 修正：必须同时扫描 **主星 + 辅星** —— 文昌/文曲属辅星，
+    只扫主星会漏（例：辛年「巨门化禄/太阳化权/文曲化科/文昌化忌」只出2条）。
+    顺序按 禄→权→科→忌 排列。
+    """
+    ORDER = {'禄': 0, '权': 1, '科': 2, '忌': 3}
+    found = {}
     for pal in zw.get('palaces', []):
-        for s in pal.get('majorStars') or []:
-            if isinstance(s, dict) and s.get('mutagen'):
-                out.append(f"{s.get('name')}化{s.get('mutagen')}")
-    return out
+        for group in ('majorStars', 'minorStars'):
+            for s in pal.get(group) or []:
+                if isinstance(s, dict) and s.get('mutagen') and s.get('name'):
+                    found[s['name']] = s['mutagen']
+    return [f"{k}化{v}" for k, v in sorted(found.items(), key=lambda kv: ORDER.get(kv[1], 9))]
 
 
 def main():
