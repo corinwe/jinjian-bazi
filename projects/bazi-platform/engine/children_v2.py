@@ -629,6 +629,7 @@ def infer_child_birth_years(
     bazi_zhis: list[str],
     da_yun_list: list[dict] | None = None,
     birth_year: int | None = None,
+    age_range: tuple = (20, 48),
 ) -> dict:
     """
     子女出生年份推理。
@@ -641,12 +642,21 @@ def infer_child_birth_years(
       ⭐⭐⭐ 流年合化出子女星
       ⭐⭐ 大运子女星透干+流年配合
       ⭐ 身旺有能量生育的年份
+
+    🚨 2026-09-10 修复：旧实现从**首步大运（幼年）**起整段扫描且不做年龄过滤
+      → 家长三人输出 1982/1986/1987、1993/1994/2002、2022/2023/2025，全落在命主幼年。
+      现强制限定**生育适龄期**（默认 20~48 岁；女命 20~45）。
     """
     result = {"推理依据": [], "可能年份": [], "说明": "以下年份为命理信号推测，需结合实际情况确认"}
 
     # 如果没提供大运，返回空
     if not da_yun_list:
         return result
+
+    lo, hi = age_range
+    if gender == "女" and hi == 48:
+        hi = 45
+    skipped_out_of_age = 0
 
     # 获取子女星列表
     unified = get_unified_children_stars(gender, ri_zhu)
@@ -672,8 +682,13 @@ def infer_child_birth_years(
 
         # 检查大运范围内的各流年
         for year in range(start_year, min(end_year + 1, start_year + 15)):
-            # 流年天干地支（简化：用年份计算）
-            # 实际应用中需要专业万年历，这里用简化方法
+            # 🚨 生育适龄期过滤（修复点）
+            age_now = (year - birth_year) if birth_year else (start_age + (year - start_year))
+            if not (lo <= age_now <= hi):
+                skipped_out_of_age += 1
+                continue
+
+            # 流年天干地支（立春口径：以当年7月1日定年柱干支，等价于该年流年干支）
             liu_nian_gan = _get_year_gan(year)
             liu_nian_zhi = _get_year_zhi(year)
 
@@ -736,20 +751,30 @@ def infer_child_birth_years(
     # 按信号强度排序
     result["可能年份"].sort(key=lambda x: -x["信号强度"])
     result["推理依据"] = [s[1] for s in FERTILITY_WINDOW_SIGNALS]
+    result["适龄期"] = f"{lo}~{hi}岁（{'男' if gender == '男' else '女'}命）"
+    result["适龄外已过滤年数"] = skipped_out_of_age
 
     return result
 
 
 def _get_year_gan(year: int) -> str:
-    """根据年份获取天干（简化版，非精确节气）"""
-    gan_idx = (year - 4) % 10
-    return TIAN_GAN[gan_idx]
+    """流年天干（立春口径，统一走 engine/jieqi.py，禁止 (year-4)%10 直算）"""
+    try:
+        import jieqi
+        from datetime import datetime as _dt
+        return jieqi.year_gan_zhi(_dt(year, 7, 1))[0]
+    except Exception:
+        return TIAN_GAN[(year - 4) % 10]
 
 
 def _get_year_zhi(year: int) -> str:
-    """根据年份获取地支（简化版）"""
-    zhi_idx = (year - 4) % 12
-    return DI_ZHI[zhi_idx]
+    """流年地支（立春口径，统一走 engine/jieqi.py）"""
+    try:
+        import jieqi
+        from datetime import datetime as _dt
+        return jieqi.year_gan_zhi(_dt(year, 7, 1))[1]
+    except Exception:
+        return DI_ZHI[(year - 4) % 12]
 
 
 def check_thin_fate_factors(
@@ -894,6 +919,7 @@ def check_fertility_windows(
     hour_zhi: str,
     da_yun_list: list | None = None,
     age_range: tuple = (20, 45),
+    birth_year: int | None = None,
 ) -> dict:
     """
     生育窗口排查。
@@ -904,9 +930,20 @@ def check_fertility_windows(
       流年合化出强子女星 → 生育窗口
       子女星被解合 → 生育窗口
       子女宫被加强 → 生育窗口
+
+    🚨 2026-09-10 修复（老板三人复现缺陷）：
+      旧实现 **定义了 age_range 却从未使用**，且从首步大运（幼年）开始整段扫描
+      → 输出窗口落在命主 6~14 岁（如家主 1982/1986/1987）。
+      现强制按**生育适龄期**过滤：默认 20~45 岁（女）/ 20~48 岁（男），
+      并需 birth_year（缺省时用大运 start_age 推算年龄）。
     """
     windows = []
     unified = get_unified_children_stars(gender, ri_zhu)
+
+    # 性别对应的生育适龄期（默认 女20-45 / 男20-48）
+    lo, hi = age_range
+    if gender == "男" and hi == 45:
+        hi = 48
 
     # 女命窗口十神
     if gender == "女":
@@ -914,13 +951,22 @@ def check_fertility_windows(
     else:
         window_shi_shens = ["正官", "七杀"]
 
+    skipped_out_of_age = 0
+
     # 如果有大运信息，分析未来年份
     if da_yun_list:
         for da_yun in da_yun_list:
             start_year = da_yun.get("start_year", 0) if isinstance(da_yun, dict) else da_yun.start_year
             end_year = da_yun.get("end_year", start_year + 9) if isinstance(da_yun, dict) else (da_yun.start_year + 9)
+            start_age = da_yun.get("start_age", 0) if isinstance(da_yun, dict) else getattr(da_yun, "start_age", 0)
 
             for year in range(start_year, min(end_year + 1, 2050)):
+                # 🚨 生育适龄期过滤（修复点）
+                age = (year - birth_year) if birth_year else (start_age + (year - start_year))
+                if not (lo <= age <= hi):
+                    skipped_out_of_age += 1
+                    continue
+
                 ln_gan = _get_year_gan(year)
                 ln_zhi = _get_year_zhi(year)
                 ln_ss = get_shi_shen_for_gan(ln_gan, ri_zhu)
@@ -979,6 +1025,8 @@ def check_fertility_windows(
         "窗口年份": windows[:30],  # 最多30个
         "窗口条件": window_shi_shens,
         "总窗口数": len(windows),
+        "适龄期": f"{lo}~{hi}岁（{'男' if gender == '男' else '女'}命）",
+        "适龄外已过滤年数": skipped_out_of_age,
     }
 
 
@@ -1936,7 +1984,10 @@ def analyze_children_full(
     )
 
     # ── Step 9: 生育窗口 ──
-    fertility_windows = check_fertility_windows(gender, ri_zhu, bazi_gans, bazi_zhis, hour_zhi, da_yun_list)
+    # 🚨 2026-09-10 修复：必须传 birth_year，否则年龄过滤只能用大运 start_age 推算（易偏移）
+    fertility_windows = check_fertility_windows(
+        gender, ri_zhu, bazi_gans, bazi_zhis, hour_zhi, da_yun_list, birth_year=birth_year
+    )
 
     # ── Step 10: 双胞胎条件 ──
     twin_conditions = check_twin_conditions(bazi_zhis)
