@@ -1,0 +1,10 @@
+{
+  "name": "bazi-ziwei-cli",
+  "version": "1.0.0",
+  "description": "CLI tools for traditional Bazi and Ziwei calculations",
+  "main": "bazi_ziwei_cli.js",
+  "dependencies": {
+    "lunar-javascript": "^1.2.39",
+    "iztro": "^2.3.4"
+  }
+}

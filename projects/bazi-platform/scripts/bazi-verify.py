@@ -12,8 +12,15 @@
 """
 
 import sys
-from datetime import date
+import os
+from datetime import date, datetime
 from nayin import get_na_yin, NA_YIN
+
+# ── 精确节气定界（引擎唯一权威口径：立春换年 / 节气换月）──
+_ENGINE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'engine')
+if os.path.abspath(_ENGINE_DIR) not in sys.path:
+    sys.path.insert(0, os.path.abspath(_ENGINE_DIR))
+import jieqi  # noqa: E402
 
 # ============================================================
 # 一、基础常量（硬编码，不依赖任何外部数据）
@@ -175,25 +182,15 @@ def verify_anchors():
 def calc_bazi(year, month, day, shichen_idx, gender):
     """计算完整八字"""
     target = date(year, month, day)
-    
-    # --- 年柱 ---
-    y_gan = TIAN_GAN[(year - 4) % 10]
-    y_zhi = DI_ZHI[(year - 4) % 12]
-    
-    # --- 月柱 ---
-    # 先确定月支（按节气）
-    m_zhi = MONTH_ZHI_MAP[month]
-    if day < JIE_QI.get(month, 1) and month != 1:
-        prev = month - 1
-        if prev == 0:
-            prev = 12
-        m_zhi = MONTH_ZHI_MAP[prev]
-    
-    # 月干（五虎遁）
-    start_gan = WU_HU_DUN[y_gan]
-    start_idx = TIAN_GAN.index(start_gan)
-    m_gan_idx = (start_idx + MONTH_ORDER[m_zhi]) % 10
-    m_gan = TIAN_GAN[m_gan_idx]
+    birth_dt = datetime(year, month, day, (shichen_idx * 2 + 1) % 24, 0)
+
+    # --- 年柱（立春精确时刻定界）---
+    # 🚨 2026-09-10 修复：旧实现用公历年份，立春前出生者年柱错→月干级联错。
+    #    校验脚本自身有Bug会导致「校验通过但结果是错的」，故本脚本必须与引擎同源。
+    y_gan, y_zhi = jieqi.year_gan_zhi(birth_dt)
+
+    # --- 月柱（节气精确时刻定界 + 五虎遁）---
+    m_gan, m_zhi = jieqi.month_gan_zhi(birth_dt)
     
     # --- 日柱 ---
     r_gan, r_zhi = calc_rizhu(target)

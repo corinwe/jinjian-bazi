@@ -77,81 +77,58 @@ SHI_CHEN = {
 LI_CHUN = {}
 
 
-def get_year_gan_zhi(year: int, month: int, day: int) -> tuple[str, str]:
+# ── 精确节气定界（引擎唯一权威口径）──
+import os as _os
+import sys as _sys
+_ENGINE_DIR = _os.path.dirname(_os.path.abspath(__file__))
+if _ENGINE_DIR not in _sys.path:
+    _sys.path.insert(0, _ENGINE_DIR)
+import jieqi as _jieqi
+from datetime import datetime as _datetime
+
+
+def get_year_gan_zhi(year: int, month: int, day: int, hour: int = 12, minute: int = 0) -> tuple[str, str]:
     """
-    获取年柱天干地支
-    年柱以立春（约2月4日）为分界
+    获取年柱天干地支。
+
+    🚨 铁律：年柱以「立春」精确时刻为界，非公历1月1日、非农历春节。
+    历史Bug（2026-09-10修复）：旧实现用 `if month < 2 or (month == 2 and day < 4)` 近似立春，
+    且完全忽略立春当日的具体时刻（如2024立春在2月4日16:27，当天上午出生仍属癸卯年）。
+    现统一委托 engine/jieqi.py（lunar-python 精确节气）。
     """
-    # 立春前算上一年
-    if month < 2 or (month == 2 and day < 4):
-        year -= 1
-
-    gan_idx = (year - 4) % 10
-    zhi_idx = (year - 4) % 12
-    return TIAN_GAN[gan_idx], DI_ZHI[zhi_idx]
+    return _jieqi.year_gan_zhi(_datetime(year, month, day, hour, minute))
 
 
-def get_month_gan_zhi(year_gan: str, month: int, day: int) -> tuple[str, str]:
+def get_month_gan_zhi(year_gan: str, month: int, day: int,
+                      hour: int = 12, minute: int = 0, year: int = None) -> tuple[str, str]:
     """
-    获取月柱天干地支（五虎遁）
-    月柱以节气为分界（简化：以每月大概的节气日）
+    获取月柱天干地支。
+
+    🚨 铁律：月支以「节」精确时刻为界；月干由**真实年干**起五虎遁。
+    历史Bug（2026-09-10修复）：旧实现用硬编码节气日（1月6日/2月4日…）近似，
+    忽略具体时刻（如2025小寒在1月5日10:32），导致节气当日出生者月柱错。
+      年干错 → 月干必错（五虎遁级联）。
+    传入 year 时走精确节气路径（推荐）；未传 year 时退回五虎遁近似（仅兼容旧调用）。
     """
-    # 节气大约日期（简化版）
-    jie_qi_day = {
-        1: 6,  # 小寒
-        2: 4,  # 立春
-        3: 6,  # 惊蛰
-        4: 5,  # 清明
-        5: 6,  # 立夏
-        6: 6,  # 芒种
-        7: 7,  # 小暑
-        8: 7,  # 立秋
-        9: 8,  # 白露
-        10: 8,  # 寒露
-        11: 7,  # 立冬
-        12: 7,  # 大雪
-    }
+    if year is not None:
+        return _jieqi.month_gan_zhi(_datetime(year, month, day, hour, minute))
 
-    # 判断实际月支（节气分界）
-    if day < jie_qi_day.get(month, 1):
-        # 在本月节气之前 → 属于上个月的节气月
-        real_month = month - 2
-    else:
-        # 在本月节气之后 → 属于本月的节气月
-        real_month = month - 1
-
-    # 边界回绕（1月→12月）
+    # ── 兼容旧调用：仅五虎遁近似（无年份无法精确确定节气月）──
+    real_month = month - 2 if day < _JIE_QI_APPROX_DAY.get(month, 1) else month - 1
     if real_month <= 0:
         real_month += 12
     elif real_month > 12:
         real_month -= 12
-
-    # 月支
     month_zhi = YUE_ZHI.get(real_month, "子")
-
-    # 五虎遁：月干 = f(年干, 月支)
-    start_gan = WU_HU_DUN.get(year_gan, "丙")
-    start_idx = TIAN_GAN.index(start_gan)
-
-    # 月支对应序号（寅=0, 卯=1, ...）
-    zhi_order = {
-        "寅": 0,
-        "卯": 1,
-        "辰": 2,
-        "巳": 3,
-        "午": 4,
-        "未": 5,
-        "申": 6,
-        "酉": 7,
-        "戌": 8,
-        "亥": 9,
-        "子": 10,
-        "丑": 11,
-    }
-    offset = zhi_order.get(month_zhi, 0)
-    gan_idx = (start_idx + offset) % 10
-
+    zhi_order = {"寅": 0, "卯": 1, "辰": 2, "巳": 3, "午": 4, "未": 5,
+                 "申": 6, "酉": 7, "戌": 8, "亥": 9, "子": 10, "丑": 11}
+    start_idx = TIAN_GAN.index(WU_HU_DUN.get(year_gan, "丙"))
+    gan_idx = (start_idx + zhi_order.get(month_zhi, 0)) % 10
     return TIAN_GAN[gan_idx], month_zhi
+
+
+# 节气大约日期（仅用于未传年份的旧调用兼容路径）
+_JIE_QI_APPROX_DAY = {1: 6, 2: 4, 3: 6, 4: 5, 5: 6, 6: 6, 7: 7, 8: 7, 9: 8, 10: 8, 11: 7, 12: 7}
 
 
 def get_day_gan_zhi(target_date: date) -> tuple[str, str]:
@@ -206,20 +183,22 @@ def get_hour_gan_zhi(day_gan: str, hour: int) -> tuple[str, str]:
     return TIAN_GAN[gan_idx], shi_chen_zhi
 
 
-def paipan(name: str, gender: str, birth_year: int, birth_month: int, birth_day: int, birth_hour: int) -> dict:
+def paipan(name: str, gender: str, birth_year: int, birth_month: int, birth_day: int,
+           birth_hour: int, birth_minute: int = 0) -> dict:
     """
     完整排盘：从出生日期 → 四柱八字
     name: 姓名
     gender: 男/女
-    birth_year/month/day/hour: 公历出生日期
+    birth_year/month/day/hour/minute: 公历出生日期时间
     """
     target_date = date(birth_year, birth_month, birth_day)
 
-    # 年柱
-    year_gan, year_zhi = get_year_gan_zhi(birth_year, birth_month, birth_day)
+    # 年柱（立春精确时刻定界）
+    year_gan, year_zhi = get_year_gan_zhi(birth_year, birth_month, birth_day, birth_hour, birth_minute)
 
-    # 月柱
-    month_gan, month_zhi = get_month_gan_zhi(year_gan, birth_month, birth_day)
+    # 月柱（节气精确时刻定界 + 五虎遁）
+    month_gan, month_zhi = get_month_gan_zhi(year_gan, birth_month, birth_day,
+                                            hour=birth_hour, minute=birth_minute, year=birth_year)
 
     # 日柱
     day_gan, day_zhi = get_day_gan_zhi(target_date)
@@ -295,12 +274,14 @@ def check_wen_chang(ri_zhu: str, all_zhis: list[str]) -> dict:
     return {"has_wen_chang": has_it, "wen_chang_zhi": wen_chang_zhi, "detail": detail}
 
 
-def get_full_paipan(year: int, month: int, day: int, hour: int, gender: str, name: str = "未知") -> dict:
+def get_full_paipan(year: int, month: int, day: int, hour: int, gender: str, name: str = "未知",
+                    minute: int = 0) -> dict:
     """完整排盘+文昌检查（门禁脚本专用接口）
 
     封装 paipan() 并追加文昌贵人验证。
+    minute: 出生分钟（节气/立春边界日必传，用于精确定界）
     """
-    result = paipan(name, gender, year, month, day, hour)
+    result = paipan(name, gender, year, month, day, hour, minute)
     # 追加文昌检查
     ri_zhu = result["day_pillar"]["gan"]
     all_zhis = [

@@ -12,8 +12,14 @@
 输出：逐项验证结果
 """
 
-import json, sys, math
+import json, sys, math, os
 from datetime import date, datetime
+
+# ── 精确节气定界（引擎唯一权威口径）──
+_ENGINE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'engine')
+if os.path.abspath(_ENGINE_DIR) not in sys.path:
+    sys.path.insert(0, os.path.abspath(_ENGINE_DIR))
+import jieqi  # noqa: E402
 
 TIAN_GAN = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸']
 DI_ZHI  = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥']
@@ -63,9 +69,9 @@ def calc_kong_wang(ri_zhu_str):
 
 def calc_qi_yun_base(y, m, d, shichen_idx, gender):
     """估算起运年龄（简化版，用于验证大运年份）"""
-    # 年干计算
-    gan = TIAN_GAN[(y - 4) % 10]
-    zhi = DI_ZHI[(y - 4) % 12]
+    # 年干计算（🚨 2026-09-10 修复：必须走立春精确定界，否则立春前出生者顺逆反向）
+    birth_dt = datetime(y, m, d, shichen_idx * 2 + 1, 0) if shichen_idx is not None else datetime(y, m, d, 12, 0)
+    gan, zhi = jieqi.year_gan_zhi(birth_dt)
     yin_yang = '阳' if gan in ['甲','丙','戊','庚','壬'] else '阴'
     if (yin_yang == '阳' and gender == '男') or (yin_yang == '阴' and gender == '女'):
         direction = '顺'

@@ -1,0 +1,341 @@
+<div align="center">
+
+![banner2](https://github.com/SylarLong/iztro/assets/6510425/e8457a88-e52e-435e-8f93-e3f375486d70)
+
+# 一套轻量级紫微斗数排盘工具库
+
+简体中文 🔸 [繁體中文](./README-zh_TW.md) 🔸 [English](./README-en_US.md)
+
+[![Join our Discord](https://img.shields.io/badge/JOIN%20OUR%20DISCORD-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/xvmu6gww6B)
+
+</div>
+
+<div align="center">
+
+  [![NPM Version](https://img.shields.io/npm/v/iztro?logo=npm&logoColor=%23959DA5)](https://www.npmjs.com/package/iztro)
+  [![NPM Minified Size](https://img.shields.io/bundlephobia/min/iztro?logo=npm&logoColor=%23959DA5)](https://www.npmjs.com/package/iztro)
+  [![NPM Downloads](https://img.shields.io/npm/dt/iztro.svg?logo=npm&logoColor=%23959DA5)](https://www.npmjs.com/package/iztro)
+  [![jsDelivr Hits](https://data.jsdelivr.com/v1/package/npm/iztro/badge)](https://www.jsdelivr.com/package/npm/iztro)
+
+  [![GitHub Code Size in Bytes](https://img.shields.io/github/languages/code-size/SylarLong/iztro?logo=github&logoColor=%23959DA5)](https://github.com/SylarLong/iztro)
+  [![Codecov Coverage](https://img.shields.io/codecov/c/github/SylarLong/iztro?logo=codecov&logoColor=%23959DA5)](https://github.com/SylarLong/iztro/actions/workflows/Codecov.yaml)
+  [![Codecov Status](https://github.com/SylarLong/iztro/actions/workflows/Codecov.yaml/badge.svg)](https://github.com/SylarLong/iztro/actions/workflows/Codecov.yaml)
+
+  [![Maintainability](https://qlty.sh/gh/SylarLong/projects/iztro/maintainability.svg)](https://qlty.sh/gh/SylarLong/projects/iztro)
+  [![Package Quality](https://packagequality.com/shield/iztro.svg?logo=github)](https://packagequality.com/#?package=iztro)
+
+  [![License](https://img.shields.io/github/license/sylarlong/iztro?logo=github)](https://www.npmjs.com/package/iztro)
+  [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FSylarLong%2Fiztro.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2FSylarLong%2Fiztro?ref=badge_shield)
+
+</div>
+
+
+## iztro AI · 紫微与奇门模型
+
+除了开源排盘库，`iztro` 还提供两个托管的专业 AI 模型。它们会自动调用服务端术数工具，并通过 Chat API 或 Iztro Agents SDK 接入；你不需要自行维护排盘提示词或让通用模型猜测盘面。
+
+| 模型 | 适合的问题 | 需要提供 |
+| --- | --- | --- |
+| **`iztro-ziwei-v3`** | 本命性格、人生格局、两人适配度，以及大限、流年、流月、流日等中长期趋势 | 出生日期、出生时间、性别和分析主题 |
+| **`iztro-qimen-v3`** | 一件当下具体事情的决断、发展、阻力与应期，例如合作、谈判、面试、上线、出行或关系中的下一步 | 事情背景、一个明确问题和问事时刻；**不需要出生信息** |
+
+### `iztro-ziwei-v3`：命盘与长期趋势
+
+- 自动调用 `iztro` 排盘工具，按问题读取本命、大限、流年、流月、流日等必要层级。
+- 针对紫微解读优化提示词与推理策略，并可在会话中记住出生信息和此前上下文。
+
+### `iztro-qimen-v3`：一事一局的决断与应期
+
+- 根据问事时刻分析**一件具体事情**，给出结论、主要依据、阻力与行动建议。
+- 当用户问“什么时候”或时间是结论关键时，给出真实日历中的候选触发窗口。
+- 一事一局：互不相关的事情应分开提问。应期日期是结合全局解读的触发候选，不是“某天必然成功”的保证。
+
+例如，一个清晰的奇门问题是：“我们已经谈过两次渠道合作，但分成和上线时间还没定。现在应该推进、继续谈，还是暂缓？如果可以推进，请给出最近的行动窗口和依据。”
+
+> [!NOTE]
+> NPM 包 `iztro` 本身仍是开源的**紫微斗数排盘库**；`iztro-qimen-v3` 是通过 API/Agents SDK 使用的托管 AI 模型，不是本地奇门排盘模块。
+
+两个模型都支持以下接入方式：
+
+### 1. iztro Chat API —— 调用我们的 HTTP API
+
+如果你需要紫微或奇门对话能力，可以使用 iztro Chat API。使用时需要 API key，你可以在 [开发者文档](https://api-doc.iztro.com) 查看完整接口，并通过[模型指南](https://api-doc.iztro.com/sdk/qimen)比较紫微与奇门。
+
+以下示例假设你已把控制台生成的密钥保存到服务端环境变量 `ZIWEI_API_KEY`。不要把密钥写入浏览器代码。
+
+推荐的集成方式是多轮对话 API：先创建会话，再向该会话发送用户消息。API 会自动处理上下文。
+
+```shell
+curl https://chat-api.iztro.com/v2/platform/sessions \
+  -H "Authorization: Bearer $ZIWEI_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "external_user_id": "user_123",
+    "model": "iztro-ziwei-v3",
+    "system_prompt_override": "用简洁中文回答，避免过度术语，并在最后给出可继续追问的方向。"
+  }'
+
+curl https://chat-api.iztro.com/v2/platform/sessions/{session_id}/messages \
+  -H "Authorization: Bearer $ZIWEI_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "分析我的 2026 年事业趋势。生日是 1995-02-23，出生时辰 17 点，性别女。",
+    "title": "2026 事业解读",
+    "language": "zh",
+    "enable_iztro_call": true
+  }'
+```
+
+奇门会话在创建时选择 `iztro-qimen-v3`。默认使用请求时刻起局；如果用户时区不同或结果需要可复现，请在消息中传入带 UTC 偏移量的 `current_datetime`：
+
+```shell
+curl https://chat-api.iztro.com/v2/platform/sessions \
+  -H "Authorization: Bearer $ZIWEI_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "external_user_id": "user_123",
+    "model": "iztro-qimen-v3"
+  }'
+
+curl https://chat-api.iztro.com/v2/platform/sessions/{session_id}/messages \
+  -H "Authorization: Bearer $ZIWEI_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "我们已经谈过两次渠道合作，但分成和上线时间还没定。现在应该推进、继续谈，还是暂缓？如果可以推进，请给出最近的行动窗口。",
+    "current_datetime": "2026-07-20T14:30:00+08:00",
+    "language": "zh",
+    "enable_iztro_call": true
+  }'
+```
+
+JavaScript 和 Python 示例见 [`examples/chat-api`](./examples/chat-api)。完整的前后端流式聊天、编辑、重新发送示例见 [`examples/fullstack-demo`](./examples/fullstack-demo)。
+
+### 2. iztro Agents SDK —— 构建你自己的 Agent
+
+在 `iztro-ziwei-v3` 或 `iztro-qimen-v3` 上构建你自己的 Agent，并加入自己的工具、MCP 服务器和人工确认。它是对 [OpenAI Agents SDK](https://github.com/openai/openai-agents-python) 的轻量封装，提供 Python 与 TypeScript 两个版本：
+
+- **Python** —— `pip install openai-iztro-agents` · [github.com/SylarLong/openai-iztro-agents-python](https://github.com/SylarLong/openai-iztro-agents-python)
+- **TypeScript / JavaScript** —— `npm install openai-iztro-agents` · [github.com/SylarLong/openai-iztro-agents-js](https://github.com/SylarLong/openai-iztro-agents-js)
+
+两个 SDK 都提供紫微与奇门便捷工厂。Python 使用 `iztro_ziwei_agent(...)` / `iztro_qimen_agent(...)`，TypeScript 使用 `iztroZiweiAgent({...})` / `iztroQimenAgent({...})`。API 返回的公开计算名称见[模型指南](https://api-doc.iztro.com/sdk/qimen)。
+
+### 全栈演示
+
+| 方案 | 完整示例 | 主要能力 |
+| --- | --- | --- |
+| iztro Chat API | [`examples/fullstack-demo`](./examples/fullstack-demo) | Node/Python 后端、流式输出、编辑消息、重新生成；API key 仅保存在后端 |
+| Python Agents SDK | [ChatSession full-stack demo](https://github.com/SylarLong/openai-iztro-agents-python/tree/main/examples/fullstack-demo) | 会话列表、新建/删除/重命名、应用层编辑分支与 Fork、调用命盘记录、Markdown 渲染 |
+| TypeScript / JavaScript Agents SDK | [ChatSession full-stack demo](https://github.com/SylarLong/openai-iztro-agents-js/tree/master/examples/fullstack-demo) | 与 Python 版相同的会话工作台和流式体验 |
+
+<img src="./examples/fullstack-demo/assets/chat-session-workbench.png" alt="iztro Agents SDK ChatSession 全栈演示" width="1200" />
+
+## 介绍
+
+用于紫微斗数排盘的 JavaScript 开源库，有以下功能：
+
+- 输入
+
+  - 生日（阳历或农历皆可）
+  - 出生时间
+  - 性别
+
+- 可以实现下列功能
+
+  - 紫微斗数 12 宫的星盘数据
+  - 获取生肖
+  - 获取星座
+  - 获取四柱（干支纪年法的生辰）
+  - 获取运限（大限、小限、流年、流月、流日、流时）的数据
+  - 获取流耀（大限和流年的动态星耀）
+  - 判断指定宫位是否存在某些星耀
+  - 判断指定宫位三方四正是否存在某些星耀
+  - 判断指定宫位三方四正是否存在四化
+  - 判断指定星耀是否存在四化
+  - 判断指定星耀三方四正是否存在四化
+  - 判断指定星耀是否是某个亮度
+  - 根据天干获取四化
+  - 获取指定星耀所在宫位
+  - 获取指定宫位三方四正宫位
+  - 获取指定星耀三方四正宫位
+  - 获取指定星耀对宫
+  - 获取指定运限宫位
+  - 获取指定运限宫位的三方四正
+  - 判断指定运限宫位内是否存在某些星耀
+  - 判断指定运限宫位内是否存在四化
+  - 判断指定运限三方四正内是否存在某些星耀
+  - 判断指定运限三方四正内是否存在四化
+  - 判断指定宫位是否是空宫
+  - 判断宫位是否产生飞星到目标宫位
+  - 获取宫位产生的四化宫位
+
+- 其他
+
+  - 多语言输入/输出
+
+    输入的时候支持多个国家和地区语言混合输入，可以输出指定语言。目前支持 简体中文，繁体中文，英文，日文，韩文，越南语。英文的翻译目前还没有标准，所以我大多是意译的，但也正因为如此，可能英文版本的会更加易懂。如果有精通星象翻译的欢迎提 PR 。任何语言都可以。
+
+  - 链式调用
+
+    假如你想判断 `紫微星` 的 `三方四正` 有没有 `化忌`，你可以这样做
+
+    ```ts
+    import { astro } from 'iztro';
+
+    const astrolabe = astro.bySolar('2000-8-16', 2, '男', true, 'zh-CN');
+
+    astrolabe.star('紫微').surroundedPalaces().haveMutagen('忌');
+    ```
+
+  - 配置和插件
+
+    紫微斗数流派众多，不同的流派的四化以及星耀亮度都会有些许差异，为了满足不同流派的需求和功能的扩展，`iztro` 在 `v2.3.0` 版本加入了全局配置和第三方插件功能。详见 [配置文档](https://ziwei.pro/posts/config-n-plugin.html)
+
+> [!IMPORTANT]
+> 如果你在开发中遇到任何问题，可以添加作者微信咨询。<br>
+> 你也可以任意魔改代码，或联系作者获取技术支持。<br>
+> <img src="https://github.com/SylarLong/SylarLong/assets/6510425/a2af4876-7d26-4900-a0fc-f5a2030f6205" alt="WeChat" width="350" />
+
+## 快捷跳转
+
+- [文档](https://docs.iztro.com)
+- [讨论](https://github.com/SylarLong/iztro/discussions)
+- [问题](https://github.com/SylarLong/iztro/issues)
+- [排盘](https://ziwei.pub)
+
+## 直接使用
+
+如果你想要零开发直接查看 `iztro` 的排盘结果，请直接使用 [紫微派（ziwei.pub）](https://ziwei.pub) 在线排盘。
+
+## 安装依赖
+
+你可以使用任何你熟悉的包管理库来安装 `iztro`。
+
+```shell
+# npm
+npm install iztro -S
+
+# yarn
+yarn add iztro
+
+# pnpm
+pnpm install iztro -S
+```
+
+## 独立 JavaScript 库
+
+假如你使用的是静态 HTML 文件，可以下载 [release](https://github.com/SylarLong/iztro/releases) 资源文件中的 `iztro-min-js.tar.gz` 压缩包，里面包含了一个 `iztro` 压缩混淆过的 `js` 文件和对应的 `sourcemap` 文件。
+
+> `v2.0.4+` 版本才提供独立js库。
+
+推荐将带版本号的 `iztro-v2.6.0.min.js` 用 `script` 标签引入 HTML 文件使用。构建产物同时保留 `iztro.min.js`，用于兼容旧版本的引用方式。
+
+```html
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>iztro-紫微斗数开源库</title>
+  </head>
+  <body>
+    <script src="./iztro-v2.6.0.min.js"></script>
+    <script>
+      // 获取一张星盘数据
+      var astrolabe = iztro.astro.bySolar('2000-8-16', 2, '男', true, 'zh-CN');
+    </script>
+  </body>
+</html>
+```
+
+当然，我们更推荐你直接使用 `CDN` 加速链接，你可以在下面列表中选择一个，在没有指定版本号的时候，会自动指向最新发布的版本。
+
+- jsdelivr
+
+  - https://cdn.jsdelivr.net/npm/iztro/dist/iztro.min.js
+  - https://cdn.jsdelivr.net/npm/iztro@2.6.0/dist/iztro-v2.6.0.min.js
+
+- unpkg
+
+  - https://unpkg.com/iztro/dist/iztro.min.js
+  - https://unpkg.com/iztro@2.6.0/dist/iztro-v2.6.0.min.js
+
+你也可以使用如下规则来指定版本：
+
+- `iztro@2`
+- `iztro@^2.0.5`
+- `iztro@2.0.5`
+
+因为纯 JS 库没有代码提示和注释，所以在集成的时候请参阅 [iztro 开发文档](https://docs.iztro.com/quick-start.html)。
+
+## 简单示例
+
+这里是一个简单的例子显示如何调用 `iztro` 获取到紫微斗数星盘数据，详细文档请移步 [开发文档](https://docs.iztro.com)。
+
+- ES6 Module
+
+  ```ts
+  import { astro } from 'iztro';
+
+  // 通过阳历获取星盘信息
+  const astrolabe = astro.bySolar('2000-8-16', 2, '女', true, 'zh-CN');
+
+  // 通过农历获取星盘信息
+  const astrolabe = astro.byLunar('2000-7-17', 2, '女', false, true, 'zh-CN');
+  ```
+
+- CommonJS
+
+  ```ts
+  var iztro = require('iztro');
+
+  // 通过阳历获取星盘信息
+  var astrolabe = iztro.astro.bySolar('2000-8-16', 2, '女', true, 'zh-CN');
+
+  // 通过农历获取星盘信息
+  var astrolabe = iztro.astro.byLunar('2000-7-17', 2, '女', false, true, 'zh-CN');
+  ```
+
+
+## 贡献
+
+如果你对 `iztro` 有兴趣，也想加入贡献队伍，我们非常欢迎，你可以用以下方式进行：
+
+- 如果你对程序功能有什么建议，请到 [这里](https://github.com/SylarLong/iztro/issues/new?assignees=SylarLong&labels=%E5%8A%9F%E8%83%BD%EF%BD%9Cfeature&projects=&template=new-feature.md&title=%7B%E6%A0%87%E9%A2%98%7D%EF%BD%9C%7Btitle%7D) 创建一个 `功能需求`。
+- 如果你发现程序有 BUG，请到 [这里](https://github.com/SylarLong/iztro/issues/new?assignees=SylarLong&labels=%E6%BC%8F%E6%B4%9E%EF%BD%9Cbug&projects=&template=bug-report.md&title=%7Bversion%7D%3A%7Bfunction%7D-) 创建一个 `BUG 报告`。
+- 你也可以将本仓库 `fork` 到你自己的仓库进行编辑，然后提交 PR 到本仓库。
+- 假如你擅长外语，我们也欢迎你对国际化文件的翻译做出你的贡献，你可以 `fork` 本仓库，然后在 [locales](https://github.com/SylarLong/iztro/tree/main/src/i18n/locales) 文件夹下创建一个国际化语言文件，然后复制其他语言文件目录里面的文件到你的目录下进行更改。
+- 当然，如果你觉得本程序对你有用，请给我买杯咖啡☕️ [![Static Badge](https://img.shields.io/badge/PaypalMe-8A2BE2?logo=paypal&link=https%3A%2F%2Fwww.paypal.com%2Fsylarlong)](https://PayPal.Me/sylarlong)
+
+> [!NOTE]
+> 在开始之前，请阅读 [贡献指南](https://github.com/SylarLong/iztro/blob/main/CONTRIBUTING.md)。
+
+## 总结
+
+使用本程序返回的数据，你可以生成这样一张星盘，当然这只是一个例子，你可以把注意力集中在星盘的设计上，也可以把重心放在数据的分析上，本程序为你解决了最繁冗的工作，让你可以把精力更多的放在你所需要关注的事情上面。
+
+<img width="966" alt="image" src="https://github.com/SylarLong/react-iztro/assets/6510425/f4335997-fdd8-42e2-bb1a-600942f9b0ba">
+
+## Star 历史
+
+> [!IMPORTANT]
+> 如果你觉得代码对你有用，请点 ⭐ 支持，你的 ⭐ 是我持续更新的动力～
+
+## Star History
+
+<a href="https://www.star-history.com/?repos=sylarlong%2Fiztro&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=sylarlong/iztro&type=date&theme=dark&legend=top-left&sealed_token=uTaBgMSSccISPgduGiG1mzXHRjyQcwvMHCqQnEspLy_iZECAVyai-XU2WDj1znko5NJPavNbiKTttvEBeE85324vgxCna8hxKGwZUTENSNvnJ0Qv47uwqg" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=sylarlong/iztro&type=date&legend=top-left&sealed_token=uTaBgMSSccISPgduGiG1mzXHRjyQcwvMHCqQnEspLy_iZECAVyai-XU2WDj1znko5NJPavNbiKTttvEBeE85324vgxCna8hxKGwZUTENSNvnJ0Qv47uwqg" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=sylarlong/iztro&type=date&legend=top-left&sealed_token=uTaBgMSSccISPgduGiG1mzXHRjyQcwvMHCqQnEspLy_iZECAVyai-XU2WDj1znko5NJPavNbiKTttvEBeE85324vgxCna8hxKGwZUTENSNvnJ0Qv47uwqg" />
+ </picture>
+</a>
+
+## 版权
+
+[MIT License](https://github.com/SylarLong/iztro/blob/main/LICENSE)
+
+Copyright &copy; 2023 All Contributors
+
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FSylarLong%2Fiztro.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FSylarLong%2Fiztro?ref=badge_large)
+
+> [!NOTE]
+> 请合理使用本开源代码，禁止用于非法目的。

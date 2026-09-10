@@ -16,10 +16,17 @@
 """
 
 import sys
+import os
 import math
 import json
 from datetime import date, datetime, timedelta
 import ephem
+
+# ── 精确节气定界（引擎唯一权威口径：立春换年 / 节气换月，精确到分钟）──
+_ENGINE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'engine')
+if os.path.abspath(_ENGINE_DIR) not in sys.path:
+    sys.path.insert(0, os.path.abspath(_ENGINE_DIR))
+import jieqi  # noqa: E402
 
 # ============================================================
 # 基础常量
@@ -273,7 +280,9 @@ def find_jieqi_date(year, target_longitude):
             next_dt = mid
     
     # 更精确的：用牛顿法做最后收敛
-    mid_dt = datetime.strptime(str(ephem.Date((prev_dt + next_dt) / 2)), '%Y/%m/%d %H:%M:%S')
+    # 🚨 2026-09-10 修复：ephem 返回 UTC，必须 +8h 转北京时间后再与出生时间比较，
+    #    否则起运岁数偏 8 小时（≈0.11年≈40天）。旧实现漏了这一步。
+    mid_dt = datetime.strptime(str(ephem.Date((prev_dt + next_dt) / 2)), '%Y/%m/%d %H:%M:%S') + timedelta(hours=8)
     return mid_dt
 
 def get_all_jieqi(year):
@@ -372,22 +381,14 @@ def calc_bazi(year, month, day, hour, minute, shichen_idx, gender, name="", birt
     # 如果修正后的时辰与原时辰不同，标记提醒
     shichen_changed = (solar_shichen != shichen_idx)
     
-    # --- 年柱 ---
-    y_gan = TIAN_GAN[(year - 4) % 10]
-    y_zhi = DI_ZHI[(year - 4) % 12]
-    
-    # --- 月柱 ---
-    m_zhi = get_month_zhi(birth_dt)
-    
-    # 五虎遁求月干
-    WU_HU_DUN = {'甲':'丙','乙':'戊','丙':'庚','丁':'壬','戊':'甲',
-                 '己':'丙','庚':'戊','辛':'庚','壬':'壬','癸':'甲'}
-    MONTH_ORDER = {'寅':0,'卯':1,'辰':2,'巳':3,'午':4,'未':5,
-                   '申':6,'酉':7,'戌':8,'亥':9,'子':10,'丑':11}
-    start_gan = WU_HU_DUN[y_gan]
-    start_idx = TIAN_GAN.index(start_gan)
-    m_gan_idx = (start_idx + MONTH_ORDER[m_zhi]) % 10
-    m_gan = TIAN_GAN[m_gan_idx]
+    # --- 年柱（立春精确时刻定界）---
+    # 🚨 2026-09-10 修复：旧实现 `(year - 4) % 10` 直接用公历年份 → 立春前出生者年柱错，
+    #    且月干随五虎遁级联错、大运顺逆随年干阴阳反向。见 knowledge-base bazi-auto-verify「年柱级联风险」。
+    y_gan, y_zhi = jieqi.year_gan_zhi(birth_dt)
+
+    # --- 月柱（节气精确时刻定界 + 五虎遁）---
+    # 🚨 2026-09-10 修复：旧实现月支走 ephem(UTC) 未转北京时，且月干锚定错误年干。
+    m_gan, m_zhi = jieqi.month_gan_zhi(birth_dt)
     
     # --- 日柱 ---
     r_gan, r_zhi = calc_rizhu(birth_date)
@@ -451,23 +452,14 @@ def calc_bazi(year, month, day, hour, minute, shichen_idx, gender, name="", birt
         direction = '逆排'
         direction_label = '阴男逆排' if (yin_yang=='阴' and gender=='男') else '阳女逆排'
     
-    # 起运计算
+    # 起运计算（节气精确到分钟·北京时间）
+    # 🚨 2026-09-10 修复：改用 engine/jieqi.py 精确节气；旧实现走 ephem(UTC) 未转北京时，起运偏约8小时。
     if direction == '顺排':
-        next_jq = get_next_jieqi(birth_dt)
-        if next_jq:
-            jq_zhi, jq_name, jq_dt = next_jq
-            days_diff = (jq_dt - birth_dt).total_seconds() / 86400
-        else:
-            jq_name = '未知'
-            days_diff = 0
+        jq_name, jq_dt = jieqi.next_jieqi(birth_dt)
+        days_diff = (jq_dt - birth_dt).total_seconds() / 86400
     else:
-        last_jq = get_last_jieqi(birth_dt)
-        if last_jq:
-            jq_zhi, jq_name, jq_dt = last_jq
-            days_diff = (birth_dt - jq_dt).total_seconds() / 86400
-        else:
-            jq_name = '未知'
-            days_diff = 0
+        jq_name, jq_dt = jieqi.prev_jieqi(birth_dt)
+        days_diff = (birth_dt - jq_dt).total_seconds() / 86400
     
     qi_yun_years = int(days_diff // 3)
     qi_yun_remainder = days_diff % 3

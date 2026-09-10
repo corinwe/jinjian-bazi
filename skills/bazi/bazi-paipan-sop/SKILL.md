@@ -48,6 +48,16 @@ related_skills: [bazi-engine-workflow, bazi-foundation-analysis, bazi-report-tem
 ### Phase 1 — 排盘校验
 调用引擎 `paipan.py` 排盘，比对四柱是否正确。
 
+> **🚨 年柱/月柱唯一权威口径（2026-09-10 铁律）**：必须走 `engine/jieqi.py`。
+> ```python
+> import jieqi
+> 年干, 年支 = jieqi.year_gan_zhi(datetime(y,m,d,h,mi))    # 立春精确到分钟换年
+> 月干, 月支 = jieqi.month_gan_zhi(datetime(y,m,d,h,mi))   # 「节」精确到分钟 + 五虎遁
+> ```
+> ❌ 禁止 `(year-4)%10` 直算年柱（公历年≠立春年 → 月干级联错、大运顺逆反向）
+> ❌ 禁止硬编码节气日（节气时刻逐年浮动，如2025小寒=1月5日10:32）
+> ✅ 每次排盘后跑门禁：`python3 scripts/bazi-jieqi-regression.py --quick`（跑不过不许继续）
+
 ### Phase 2 — 引擎计算
 调用 `shen_qiang_ruo.py` → `ge_ju.py` → `da_yun.py` → 各领域模块。
 所有计算由确定性Python代码完成，LLM不参与计算。
