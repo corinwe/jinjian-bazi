@@ -103,7 +103,16 @@ def main():
     filepath = args.get("path", "") or ""
     if not filepath.endswith(".md"):
         return
-    if not any(kw in filepath for kw in REPORT_KEYWORDS):
+    # 🚨 收窄报告识别（2026-09-10 v2.1）：避免误伤技能/文档文件
+    #   旧逻辑 `any(kw in path for kw in ["报告","分析","report","analysis"])` 会把
+    #   skills/bazi/bazi-wealth-analysis/SKILL.md 之类也当成报告拦截 → 误伤。
+    #   真报告判定：路径含「报告/report」，或在报告输出目录下且含分析类词。
+    lp = filepath.lower()
+    REPORT_DIRS = ["/tmp/", "人物档案", "/reports/", "/output/", "\\reports\\"]
+    is_report = ("报告" in filepath) or ("report" in lp) or (
+        any(kw in filepath or kw in lp for kw in ["分析", "analysis"]) and any(d in filepath for d in REPORT_DIRS)
+    )
+    if not is_report:
         return
 
     mode = _mode()
