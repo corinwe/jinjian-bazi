@@ -21,6 +21,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ziwei_rules import (PALACE_BASE, STAR_BASE, STAR_PALACE, SIHUA_BASE,
                          PALACE_SIHUA, FU_XING, GEJU)
 from ziwei_star_combo import DOUBLE_STAR, SANFANG_RULES, double_star_of, sanfang_combo
+from ziwei_weight import (weight_section, all_scores, key_combos, current_daxian,
+                          PALACE_HINT as PALACE_HINT_PLAIN)
 
 ZHI = "子丑寅卯辰巳午未申酉戌亥"
 MIAO_STRONG = {"庙", "旺", "得", "利"}
@@ -146,8 +148,25 @@ def plain_intro(name, ds, zw) -> str:
     else:
         L.append("- 本盘生年四化未见化忌落宫（以引擎数据为准）。")
     L.append("")
-    L.append("### 0.7 接下来看什么\n")
-    L.append("- 想看**逐宫细断** → §22；想看**两套体系互相印证** → §23；想看**八字全量21节** → §1–§21。")
+    # 0.7 强项与短板（量化一句话）
+    try:
+        _S = all_scores(zw)
+        _KB = key_combos(zw)
+        L.append("### 0.7 你的强项与短板（引擎量化）\n")
+        if _KB["王牌"]:
+            _a = _KB["王牌"][0]
+            L.append(f"- **最强项：{_a[0]}（{_a[1]}分）** —— {PALACE_HINT_PLAIN.get(_a[0], '')}这块是你的天赋区，资源优先往这儿放")
+        if _KB["短板"]:
+            _w = _KB["短板"][0]
+            L.append(f"- **最短板：{_w[0]}（{_w[1]}分）** —— {PALACE_HINT_PLAIN.get(_w[0], '')}这块要主动补、提前防")
+        _dx = current_daxian(zw, int(str(zw.get("公历", "0"))[:4] or 0)) if str(zw.get("公历", ""))[:4].isdigit() else {}
+        if _dx.get("宫位"):
+            L.append(f"- **当前十年主战场：{_dx['宫位']}（{_dx['区间']}）** —— {PALACE_HINT_PLAIN.get(_dx['宫位'], '')}这块是这十年的重心")
+        L.append("")
+    except Exception:
+        pass
+    L.append("### 0.8 接下来看什么\n")
+    L.append("- 想看**逐宫细断** → §22；想看**量化强弱** → §22.9；想看**两套体系互相印证** → §23；想看**八字全量21节** → §1–§21。")
     return "\n".join(L) + "\n"
 
 
@@ -393,7 +412,7 @@ def ziwei_detail_section(name, ds, zw) -> str:
             pass
         L.append(f"| {p['宫位']} | {p['大限']} | {'；'.join([t for t in theme if t]) or '—'} | {match or '—'} |")
     L.append("")
-    return "\n".join(L) + "\n"
+    return "\n".join(L) + "\n" + weight_section(name, ds, zw)
 
 
 def _dayun_of(ds) -> list:
