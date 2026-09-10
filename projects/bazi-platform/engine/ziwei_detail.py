@@ -24,6 +24,8 @@ from ziwei_star_combo import DOUBLE_STAR, SANFANG_RULES, double_star_of, sanfang
 from ziwei_weight import (weight_section, all_scores, key_combos, current_daxian,
                           PALACE_HINT as PALACE_HINT_PLAIN)
 from ziwei_liunian import liunian_section
+from jixiong import (star_palace_tag, double_tag, sanfang_tag, fu_tag, sihua_tag,
+                     weight_tag, legend as jx_legend)
 
 ZHI = "子丑寅卯辰巳午未申酉戌亥"
 MIAO_STRONG = {"庙", "旺", "得", "利"}
@@ -104,6 +106,8 @@ def plain_intro(name, ds, zw) -> str:
         for st in star_names(p):
             if st in STAR_PALACE and g in STAR_PALACE[st]:
                 return STAR_PALACE[st][g]
+        if not p.get("主星"):
+            return "本宫无主星→看对宫借力：这块的事要靠外部／他人配合，不是你没有，是剧本要别人递"
         return fallback
 
     def sihua_of(p):
@@ -111,32 +115,45 @@ def plain_intro(name, ds, zw) -> str:
         hits += [f"{s['名']}化{s['四化']}" for s in p.get("辅星", []) if s.get("四化")]
         return "、".join(hits) or "无"
 
+    def tg(p):
+        """宫位吉凶标签【吉凶·程度】"""
+        g = p.get("宫位")
+        mains = p.get("主星") or []
+        st = mains[0]["名"] if mains else None
+        miao = next((x.get("庙旺") for x in mains if x.get("名") == st), None)
+        auxs = [x.get("名") for x in p.get("辅星", [])]
+        sh = [x.get("四化") for x in list(mains) + list(p.get("辅星", [])) if x.get("四化")]
+        if st:
+            return star_palace_tag(st, g, miao, auxs, sh)
+        return weight_tag(50.0)
+
     L = ["\n\n---\n\n## §0 白话导读（一页看懂 · 不用懂命理）\n"]
     L.append(f"> 这一节不说术语，只说你关心的事。想深究再看后面的 §1–§23。\n")
+    L.append(f"> {jx_legend()}")
     L.append(f"**{name}** ｜ 八字 `{ds.get('八字','')}` ｜ 日主 {ds.get('日主','')}"
              f"（{q.get('等级','?')} {q.get('总分','?')}分）｜ 紫微 {z.get('五行局','')}·命主{z.get('命主','')}\n")
 
     L.append("### 0.1 你是个什么样的人\n")
     if ming:
         L.append(f"- **性格底色（紫微·命宫{ming.get('干支','')}）：** "
-                 f"{'、'.join(star_names(ming))}——{plain_of(ming)}")
+                 f"{'、'.join(star_names(ming))}——{plain_of(ming)} {tg(ming)}")
     L.append(f"- **八字说：** 日主{ds.get('日主','')}，"
              f"{'身强，能扛事、认自己理，先苦干后收获' if q.get('等级','') == '身强' else '身弱，靠借力和平台，别硬扛' if q.get('等级','') == '身弱' else '中和，可进可退、弹性好'}")
     L.append("")
     L.append("### 0.2 事业往哪走\n")
-    L.append(f"- **紫微（官禄宫）：** {plain_of(guan)}")
-    L.append(f"- **出外发展：** {plain_of(qian)}")
+    L.append(f"- **紫微（官禄宫）：** {plain_of(guan)} {tg(guan)}")
+    L.append(f"- **出外发展：** {plain_of(qian)} {tg(qian)}")
     L.append("")
     L.append("### 0.3 钱从哪来\n")
-    L.append(f"- **紫微（财帛宫）：** {plain_of(cai)}")
-    L.append(f"- **房产家业（田宅宫）：** {plain_of(tian)}")
+    L.append(f"- **紫微（财帛宫）：** {plain_of(cai)} {tg(cai)}")
+    L.append(f"- **房产家业（田宅宫）：** {plain_of(tian)} {tg(tian)}")
     L.append("")
     L.append("### 0.4 婚姻与家人\n")
-    L.append(f"- **配偶（夫妻宫）：** {plain_of(qi)}")
-    L.append(f"- **孩子（子女宫）：** {plain_of(zi)}")
+    L.append(f"- **配偶（夫妻宫）：** {plain_of(qi)} {tg(qi)}")
+    L.append(f"- **孩子（子女宫）：** {plain_of(zi)} {tg(zi)}")
     L.append("")
     L.append("### 0.5 身体要防什么\n")
-    L.append(f"- {plain_of(ji)}")
+    L.append(f"- {plain_of(ji)} {tg(ji)}")
     L.append("")
     L.append("### 0.6 先天的「欠债处」（化忌落宫）\n")
     ji_hua = [h for h in _si_hua_stars(zmap) if h[1] == "忌"]
@@ -146,6 +163,7 @@ def plain_intro(name, ds, zw) -> str:
             ph = PALACE_SIHUA.get(gong, {}).get("忌", "")
             L.append(f"- **{st}化忌在{gong}**（{base.get('白话','')}）：{ph}")
         L.append("- 👉 这一块就是**最容易卡住、最该主动去补**的地方，不是命定凶事，是提醒。")
+        L.append(f"   （吉凶标注：{sihua_tag('忌', doubled=False)} —— 化忌本身属「凶」，程度看它落宫的庙旺与同宫煞星）")
     else:
         L.append("- 本盘生年四化未见化忌落宫（以引擎数据为准）。")
     L.append("")
@@ -257,6 +275,7 @@ def ziwei_detail_section(name, ds, zw) -> str:
     L = ["\n\n---\n\n## §22 紫微斗数细断专章（14主星×12宫×四化 · 术语+白话）\n"]
     L.append(f"**引擎：** ziwei-engine v1.0 ｜ **规则库：** engine/ziwei_rules.py"
              f"（14主星×12宫=168条 / 四化48条 / 辅星14 / 格局13）\n")
+    L.append(f"> {jx_legend()}")
 
     # 22.1 命盘基本信息
     L.append("### 22.1 命盘基本信息\n")
@@ -275,8 +294,8 @@ def ziwei_detail_section(name, ds, zw) -> str:
     # 22.2 逐宫细断（核心）
     L.append("### 22.2 逐宫细断（每宫：星曜 → 术语 → 大白话）\n")
     ORDER = ["命宫", "兄弟", "夫妻", "子女", "财帛", "疾厄", "迁移", "仆役", "官禄", "田宅", "福德", "父母"]
-    L.append("| 宫位 | 干支 | 大限 | 星曜（庙旺·四化） | 术语断 | **大白话（重点看这栏）** |")
-    L.append("|:---|:---|:---|:---|:---|:---|")
+    L.append("| 宫位 | 干支 | 大限 | 星曜（庙旺·四化） | 吉凶 | 术语断 | **大白话（重点看这栏）** |")
+    L.append("|:---|:---|:---|:---|:---|:---|:---|")
     for gname in ORDER:
         p = zmap.get(gname)
         if not p:
@@ -306,8 +325,13 @@ def ziwei_detail_section(name, ds, zw) -> str:
                     fu_plain.append(f"{a['名']}（{fi['性']}）{fi['白话']}")
             if fu_plain:
                 plains.append("**辅星：** " + "；".join(fu_plain))
+        _auxs = [x["名"] for x in p.get("辅星", [])]
+        _sh = [x["四化"] for x in list(p.get("主星", [])) + list(p.get("辅星", [])) if x.get("四化")]
+        _miao = (p.get("主星") or [{}])[0].get("庙旺") if p.get("主星") else None
+        _lv = (star_palace_tag(p["主星"][0]["名"], gname, _miao, _auxs, _sh) if p.get("主星")
+               else weight_tag(50.0))
         L.append(f"| {'**身宫→**' if p['身宫'] else ''}{gname} | {p['干支']} | {p['大限'] or '—'} | "
-                 f"{st}{('<br>辅:' + fu) if fu else ''} | {' / '.join(terms)} | {'<br>'.join(plains)} |")
+                 f"{st}{('<br>辅:' + fu) if fu else ''} | {_lv} | {' / '.join(terms)} | {'<br>'.join(plains)} |")
     L.append("")
 
     # 22.3 十二宫本义速查（老板要"看得懂"）
@@ -323,8 +347,8 @@ def ziwei_detail_section(name, ds, zw) -> str:
     L.append("### 22.4 四化飞星细断（生年四化 = 一生的动能与课题）\n")
     L.append(f"> 四化白话总纲：**禄**={SIHUA_BASE['禄']['白话']}；**权**={SIHUA_BASE['权']['白话']}；"
              f"**科**={SIHUA_BASE['科']['白话']}；**忌**={SIHUA_BASE['忌']['白话']}\n")
-    L.append("| 星·化 | 落宫 | 术语 | **大白话** |")
-    L.append("|:---|:---|:---|:---|")
+    L.append("| 星·化 | 落宫 | 吉凶 | 术语 | **大白话** |")
+    L.append("|:---|:---|:---|:---|:---|")
     for st, hua, gong, miao in _si_hua_stars(zmap):
         sb = STAR_BASE.get(st, {})
         pb = PALACE_BASE.get(gong, {})
@@ -332,7 +356,13 @@ def ziwei_detail_section(name, ds, zw) -> str:
         plain = f"{sb.get('白话','')} 到了「{pb.get('术语','')}」这块 → {ph}"
         if hua == "忌":
             plain += " ⚠️ 化忌不是命定灾，是**先天欠债**：这块要主动补、别回避"
+        # 生年四化本身不构成「叠加」——只有该宫另有同色四化（例：本宫既有化忌又逢煞）才算加重
+        _gz = zmap.get(gong) or {}
+        _n_hua_same = sum(1 for s in list(_gz.get("主星", [])) + list(_gz.get("辅星", []))
+                          if s.get("四化") == hua)
+        _dp = _n_hua_same >= 2
         L.append(f"| **{st}化{hua}** | {gong}{'（'+miao+'）' if miao else ''} | "
+                 f"{sihua_tag(hua, miao, None, [hua], doubled=_dp)} | "
                  f"{SIHUA_BASE[hua]['术语']} × {pb.get('术语','')} | {plain} |")
     L.append("")
 
@@ -352,8 +382,8 @@ def ziwei_detail_section(name, ds, zw) -> str:
 
     # 22.6 双星同宫断
     L.append("### 22.6 双星同宫断（两颗星同宫的化学反应 · 比单星更准）\n")
-    L.append("| 宫位 | 双星组合 | 标准落宫 | 术语 | **大白话** | 怎么办 |")
-    L.append("|:---|:---|:---|:---|:---|:---|")
+    L.append("| 宫位 | 双星组合 | 标准落宫 | 吉凶 | 术语 | **大白话** | 怎么办 |")
+    L.append("|:---|:---|:---|:---|:---|:---|:---|")
     _found_ds = False
     for gname in ORDER:
         p = zmap.get(gname)
@@ -362,9 +392,14 @@ def ziwei_detail_section(name, ds, zw) -> str:
         _dx = double_star_of(p["主星"])
         if _dx:
             _found_ds = True
-            L.append(f"| **{gname}** | **{_dx['格']}** | {_dx['宫']} | {_dx['术语']} | {_dx['白话']} | {_dx['怎么办']} |")
+            _auxs2 = [x["名"] for x in p.get("辅星", [])]
+            _sh2 = [x["四化"] for x in list(p.get("主星", [])) + list(p.get("辅星", [])) if x.get("四化")]
+            _miao2 = (p.get("主星") or [{}])[0].get("庙旺") if p.get("主星") else None
+            L.append(f"| **{gname}** | **{_dx['格']}** | {_dx['宫']} | "
+                     f"{double_tag(_dx['格'], _miao2, _auxs2, _sh2)} | {_dx['术语']} | "
+                     f"{_dx['白话']} | {_dx['怎么办']} |")
     if not _found_ds:
-        L.append("| — | — | — | — | 本盘无标准双星同宫（主星单守或空宫）→ 以单星细断＋辅星组合为准 | — |")
+        L.append("| — | — | — | — | — | 本盘无标准双星同宫（主星单守或空宫）→ 以单星细断＋辅星组合为准 | — |")
     L.append("")
 
     # 22.7 三方四正组合断
@@ -379,10 +414,11 @@ def ziwei_detail_section(name, ds, zw) -> str:
         _stars = _stars_in(zmap, _sf)
         L.append(f"**{_key}** ｜ 三方四正：{'、'.join(_sf)} ｜ 星曜：{'、'.join(_stars) or '—'}\n")
         if _hits:
-            L.append("| 组合 | 成立条件 | **大白话** | 怎么办 |")
-            L.append("|:---|:---|:---|:---|")
+            L.append("| 组合 | 吉凶 | 成立条件 | **大白话** | 怎么办 |")
+            L.append("|:---|:---|:---|:---|:---|")
             for _h in _hits:
-                L.append(f"| **{_h['名']}** | {_h['条件']} | {_h['白话']} | {_h['怎么办']} |")
+                L.append(f"| **{_h['名']}** | {sanfang_tag(_h['名'])} | {_h['条件']} | "
+                         f"{_h['白话']} | {_h['怎么办']} |")
         else:
             L.append("- 未见库内典型组合 → 以单宫＋双星断为准。")
         L.append("")
@@ -451,8 +487,11 @@ def cross_section_plain(name, ds, zw) -> str:
     L = ["\n\n---\n\n## §23 交叉印证专章（八字 × 紫微 · 每行带人话）\n"]
     L.append("> **怎么看这张表**：左两栏是两套体系各自的说法，最后一栏是「说人话」的结论。"
              "「一致」=两套说法同向；「互补」=各说一面、合起来更全；「并列」=各自成立、不必强合。\n")
-    L.append("| # | 维度 | 八字怎么说 | 紫微怎么说 | 人话结论 | 类型 |")
-    L.append("|:--:|:---|:---|:---|:---|:---|")
+    L.append("| # | 维度 | 吉凶 | 八字怎么说 | 紫微怎么说 | 人话结论 | 类型 |")
+    L.append("|:--:|:---|:---|:---|:---|:---|:---|")
+    _S23 = all_scores(zw)
+    _DIM_GONG = {"性格": "命宫", "事业": "官禄", "财富": "财帛", "婚姻": "夫妻",
+                 "子女": "子女", "长辈": "父母", "健康": "疾厄", "外出": "迁移"}
     rows = [
         ("性格", f"日主{ds.get('日主','')}·{q.get('等级','?')}{q.get('总分','?')}分",
          f"命宫{sn('命宫')}（{pl('命宫')}）",
@@ -468,9 +507,11 @@ def cross_section_plain(name, ds, zw) -> str:
         ("外出", f"空亡{ds.get('空亡','?')}", f"迁移宫{sn('迁移')}", pl("迁移"), "互补"),
     ]
     for i, r in enumerate(rows, 1):
-        L.append(f"| {i} | **{r[0]}** | {r[1]} | {r[2]} | {r[3]} | {r[4]} |")
+        _k = _DIM_GONG.get(r[0], "")
+        _tg = weight_tag(_S23["单宫"].get(_k, {}).get("分", 50.0)) if _k else "—"
+        L.append(f"| {i} | **{r[0]}** | {_tg} | {r[1]} | {r[2]} | {r[3]} | {r[4]} |")
     ji = [f"{s}化{h}在{g}" for s, h, g, m in _si_hua_stars(zmap) if h == "忌"]
-    L.append(f"| 9 | **最要补的地方** | 八字忌神/最弱环节 | 紫微化忌落宫：{'、'.join(ji) or '—'} | "
+    L.append(f"| 9 | **最要补的地方** | {sihua_tag('忌')} | 八字忌神/最弱环节 | 紫微化忌落宫：{'、'.join(ji) or '—'} | "
              f"{'；'.join(PALACE_SIHUA.get(g,{}).get('忌','') for _,_,g,_ in _si_hua_stars(zmap) if _ == '忌') or '—'} → 主动补这块，不硬碰 | 一致 |")
     L.append("")
     L.append("### 23.1 三句话总结\n")

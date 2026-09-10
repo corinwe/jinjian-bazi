@@ -20,6 +20,7 @@ import json
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ziwei_star_combo import DOUBLE_STAR, _DS_LOOKUP
+from jixiong import weight_tag
 
 # ── 标定参数（scripts/calibrate_ziwei_weight.py 产出；缺省回落默认值）──
 _CALIB = {"BASE": 50.0, "a": 1.0, "b": 1.0, "c": 1.0, "d": 1.0}
@@ -228,22 +229,22 @@ def weight_section(name, ds, zw, birth_year=None) -> str:
              "> ⚠️ 本层是**引擎量化模型**（系数可调），只做排序与重点识别；断语文本来自规则库，不单独作为断命依据。\n")
 
     L.append("### 22.9.1 十二宫强弱排行（总分＝单宫分｜领域总评）\n")
-    L.append("| 排名 | 宫位 | 管的事 | 单宫分 | 等级 | 领域总评 | 主星（庙旺） | 加减分明细 |")
-    L.append("|:--:|:---|:---|:--:|:---|:--:|:---|:---|")
+    L.append("| 排名 | 宫位 | 管的事 | 吉凶 | 单宫分 | 等级 | 领域总评 | 主星（庙旺） | 加减分明细 |")
+    L.append("|:--:|:---|:---|:---|:--:|:---|:--:|:---|:---|")
     rank = sorted(S["单宫"].items(), key=lambda kv: -kv[1]["分"])
     for i, (g, v) in enumerate(rank, 1):
         p = S["zmap"][g]
         miao = "、".join(f"{x['名']}{x['庙旺'] or ''}{('·化' + x['四化']) if x['四化'] else ''}"
                         for x in p.get("主星", [])) or "空宫"
         bd = " ".join(f"{k}{v2:+.1f}" for k, v2 in v["明细"].items() if abs(v2) > 0.05)
-        L.append(f"| {i} | **{g}** | {PALACE_HINT.get(g,'')} | **{v['分']}** | {v['等级']} | "
-                 f"{S['领域总评'][g]} | {miao} | {bd or '—'} |")
+        L.append(f"| {i} | **{g}** | {PALACE_HINT.get(g,'')} | {weight_tag(v['分'])} | **{v['分']}** | "
+                 f"{v['等级']} | {S['领域总评'][g]} | {miao} | {bd or '—'} |")
     L.append("")
 
     L.append("### 22.9.2 三大王牌（重仓区）\n")
     if KB["王牌"]:
         for g, sc, desc in KB["王牌"][:3]:
-            L.append(f"- **{g}（{sc}分）** {desc} → 这块是你的强项，**资源优先往这儿放**")
+            L.append(f"- **{g}（{sc}分）{weight_tag(sc)}** {desc} → 这块是你的强项，**资源优先往这儿放**")
     else:
         L.append("- 本盘无 ≥75 分的宫位：整体偏均衡/偏保守，靠稳扎稳打而非单点爆破。")
     L.append("")
@@ -251,7 +252,7 @@ def weight_section(name, ds, zw, birth_year=None) -> str:
     L.append("### 22.9.3 三大短板（要补要防）\n")
     if KB["短板"]:
         for g, sc, desc in KB["短板"][:3]:
-            L.append(f"- **{g}（{sc}分）** {desc} → 这块要主动补、提前防，**别在这儿硬押重注**")
+            L.append(f"- **{g}（{sc}分）{weight_tag(sc)}** {desc} → 这块要主动补、提前防，**别在这儿硬押重注**")
     else:
         L.append("- 本盘无 ≤35 分的宫位：没有致命短板，属「底盘稳」型。")
     L.append("")

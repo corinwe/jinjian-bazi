@@ -20,6 +20,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ziwei_weight import all_scores, key_combos, current_daxian, PALACE_HINT
 from ziwei_rules import PALACE_SIHUA, SIHUA_BASE, STAR_PALACE, STAR_BASE
+from jixiong import sihua_tag, weight_tag
 
 ZHI = "子丑寅卯辰巳午未申酉戌亥"
 GAN = "甲乙丙丁戊己庚辛壬癸"
@@ -131,16 +132,18 @@ def liunian_section(name, ds, zw, years=(2026, 2027)) -> str:
 
     for r in rows:
         L.append(f"### {r['年']} 年（{r['干支']}·虚岁 {r['虚岁']}）\n")
-        L.append(f"- **流年命宫（主战场）：{r['流年命宫']}** ｜ 主星：{r['流年命宫主星']} "
-                 f"｜ 单宫分 **{r['流年命宫分']}** ｜ 领域总评 **{r['领域总评']}** → "
+        L.append(f"- **流年命宫（主战场）：{r['流年命宫']}** {weight_tag(r['流年命宫分'] or 50)} ｜ "
+                 f"主星：{r['流年命宫主星']} ｜ 单宫分 **{r['流年命宫分']}** ｜ 领域总评 **{r['领域总评']}** → "
                  f"{PALACE_HINT.get(r['流年命宫'],'')}"
                  f"（{'强项年，可发力' if (r['领域总评'] or 0) >= 62 else '弱项年，宜守成' if (r['领域总评'] or 0) < 48 else '中平年，稳扎稳打'}）")
         if r["四化飞入"]:
             L.append("")
-            L.append("| 流年四化 | 落本命宫 | 庙旺 | **大白话** |")
-            L.append("|:---|:---|:---|:---|")
+            L.append("| 流年四化 | 落本命宫 | 吉凶 | 庙旺 | **大白话** |")
+            L.append("|:---|:---|:---|:---|:---|")
             for f in r["四化飞入"]:
-                L.append(f"| {f['星']}化{f['化']} | {f['宫']} | {f['庙旺'] or '—'} | {f['白话']} |")
+                L.append(f"| {f['星']}化{f['化']} | {f['宫']} | "
+                         f"{sihua_tag(f['化'], f['庙旺'], None, [f['化']], doubled=f.get('生年同星同化', False))} | "
+                         f"{f['庙旺'] or '—'} | {f['白话']} |")
         if r["叠加"]:
             L.append("")
             for s in r["叠加"]:
