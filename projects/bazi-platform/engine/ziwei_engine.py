@@ -31,7 +31,10 @@ from datetime import datetime
 PROJ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CLI = os.path.join(PROJ, '..', '..', 'skills', 'bazi', 'bazi-ziwei', 'scripts', 'bazi_ziwei_cli.js')
 CLI = os.path.abspath(CLI)
-ENGINE_VERSION = 'ziwei-v1.0'
+ENGINE_VERSION = 'ziwei-v1.1'
+# v1.1 (2026-09-11): 四柱交叉校验口径归一化 —— 紫微侧 iztro 月柱按【农历月】口径、
+#   八字侧 jieqi.py 按【节气】口径，两者在「农历月≠节气月」时必然不等（旧版误判不一致→阻断出报告）。
+#   新规则：年/日/时柱严格比对；月柱不等时用农历月口径反算归一化，能解释=放行并标注，不能解释=仍拦截。
 
 if not os.path.exists(CLI):
     alt = '/root/.hermes/profiles/jinjian-zhenren/skills/bazi/bazi-ziwei/scripts/bazi_ziwei_cli.js'

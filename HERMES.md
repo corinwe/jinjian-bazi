@@ -68,7 +68,29 @@
 - 证据：报告头部必须有【机制链注入】标记（pre-commit强制检查）
 
 ### 法2·物理门禁（pre-commit五层）
-- pre-commit v3.3 检查：①机制链标记 ②PIPELINE-SIG产物溯源 ③待填残留 ④大运/审计 ⑤质量门禁(≥800行/21§/DS引用)
+- pre-commit **v3.4** 检查：①机制链标记 ②PIPELINE-SIG产物溯源 ③待填残留 ④大运年份(按**退出码**判定:0通过/1不一致/3门禁空转) ⑤审计 ⑥质量门禁(≥800行/21§/DS≥3)
+
+## 🏷️ 体系版本清单（2026-09-11 固化·老板问「你现在是什么版本」时照此报）
+
+| 层 | 组件 | 版本 |
+|:---|:---|:---|
+| Agent | Hermes Agent · profile `jinjian-zhenren` | 模型 `deepseek-v4-flash`（provider: custom） |
+| 身份 | `SOUL.md`（身份+铁律，无版本号）/ `USER.md` | USER.md v1.2 |
+| 排盘引擎 | `scripts/bazi-engine.py`（年/月柱唯一口径 `engine/jieqi.py`） | **v2.0** |
+| 全量分析 | `pipeline_v5.run_pipeline` + `ge_ju/shen_qiang_ruo/cai_xing/da_yun` | v5 |
+| 紫微第四引擎 | `engine/ziwei_engine.py`（iztro 桥接） | **ziwei-v1.1**（四柱交叉校验口径归一化） |
+| 刑冲合害 | `engine/xing_chong_he_hua.py`（九龙24号文档自刑口径） | 现行 |
+| 报告生成 | `generate_deep_report.py`（21§）+ 机制链注入 v1.0 + `postprocess_dual_reports.py`（§0/§22/§23/§24/附录A） | 21§ v4.1 |
+| 报告基准 | 深度报告硬指标 | ≥1500行 / ≥3万字 / 每§≥500字 |
+| 时柱反推 | `scripts/hour-pillar-reverse-scan.py` | v1.0（新增） |
+| 拦截层 | `pre_tool_call` → `hooks/bazi-mandatory/precheck.py` | **v2.0（双引擎门禁）** |
+| 拦截层 | `pre_llm_call` → `inject-context.sh`（注入物理约束） | 现行 |
+| 质量门禁 | 知识库 `.git/hooks/pre-commit` | **v3.4** |
+| 回归门禁 | `scripts/bazi-jieqi-regression.py` | 71项/0失败 |
+| 程序库 | `jinjian-bazi` HEAD | 每次报 commit 短哈希 |
+| 知识库 | `weiwuji-knowledge-base` HEAD | 每次报 commit 短哈希 |
+
+> 铁律：报版本必须**现场读文件/跑命令**取，禁止凭记忆写；版本号变更须 commit 说明变更点。
 - 不通过 → commit被拒，禁止 `--no-verify` 强行跳过
 
 ### 法3·产物溯源（PIPELINE-SIG签名）
