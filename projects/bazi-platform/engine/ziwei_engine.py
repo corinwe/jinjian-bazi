@@ -71,6 +71,58 @@ def _shichen_idx(hour: int, minute: int = 0) -> int:
     return ((hour + 1) // 2) % 12
 
 
+# ─────────────────────────────────────────────────────────────
+# 四柱交叉校验（口径归一化版 · 2026-09-11）
+# ─────────────────────────────────────────────────────────────
+_TG = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸']
+_ZHI_FROM_YIN = ['寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥', '子', '丑']
+
+
+def _expected_lunar_month_pillar(year_gan: str, lunar_month: int) -> str:
+    """按【农历月】口径期望月柱：五虎遁(年干) + 正月起寅（紫微斗数传统口径）"""
+    lm = abs(lunar_month)
+    zhi = _ZHI_FROM_YIN[(lm - 1) % 12]
+    gan = _TG[((_TG.index(year_gan) % 5) * 2 + 2 + (lm - 1)) % 10]
+    return gan + zhi
+
+
+def _cross_check(zi_pillars: str, ours: str, y, m, d, hh, mm):
+    """四柱交叉校验 —— 区分【真错误】与【口径差异】
+
+    🚨 2026-09-11 修复（小静 2007-04-13 案暴露）：
+      紫微侧 iztro 的 chineseDate 月柱按【农历月】定（紫微斗数传统：正月=寅、二月=卯…），
+      八字侧 engine/jieqi.py 月柱按【节气】定（立春换年·节换月）。
+      两者在「农历月 ≠ 节气月」的日子必然不等（例：2007-04-13 农历二月廿六、节气已入辰月
+      → 紫微癸卯 / 八字甲辰），旧版直接判「不一致」并阻断出报告 = **假阳性**。
+    校验规则（不放宽对真错误的拦截）：
+      ① 年/日/时柱必须严格一致；
+      ② 月柱先严格比对；不等时用农历月口径反算期望值，
+         能对上 → 通过（标注「月柱口径差异·已归一化」），对不上 → 不一致（真错误）。
+    返回 (ok, 说明, 紫微侧展示串)
+    """
+    if len(zi_pillars) != 8 or len(ours) != 8:
+        return False, f'四柱串长度异常：紫微={zi_pillars} 八字={ours}', zi_pillars
+    zs = [zi_pillars[i:i + 2] for i in range(0, 8, 2)]
+    os_ = [ours[i:i + 2] for i in range(0, 8, 2)]
+    bad = [nm for i, nm in enumerate(['年', '月', '日', '时']) if i != 1 and zs[i] != os_[i]]
+    if bad:
+        return False, f"{'、'.join(bad)}柱不一致（真错误）｜紫微={zi_pillars} 八字={ours}", zi_pillars
+    if zs[1] == os_[1]:
+        return True, '✅ 双引擎四柱一致（月柱同为节气口径）', zi_pillars
+    try:
+        from lunar_python import Solar
+        lm = Solar.fromYmdHms(y, m, d, hh, mm, 0).getLunar().getMonth()
+    except Exception as e:  # lunar-python 不可用时退回严格判定
+        return False, f'月柱不一致且农历月推算失败（{e}）：紫微={zs[1]} 八字={os_[1]}', zi_pillars
+    exp = _expected_lunar_month_pillar(zs[0][0], lm)
+    if zs[1] == exp:
+        return True, (f"✅ 双引擎一致（口径差异已归一化）：紫微月柱{zs[1]}=农历"
+                      f"{'闰' if lm < 0 else ''}{abs(lm)}月口径·八字月柱{os_[1]}=节气口径"
+                      f"（同一命造·年/日/时柱严格相符）"), zi_pillars + '(农历月口径)'
+    return False, (f"月柱不一致且不能用农历月口径解释：紫微={zs[1]} 期望农历月口径={exp} "
+                   f"八字={os_[1]}"), zi_pillars
+
+
 def _run_bridge(name, gender, date_str, time_str) -> dict:
     """主路径：engine/ziwei_bridge.js（iztro直连，字段完整）"""
     bridge = os.path.join(PROJ, 'engine', 'ziwei_bridge.js')
@@ -102,6 +154,7 @@ def build(name, gender, date_str, time_str, location=None, longitude=None,
     y, m, d = [int(x) for x in date_str.replace('/', '-').split('-')]
     hh, mm = [int(x) for x in time_str.split(':')]
     ours = _ours_bazi(y, m, d, hh, mm, gender, name, birthplace)
+    cv_ok, cv_note, zi_label = _cross_check(zi_pillars, ours, y, m, d, hh, mm)
 
     palaces = []
     for pal in zw.get('palaces', []):
@@ -133,10 +186,10 @@ def build(name, gender, date_str, time_str, location=None, longitude=None,
         '出生地': location or (f'经度{longitude}' if longitude else '未指定'),
         '真太阳时校准': meta.get('calibration', {}),
         '四柱交叉校验': {
-            '紫微引擎': zi_pillars,
+            '紫微引擎': zi_label,
             '八字引擎': ours,
-            '一致': zi_pillars == ours,
-            '说明': '✅ 双引擎四柱一致' if zi_pillars == ours else '🚨 双引擎四柱不一致，禁止出报告，需先查 engine/jieqi.py 定界',
+            '一致': cv_ok,
+            '说明': cv_note,
         },
         '紫微': {
             '五行局': zw.get('fiveElementsClass'),

@@ -53,7 +53,7 @@ def ds_ref_block(name, ds, zw) -> str:
         f"> - `DS['八字']` = {ds.get('八字')} ｜ `DS['日主']` = {ds.get('日主')}（{ds.get('日主五行','')}）\n"
         f"> - `DS['身强弱']` = {q.get('等级','?')} {q.get('总分','?')} 分 ｜ `DS['十神']` = {json.dumps(ds.get('十神',{}), ensure_ascii=False)}\n"
         f"> - `DS['空亡']` = {ds.get('空亡','?')} ｜ `DS['神煞']` = {json.dumps(ds.get('神煞',{}), ensure_ascii=False)}\n"
-        f"> - `DS['大运']` = 起运{ds.get('起运年龄', ds.get('起运年龄岁','?'))}岁，首运 {dy0.get('干支','?')}"
+        f"> - `DS['大运']` = 起运{ds.get('起运年龄') or (ds.get('大运') or {}).get('起运年龄', '?')}岁，首运 {dy0.get('干支','?')}"
         f"（{dy0.get('起始年份','?')}–{dy0.get('终止年份','?')}）共{len(dy)}步\n"
         f"> - `DS['紫微']` = {z.get('五行局','?')}·命主{z.get('命主','?')}·身主{z.get('身主','?')}·四化{'/'.join(z.get('生年四化') or [])}\n"
         f"> - 数据源文件：`/tmp/{name}_ds.json`（八字） + `/tmp/{name}_ziwei.json`（紫微·第四引擎）；两引擎四柱交叉校验一致 ✅\n"
@@ -217,6 +217,12 @@ def main():
         ds, zw, chain = load(name)
         body = open(src, encoding="utf-8").read()
 
+        # 🆕 2026-09-11: 可选专项章（如时柱反推 §24），置于 §23 之后、附录A 之前
+        extra = ""
+        xp = f"/tmp/{name}_extra.md"
+        if os.path.exists(xp):
+            extra = "\n\n---\n\n" + open(xp, encoding="utf-8").read().strip() + "\n"
+
         header = ""
         if "【机制链注入】" not in body:
             header = (chain + "\n\n") if chain else ""
@@ -227,6 +233,7 @@ def main():
                + body
                + ziwei_detail_section(name, ds, zw)
                + cross_section_plain(name, ds, zw)
+               + extra
                + glossary_block())
         dst = f"/tmp/{name}_报告_双引擎.md"
         open(dst, "w", encoding="utf-8").write(out)

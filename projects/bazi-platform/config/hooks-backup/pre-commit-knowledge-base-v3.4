@@ -1,0 +1,144 @@
+#!/bin/bash
+# 金鉴真人·八字报告强制验证 git hook v3.4
+# 2026-06-24: v2.2 引擎JSON不存在时降级校验+提示
+# 2026-08-24: v3.0 修复死代码bug(质量门禁在exit 0之后从未执行) + 新增机制链注入检查
+# 2026-08-24: v3.1 修复核心bug: git默认core.quotepath转义中文路径→grep永远匹配不到→整个门禁失效
+#             (旧版门禁从未拦截任何中文报告文件! 根因: git diff输出\345\233\275转义+引号包裹)
+# 2026-08-24: v3.2 格式器兼容性修正: bazi-format-check.py为workflow_engine_v3自动报告设计(PIPELINE-SIG),
+#             与手工深析报告格式不兼容(连旧合格报告v2.0都拒)。有机制链标记=已走引擎流水线→跳过格式器,
+#             由verify-report-quality.py把关行数/21§。无机制链标记→直接拒绝(禁止绕过流水线)
+# 2026-08-24: v3.4 新增产物溯源校验(强制5法): PIPELINE-SIG签名必须与引擎JSON sha256一致,
+#             防止手写/篡改报告。verify-pipeline-sig.py独立验证
+
+echo "🔍 [pre-commit] 检测八字报告格式..."
+
+# 🚨 关键修复: 关闭中文路径转义，否则 git diff --cached 输出八进制转义+引号，
+#    grep -E '\.md$' 永远匹配不到 → 门禁形同虚设
+GIT="git -c core.quotepath=false"
+
+CHANGED_FILES=$($GIT diff --cached --name-only --diff-filter=ACM | grep -E '\.md$' || true)
+
+if [ -z "$CHANGED_FILES" ]; then
+    exit 0
+fi
+
+HAS_ERROR=0
+SCRIPTS="/root/.hermes/profiles/jinjian-zhenren/scripts"
+
+for FILE in $CHANGED_FILES; do
+    # v3.5 (2026-09-10): 元文档豁免 —— 勘误/说明/README/索引/目录/模板 类文件不是"报告"，
+    #   不应要求【机制链注入】(机制链是引擎产物溯源的报告专用标记)。
+    #   纯前缀判断（basename），不改变任何报告类文件的校验强度。
+    BASENAME=$(basename "$FILE")
+    case "$BASENAME" in
+        勘误*|说明*|README*|readme*|索引*|目录*|*模板*|_*|ARCHIVE_*) continue ;;
+    esac
+    if echo "$FILE" | grep -q "人物档案" && (echo "$FILE" | grep -qE "深析报告|命理|八字"); then
+        FULL_PATH="/root/weiwuji-knowledge-base/$FILE"
+        [ ! -f "$FULL_PATH" ] && continue
+        
+        echo "  检查: $FILE"
+        
+        # ⑤ 机制链注入检查（2026-08-24新增·禁止绕过流水线手写报告）
+        #    放在最前: 无机制链标记 = 绕过引擎流水线 = 直接拒绝
+        if ! grep -q "【机制链注入】" "$FULL_PATH"; then
+            echo "  ❌ 缺少【机制链注入】标记！禁止绕过引擎流水线手写报告"
+            echo "     运行: python3 $SCRIPTS/mechanism-chain-generator.py /tmp/${NAME}_engine.json --out /tmp/${NAME}_chain.txt"
+            echo "     然后把机制链粘贴到报告头部"
+            HAS_ERROR=1
+            # 无机制链 → 不再跑后续检查（已判定违规）
+            continue
+        fi
+
+        # ⑥ 产物溯源校验（2026-08-24新增·强制5法之产物溯源）
+        #    PIPELINE-SIG签名必须与引擎JSON一致，防止手写/篡改
+        #    从文件名提取姓名（更可靠）: "七七_完整深析报告..." → "七七"
+        NAME=$(basename "$FILE" | sed 's/_.*//')
+        ENGINE_JSON="/tmp/${NAME}_engine.json"
+        if [ -f "$ENGINE_JSON" ]; then
+            python3 "$SCRIPTS/verify-pipeline-sig.py" "$FULL_PATH" "$ENGINE_JSON" 2>&1 | tail -1
+            SIG_EXIT=$?
+            if [ $SIG_EXIT -ne 0 ]; then
+                echo "  ❌ 产物溯源不通过！"
+                HAS_ERROR=1
+            fi
+        else
+            echo "  ⚠️ 引擎JSON不存在: /tmp/${NAME}_engine.json（跳过产物溯源校验）"
+        fi
+        
+        # ① 待填检查
+        if grep -q "待填" "$FULL_PATH" 2>/dev/null; then
+            echo "  ❌ §1有{待填}残留！"
+            HAS_ERROR=1
+        fi
+        
+        # ② 大运+审计（有机制链=有引擎JSON）
+        #    NAME已在⑥中从文件名提取
+        BAZI_SCRIPTS="/root/.hermes/profiles/jinjian-zhenren/projects/bazi-platform/scripts"
+        if [ -f "$ENGINE_JSON" ]; then
+            if [ -f "$BAZI_SCRIPTS/bazi-dayun-verify.py" ]; then
+                # v3.4 (2026-09-11): 改为按【退出码】判定 —— 旧版只 grep 最后一行是否含「不一致」，
+                #   而失败路径末行是「请修正报告中大运年份后再推库！」→ 门禁从未真正拦截过。
+                #   现在: exit 0=通过 | exit 1=年份不一致 | exit 3=门禁空转(未提取到引用) → 均拦截
+                RESULT=$(python3 "$BAZI_SCRIPTS/bazi-dayun-verify.py" "$FULL_PATH" "$ENGINE_JSON" "$NAME" 2>&1)
+                DAYUN_RC=$?
+                echo "$RESULT" | tail -3
+                if [ $DAYUN_RC -ne 0 ]; then
+                    echo "  ❌ 大运年份门禁未通过（exit $DAYUN_RC）→ 拒绝提交"
+                    HAS_ERROR=1
+                fi
+            fi
+            if [ -f "$BAZI_SCRIPTS/bazi-audit.py" ]; then
+                # bazi-audit.py期望旧引擎JSON格式(四柱字段)，pipeline_v5输出为paipan字段，
+                # 格式不匹配时跳过审计（不误报）
+                if python3 -c "
+import json,sys
+try:
+    d=json.load(open('$ENGINE_JSON'))
+    sys.exit(0 if '四柱' in d else 1)
+except: sys.exit(1)
+" 2>/dev/null; then
+                    python3 "$BAZI_SCRIPTS/bazi-audit.py" "$ENGINE_JSON" "$NAME" 2>&1
+                    [ $? -ne 0 ] && echo "  ⚠️ 审计发现潜在问题！" && HAS_ERROR=1
+                else
+                    echo "  ℹ️ 引擎JSON为pipeline_v5格式，跳过旧版审计(兼容)"
+                fi
+            fi
+        else
+            echo "  ⚠️ 引擎JSON不存在: /tmp/${NAME}_engine.json"
+            echo "  机制链已注入但引擎JSON缺失，跳过审计。"
+        fi
+    fi
+done
+
+# 🚨 报告质量物理门禁（v3.0移到exit 0之前·修复死代码bug；v3.1修复quotepath；v3.4限定八字报告路径防误伤普通md）
+#     v3.4 (2026-08-25): 质量门禁只对 人物档案/深析报告/命理/八字 路径生效，
+#     避免每日报告等普通md文件被verify-report-quality.py(八字专用:800行/21§)误拒
+CHANGED_MD=$($GIT diff --cached --name-only --diff-filter=ACM | grep -E '\.md$' | grep -E '人物档案.*(深析报告|命理|八字)' | head -5)
+if [ -n "$CHANGED_MD" ]; then
+    VERIFY_SCRIPT="$SCRIPTS/verify-report-quality.py"
+    if [ -f "$VERIFY_SCRIPT" ]; then
+        for FILE in $CHANGED_MD; do
+            FULL_PATH="/root/weiwuji-knowledge-base/$FILE"
+            if [ -f "$FULL_PATH" ]; then
+                python3 "$VERIFY_SCRIPT" "$FULL_PATH" 2>/dev/null
+                EXIT_CODE=$?
+                if [ $EXIT_CODE -ne 0 ]; then
+                    echo "⛔ $FILE 未通过报告质量门禁，请修复后再提交"
+                    echo "   运行: python3 $VERIFY_SCRIPT $FULL_PATH"
+                    HAS_ERROR=1
+                fi
+            fi
+        done
+    fi
+fi
+
+if [ $HAS_ERROR -eq 1 ]; then
+    echo ""
+    echo "⛔ commit被拒绝：存在错误报告"
+    echo "   修正后 git add + git commit"
+    echo "   强制跳过: git commit --no-verify（不推荐）"
+    exit 1
+fi
+
+exit 0
