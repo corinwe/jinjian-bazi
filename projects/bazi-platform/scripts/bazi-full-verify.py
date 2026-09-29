@@ -67,28 +67,9 @@ def calc_kong_wang(ri_zhu_str):
         return KONG_WANG[ri_zhu_str]
     return ('?','?')
 
-def calc_qi_yun_base(y, m, d, shichen_idx, gender):
-    """估算起运年龄（简化版，用于验证大运年份）"""
-    # 年干计算（🚨 2026-09-10 修复：必须走立春精确定界，否则立春前出生者顺逆反向）
-    birth_dt = datetime(y, m, d, shichen_idx * 2 + 1, 0) if shichen_idx is not None else datetime(y, m, d, 12, 0)
-    gan, zhi = jieqi.year_gan_zhi(birth_dt)
-    yin_yang = '阳' if gan in ['甲','丙','戊','庚','壬'] else '阴'
-    if (yin_yang == '阳' and gender == '男') or (yin_yang == '阴' and gender == '女'):
-        direction = '顺'
-    else:
-        direction = '逆'
-    
-    birth_dt = datetime(y, m, d, shichen_idx * 2 + 1, 0)
-    
-    # 简化的节气计算（用固定日期近似，精确计算需ephem）
-    jieqi_dates = {
-        '立春': (2,4), '惊蛰': (3,6), '清明': (4,5), '立夏': (5,6),
-        '芒种': (6,6), '小暑': (7,7), '立秋': (8,7), '白露': (9,8),
-        '寒露': (10,8), '立冬': (11,7), '大雪': (12,7), '小寒': (1,6),
-    }
-    # 简单估算：直接从生日算到下个节气
-    # 这里仅用于大运年份验证，精确值应由引擎计算
-    return 0, direction, gan+zhi
+# ⛔ [已删除 2026-09-29] calc_qi_yun_base —— 第3套起运实现（固定日期近似表·且从未被调用）
+#    唯一口径 = engine/qi_yun.py；如需起运，请 import qi_yun
+
 
 def verify(ri_zhu_str, gender, birth_y, da_yun_list):
     """验证五项"""

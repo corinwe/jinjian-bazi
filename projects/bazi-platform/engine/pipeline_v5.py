@@ -132,7 +132,8 @@ def _get_kong_wang(gan: str, zhi: str) -> str:
     return ["戌亥", "申酉", "午未", "辰巳", "寅卯", "子丑"][xun]
 
 
-def run_v5(bazi: BaZi, birth_year=1980, birth_month=1, birth_day=1, qi_yun_days=None, current_year=None):
+def run_v5(bazi: BaZi, birth_year=1980, birth_month=1, birth_day=1, qi_yun_days=None, current_year=None,
+           birth_hour: int = 12, birth_minute: int = 0):
     """v5.0 确定性pipeline主入口"""
     if current_year is None:
         current_year = datetime.now().year
@@ -175,7 +176,8 @@ def run_v5(bazi: BaZi, birth_year=1980, birth_month=1, birth_day=1, qi_yun_days=
     ss = compute_all_shen_sha(all_gans, all_zhis, bazi.year.zhi, bazi.month.zhi, ri_zhu)
 
     # 大运
-    dy_list, qy_age, qy_year = compute_da_yun(bazi, birth_year, birth_month, birth_day, qi_yun_days)
+    dy_list, qy_age, qy_year = compute_da_yun(bazi, birth_year, birth_month, birth_day, qi_yun_days,
+                                               birth_hour=birth_hour, birth_minute=birth_minute)
     dy_classified = classify_da_yun(bazi, dy_list)
 
     # 最佳/最差大运（基于原始理论定性分类）
@@ -327,7 +329,7 @@ def run_v5(bazi: BaZi, birth_year=1980, birth_month=1, birth_day=1, qi_yun_days=
             "best_da_yun_label": dy_classified[best_idx]["label"] if best_idx >= 0 else "",
             "worst_da_yun": f"{dy_list[worst_idx].gan_zhi}" if worst_idx >= 0 else "",
             "worst_da_yun_label": dy_classified[worst_idx]["label"] if worst_idx >= 0 else "",
-            "qi_yun_age": round(qy_age, 1),
+            "qi_yun_age": round(qy_age, 2),
             "education": edu.get("display", ""),
             # 🚨 v5.1新增：缺失字段补充
             "kong_wang": "、".join(_get_kong_wang(ri_zhu, bazi.day.zhi)),
@@ -623,6 +625,8 @@ def run_pipeline(
     birth_month: int = 1,
     birth_day: int = 1,
     qi_yun_days: float | None = None,
+    birth_hour: int = 12,
+    birth_minute: int = 0,
 ) -> dict:
     """外部调用入口"""
     ri_zhu = day_gan
@@ -634,7 +638,8 @@ def run_pipeline(
         gender=gender,
     )
 
-    result = run_v5(bazi, birth_year, birth_month, birth_day, qi_yun_days)
+    result = run_v5(bazi, birth_year, birth_month, birth_day, qi_yun_days,
+                    birth_hour=birth_hour, birth_minute=birth_minute)
 
     # 🆕 为所有21个§附加详细规则分析文本
     result = attach_detail_analysis(result)

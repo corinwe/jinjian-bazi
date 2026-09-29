@@ -292,45 +292,20 @@ def print_shishen(result):
     print()
 
 
-def calc_qi_yun(year, month, day, direction):
+def calc_qi_yun(year, month, day, direction, hour=12, minute=0):
     """计算起运年龄
-    顺排：找出生后第一个换月节气，天数÷3=起运岁数
-    逆排：找出生前最后一个换月节气，天数÷3=起运岁数
-    返回：(起运年龄整数, 余数月数, 节气名称, 天数差)
+    🚨 2026-09-29 唯一口径：委派 engine/qi_yun.py（精确节气·秒级·R1~R9）。
+       历史版本自带固定日期近似表（±1天误差），已废弃——验证器用近似表验证=自欺。
+    返回：(起运年龄整数, 余数月数, 节气名称, 天数差) —— 保持旧返回结构
     """
-    birth = date(year, month, day)
-    
-    # 生成前后各一年的节气日期
-    jieqi_dates = []
-    for y in range(year - 1, year + 2):
-        for jq_month, jq_day, name, _ in HUAN_YUE_JIE:
-            try:
-                jieqi_dates.append((date(y, jq_month, jq_day), name))
-            except ValueError:
-                pass
-    
-    jieqi_dates.sort()
-    
-    if direction == '顺排':
-        for jq_date, name in jieqi_dates:
-            if jq_date > birth:
-                days = (jq_date - birth).days
-                years = days // 3
-                months = (days % 3) * 4  # 余数×4=月份
-                return years, months, name, days
-    else:
-        last_jq = None
-        for jq_date, name in jieqi_dates:
-            if jq_date <= birth:
-                last_jq = (jq_date, name)
-        if last_jq:
-            jq_date, name = last_jq
-            days = (birth - jq_date).days
-            years = days // 3
-            months = (days % 3) * 4
-            return years, months, name, days
-    
-    return 0, 0, '未知', 0
+    import os, sys
+    _eng = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'engine')
+    if _eng not in sys.path:
+        sys.path.insert(0, _eng)
+    from qi_yun import compute_qi_yun
+    from datetime import datetime as _dt
+    qy = compute_qi_yun(_dt(year, month, day, hour, minute), '男', direction=direction)
+    return qy['岁'], qy['个月'], qy['节气'], qy['天数']
 
 
 def print_da_yun(result, gender, birth_year, birth_month, birth_day):

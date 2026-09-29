@@ -48,7 +48,7 @@ def prev_zhi(zhi: str, steps: int) -> str:
     return DI_ZHI[idx]
 
 
-# ── 节气日期表（简化版）──
+# ── ⛔ [legacy] 节气日期固定近似表 —— 起运已改走 engine/qi_yun.py（精确节气），本表仅供历史代码读取 ──
 # 用于计算起运天数（节气距离）
 # 格式: 月支序号(寅=1) → (节气月, 节气日)
 # 节气日期每年略有波动(±1天)，这里取平均值
@@ -76,142 +76,65 @@ ZHI_IDX = {"寅": 1, "卯": 2, "辰": 3, "巳": 4, "午": 5, "未": 6,
 
 def compute_qi_yun_days(birth_year: int, birth_month: int, birth_day: int, month_zhi: str, is_shun: bool) -> float:
     """
-    计算起运天数（节气距离天数）
+    🚨 [已废弃·legacy] 起运天数计算 —— 固定日期近似表版（无时辰、±1天误差）
 
-    顺排(阳男阴女): 出生日 → 下一个节气 的天数
-    逆排(阴男阳女): 上一个节气 → 出生日 的天数
-
-    Args:
-        birth_year: 出生年
-        birth_month: 出生月
-        birth_day: 出生日
-        month_zhi: 月支（如"未"）
-        is_shun: True=顺排, False=逆排
-
-    Returns:
-        qi_yun_days: 节气距离天数（至少1天）
+    ⛔ 禁止在新代码中调用。唯一口径 = engine/qi_yun.py（精确节气·秒级）。
+    本函数仅为兼容旧调用保留：内部已改为委派 qi_yun.py 的唯一算法
+    （用 12:00 作为缺省出生时刻，精度足够但非真值；含时辰的调用请直接用 qi_yun.compute_qi_yun）。
     """
-    from datetime import date
-
-    zhi_idx = ZHI_IDX.get(month_zhi, 1)
-    birth = date(birth_year, birth_month, birth_day)
-
-    if is_shun:
-        # 顺排：下一个节气 = 月支的下一个序号的节
-        next_idx = zhi_idx + 1 if zhi_idx < 12 else 1
-        jie_month, jie_day = JIE_QI[next_idx]
-        jie_year = birth_year
-        # 节气月跨年处理
-        if jie_month == 1 and birth_month > 6:
-            jie_year = birth_year + 1
-        jie_date = date(jie_year, jie_month, jie_day)
-        delta = (jie_date - birth).days
-    else:
-        # 逆排：上一个节气 = 月支对应的节
-        jie_month, jie_day = JIE_QI[zhi_idx]
-        jie_year = birth_year
-        # 逆排节气月跨年处理：节气在出生月之后→节气在上一年
-        if jie_month > birth_month and jie_month - birth_month > 6:
-            jie_year = birth_year - 1  # 逆排跨年：如子月(12月)节气在1月出生之前→上一年
-        elif jie_month > birth_month:
-            jie_year = birth_year - 1
-        jie_date = date(jie_year, jie_month, jie_day)
-        delta = (birth - jie_date).days
-
-    return max(1.0, float(delta))
+    import warnings
+    from datetime import datetime as _dt
+    warnings.warn("da_yun.compute_qi_yun_days 已废弃 → 请用 engine/qi_yun.compute_qi_yun", DeprecationWarning, stacklevel=2)
+    from qi_yun import compute_qi_yun
+    qy = compute_qi_yun(_dt(birth_year, birth_month, birth_day, 12, 0), "男" if is_shun else "女",
+                        month_zhi=month_zhi)
+    return qy["天数"]
 
 
 def compute_da_yun(bazi: BaZi, birth_year: int = 1980, birth_month: int = 1, birth_day: int = 1,
-                   qi_yun_days: float | None = None) -> tuple[list[DaYun], float, int]:
+                   qi_yun_days: float | None = None, birth_hour: int = 12, birth_minute: int = 0) -> tuple[list[DaYun], float, int]:
     """
-    计算大运
+    计算大运 —— 🚨 唯一口径：起运一律委派 engine/qi_yun.py（R1~R9）
 
     参数:
       bazi: 八字
-      birth_year: 出生年份
-      birth_month: 出生月份（用于节气计算）
-      birth_day: 出生日（用于节气计算）
-      qi_yun_days: 节气距离天数（None=自动基于节气表计算）
+      birth_year/month/day: 出生年月日
+      qi_yun_days: [已废弃] 旧版外部传入的起运天数；仍被接受但仅用于一致性告警，
+                   真值一律由 qi_yun.py 依精确节气重算（禁止用旧口径结果）
+      birth_hour/birth_minute: 出生时刻（真太阳时），默认 12:00
 
     返回:
       (大运列表, 起运年龄, 起运年份)
     """
-    # 判定顺排/逆排
-    # 阳男阴女顺排，阴男阳女逆排
-    gan = bazi.year.gan
-    gender = bazi.gender
-    # 年干阴阳: 甲丙戊庚壬为阳（偶数索引0,2,4,6,8）
-    year_gan_idx = TIAN_GAN_ORDER[gan]
-    is_yang = year_gan_idx % 2 == 0
+    import warnings
+    from datetime import datetime as _dt
+    from qi_yun import compute_qi_yun
 
-    is_shun = (is_yang and gender == "男") or (not is_yang and gender == "女")
+    # ── 唯一口径：qi_yun.py ──
+    birth_dt = _dt(birth_year, birth_month, birth_day, birth_hour, birth_minute)
+    qy = compute_qi_yun(birth_dt, bazi.gender,
+                        month_gan=bazi.month.gan, month_zhi=bazi.month.zhi)
+    if qi_yun_days is not None and abs(float(qi_yun_days) - qy["天数"]) > 0.01:
+        warnings.warn(
+            f"[qi_yun] 忽略外部传入 qi_yun_days={qi_yun_days}（旧口径），"
+            f"采用 qi_yun.py 唯一口径 {qy['天数']}", RuntimeWarning, stacklevel=2)
 
-    # 月柱干支
-    month_gan = bazi.month.gan
-    month_zhi = bazi.month.zhi
+    qi_yun_age = qy["起运年龄"]
+    age_base = qy["年龄基准"]
+    start_year_base = qy["起始年"]
 
-    # ── 起运天数计算 ──
-    # 如果未提供qi_yun_days, 基于节气表自动计算
-    if qi_yun_days is None:
-        qi_yun_days = compute_qi_yun_days(birth_year, birth_month, birth_day, month_zhi, is_shun)
-
-    # ── 起运年龄计算 ──
-    # 规则: (节气距离天数) / 3 = 起运年龄(岁)
-    qi_yun_age = round(qi_yun_days / 3, 2)
-
-    # ── 最大步数计算 ──
-    # 按平均寿命100岁计算所需大运步数
-    max_steps = max(8, int((100 - qi_yun_age) / 10) + 2)  # 至少8步, 最多12步
-    max_steps = min(max_steps, 12)
-
-    # ── 生成大运干支序列 ──
     da_yun_list = []
-    for step in range(max_steps):
-        day_step = step + 1  # 从第一步开始
-        if is_shun:
-            gan_ = next_gan(month_gan, day_step)
-            zhi_ = next_zhi(month_zhi, day_step)
-        else:
-            gan_ = prev_gan(month_gan, day_step)
-            zhi_ = prev_zhi(month_zhi, day_step)
+    for i, step in enumerate(qy.get("大运", [])):
+        da_yun_list.append(DaYun(
+            gan=step["干支"][0],
+            zhi=step["干支"][1],
+            start_age=step["起始岁"],
+            end_age=step["结束岁"],
+            start_year=step["起始年"],
+        ))
 
-        # 填充大运年龄（九龙道长向上取整规则）
-        # 起运年龄向上取整为起始岁数，每步管10年
-        # 例: 0.33→1, 第一步1~10岁, 第二步11~20岁
-        base = math.ceil(qi_yun_age)
-        start_age = base + step * 10
-        end_age = base + (step + 1) * 10 - 1
+    return da_yun_list, qi_yun_age, start_year_base
 
-        # ── 大运起算年份 ──
-        # 基于qi_yun_year（统一规则：整数部分+0.5阈值进位）
-        # 第step步大运 = qi_yun_year + step*10
-        qi_yun_year_local = birth_year + int(qi_yun_age)
-        if (qi_yun_age - int(qi_yun_age)) >= 0.5:
-            qi_yun_year_local += 1
-        start_year = qi_yun_year_local + step * 10
-
-        # 计算结束年份 = 起始年 + 9（因为大运管10年，含起始年）
-        end_year = start_year + 9
-
-        da_yun_list.append(
-            DaYun(
-                gan=gan_,
-                zhi=zhi_,
-                start_age=start_age,
-                end_age=end_age,
-                start_year=start_year,
-            )
-        )
-
-    # ── 起运年份计算（与各步大运算法一致）──
-    # 规则: 出生年 + int(qi_yun_age), 小数≥0.5则进1
-    qi_yun_age_int = int(qi_yun_age)
-    qi_yun_age_frac = qi_yun_age - qi_yun_age_int
-    qi_yun_year = birth_year + qi_yun_age_int
-    if qi_yun_age_frac >= 0.5:
-        qi_yun_year += 1
-
-    return da_yun_list, qi_yun_age, qi_yun_year
 
 
 def classify_da_yun(bazi: BaZi, da_yun_list: list[DaYun]) -> list[dict]:

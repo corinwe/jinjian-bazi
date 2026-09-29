@@ -453,20 +453,16 @@ def calc_bazi(year, month, day, hour, minute, shichen_idx, gender, name="", birt
         direction = '逆排'
         direction_label = '阴男逆排' if (yin_yang=='阴' and gender=='男') else '阳女逆排'
     
-    # 起运计算（节气精确到分钟·北京时间）
-    # 🚨 2026-09-10 修复：改用 engine/jieqi.py 精确节气；旧实现走 ephem(UTC) 未转北京时，起运偏约8小时。
-    if direction == '顺排':
-        jq_name, jq_dt = jieqi.next_jieqi(birth_dt)
-        days_diff = (jq_dt - birth_dt).total_seconds() / 86400
-    else:
-        jq_name, jq_dt = jieqi.prev_jieqi(birth_dt)
-        days_diff = (birth_dt - jq_dt).total_seconds() / 86400
-    
-    qi_yun_years = int(days_diff // 3)
-    qi_yun_remainder = days_diff % 3
-    qi_yun_months = int(qi_yun_remainder * 4)
-    qi_yun_days = int((qi_yun_remainder * 4 - qi_yun_months) * 30)
-    qi_yun_age = days_diff / 3.0
+    # 起运计算 —— 🚨 2026-09-29 唯一口径：委派 engine/qi_yun.py（R1~R9·精确节气·秒级）
+    #   历史：2026-09-10 修过 ephem(UTC) 未转北京时导致偏8小时；2026-09-29 收归唯一实现。
+    from qi_yun import compute_qi_yun
+    _qy = compute_qi_yun(birth_dt, gender, month_gan=m_gan, month_zhi=m_zhi, direction=direction)
+    from datetime import datetime as _dt
+    jq_name = _qy['节气']
+    jq_dt = _dt.strptime(_qy['节气时刻'], '%Y-%m-%d %H:%M')
+    days_diff = _qy['天数']
+    qi_yun_years, qi_yun_months, qi_yun_days = _qy['岁'], _qy['个月'], _qy['天']
+    qi_yun_age = _qy['起运年龄']
     
     # 大运序列
     m_zhi_idx = DI_ZHI.index(m_zhi)
@@ -763,41 +759,28 @@ def _calc_yueling_score(rizhu, yue_zhi, yue_gan, base_score):
 def calc_da_yun_with_age(result):
     """
     计算带年龄和年份范围的大运列表。
-    年份算法：直接用起运实际开始年份，不用 birth+int(age) 近似。
+    🚨 2026-09-29 唯一口径：起运天数/年龄基准/起始年 一律委派 engine/qi_yun.py（R1~R9），
+       本函数不再自行推算（历史版本自带一套 int()/Q4 规则，已收归 qi_yun.py）。
     """
-    import math
-    da_yun_list = result['da_yun']
-    qi_yun_age = result['qi_yun_age']
-    
-    # 计算起运实际开始日期 → 取年份做基数
-    from datetime import timedelta
-    qi_yun_start = result['birth'] + timedelta(days=qi_yun_age * 365.25)
-    qi_yun_start_year = qi_yun_start.year
-    # 起运在Q4(10~12月) → 进位到下一年（实际影响从次年始）
-    if qi_yun_start.month >= 10:
-        qi_yun_start_year += 1
-    
-    # 起运年龄取整规则（九龙道长标准·2026-06-25校准）：
-    # < 1年 → 1岁起运（不足1年按1年）
-    # >= 1年 → 取整数部分（8.5岁→8岁起运，不向上取整）
-    if qi_yun_age < 1:
-        start_age_base = 1
-    else:
-        start_age_base = int(qi_yun_age)
-    
+    import os, sys
+    _eng = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'engine')
+    if _eng not in sys.path:
+        sys.path.insert(0, _eng)
+    from qi_yun import compute_qi_yun
+
+    birth_dt = result.get('solar_dt') or result['birth']
+    m_gan, m_zhi = result['month_pillar']
+    qy = compute_qi_yun(birth_dt, result['gender'], month_gan=m_gan, month_zhi=m_zhi)
+
     padded_list = []
-    for i, dy in enumerate(da_yun_list):
-        start_age = start_age_base + i * 10
-        end_age = start_age_base + (i + 1) * 10 - 1
-        start_year = qi_yun_start_year + i * 10
-        end_year = start_year + 9
+    for step in qy['大运']:
         padded_list.append({
-            '序号': i + 1,
-            '干支': dy,
-            '起始年龄': start_age,
-            '终止年龄': end_age,
-            '起始年份': start_year,
-            '终止年份': end_year,
+            '序号': step['序号'],
+            '干支': step['干支'],
+            '起始年龄': step['起始岁'],
+            '终止年龄': step['结束岁'],
+            '起始年份': step['起始年'],
+            '终止年份': step['结束年'],
         })
     return padded_list
 
