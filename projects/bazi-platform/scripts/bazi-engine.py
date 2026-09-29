@@ -109,22 +109,19 @@ def calc_solar_time(birth_dt, city_name=None, longitude=None):
         if city_name in CITY_LONGITUDE:
             longitude = CITY_LONGITUDE[city_name]
         else:
-            return birth_dt, 0, f'{city_name}(未知经度,使用北京时间)'
-    
-    if longitude is None:
-        return birth_dt, 0, '未知出生地(使用北京时间)'
-    
-    # 经度修正：每1度=4分钟，以120°E为基准
-    lon_correction = (longitude - 120) * 4  # 分钟（正=东边，时间更早）
-    # 均时差最大±16分钟，对时辰判断影响极小，此处不做天文计算
-    
-    total_correction = lon_correction
-    corrected = birth_dt + timedelta(minutes=total_correction)
-    
+            # 未知经度：只按120°E算均时差（不再直接返回0）
+            corrected, corr, _d = jieqi.true_solar_time(birth_dt, None)
+            return corrected, corr, f'{city_name}(未知经度·按120°E) ' + _d
+
+    # 🚨 2026-09-29 修复：真太阳时 = 地方平太阳时 + 均时差(EoT)。
+    #   旧实现明写"均时差影响极小不做计算"→ 静因此少算4分钟，起运"时"由10时错成18时
+    #   （敏感度：1分钟真太阳时差 = 2小时命理时间）。统一走 engine/jieqi.true_solar_time。
+    corrected, total_correction, detail = jieqi.true_solar_time(birth_dt, longitude)
     city_label = city_name if city_name else f'经度{longitude}°E'
-    detail = f'{city_label}(经度修正{lon_correction:.1f}分,东经>120°时间更早)'
-    
-    return corrected, round(total_correction, 1), detail
+    if birth_dt == corrected:
+        return birth_dt, 0, '未知出生地(使用北京时间)'
+
+    return corrected, total_correction, f'{city_label}({detail})'
 
 def get_shichen_index(hour, minute):
     """根据小时和分钟确定时辰索引"""

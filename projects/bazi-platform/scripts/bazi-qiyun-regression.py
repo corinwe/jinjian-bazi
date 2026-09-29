@@ -25,7 +25,7 @@ SCRIPTS = os.path.join(ROOT, "scripts")
 sys.path.insert(0, ENG)
 
 GOLDEN = {  # 姓名: (出生(y,m,d,h,mi), 性别, 月干, 月支, 期望起运年龄, 首运干支, 首运起始岁, 首运起始年)
-    "静": ((2006, 4, 1, 5, 25), "女", "辛", "卯", 8.72, "庚寅", 8, 2015),
+    "静": ((2006, 4, 1, 5, 25), "女", "辛", "卯", 8.72, "庚寅", 8, 2014),
 }
 CHARTS = {
     "静": ((2006, 4, 1, 5, 25), "女", "辛", "卯"),
@@ -43,6 +43,7 @@ def chk(label, ok, detail=""):
 
 def main():
     from qi_yun import compute_qi_yun, format_qi_yun
+    from jieqi import true_solar_time
     import da_yun as dy_mod
     from constants import BaZi, Pillar
     import pipeline_v5
@@ -50,28 +51,28 @@ def main():
 
     print("═══ ① 黄金锚点（静·老板已确认口径）═══")
     (y, m, d, h, mi), g, mg, mz = CHARTS["静"]
-    bdt = datetime(y, m, d, h, mi)
+    bdt, _corr, _ = true_solar_time(datetime(y, m, d, h, mi), None)   # 真太阳时（含均时差）
     qy = compute_qi_yun(bdt, g, month_gan=mg, month_zhi=mz)
     E = GOLDEN["静"]
     chk("起运年龄=8.72", qy["起运年龄"] == E[4], f"实际 {qy['起运年龄']}")
-    chk("折算=8岁8个月19天", (qy["岁"], qy["个月"], qy["天"]) == (8, 8, 19),
-        f"实际 {qy['岁']}岁{qy['个月']}个月{qy['天']}天")
-    chk("首运=庚寅 8~17岁 2015~2024", (qy["大运"][0]["干支"], qy["大运"][0]["起始岁"],
+    chk("折算=8年8月19天10时（老板定标·含均时差）", (qy["岁"], qy["个月"], qy["天"], qy["时"]) == (8, 8, 19, 10),
+        f"实际 {qy['岁']}年{qy['个月']}月{qy['天']}天{qy['时']}时")
+    chk("首运=庚寅 8~17岁 2014~2023", (qy["大运"][0]["干支"], qy["大运"][0]["起始岁"],
         qy["大运"][0]["结束岁"], qy["大运"][0]["起始年"]) == (E[5], E[6], E[6] + 9, E[7]),
         f"实际 {qy['大运'][0]['干支']} {qy['大运'][0]['起始岁']}~{qy['大运'][0]['结束岁']}岁 {qy['大运'][0]['起始年']}起")
-    chk("展示格式统一", format_qi_yun(qy).startswith("起运8岁8个月19天（8.72岁"), format_qi_yun(qy))
+    chk("展示格式统一", format_qi_yun(qy).startswith("起运8年8月19天10时（8.72岁·2014年起运"), format_qi_yun(qy))
     chk("步数=11（至起运年+100）", len(qy["大运"]) == 11, f"实际 {len(qy['大运'])}")
 
     print("\n═══ ② 五路入口一致性 ═══")
     for name, (bd, gd, mga, mza) in CHARTS.items():
         yy, mm, dd, hh, mmin = bd
-        b_dt = datetime(yy, mm, dd, hh, mmin)
+        b_dt, _c, _ = true_solar_time(datetime(yy, mm, dd, hh, mmin), None)
         ref = compute_qi_yun(b_dt, gd, month_gan=mga, month_zhi=mza)
         # 入口3: pipeline_v5（其内部走 da_yun.compute_da_yun）
         o = pipeline_v5.run_pipeline(name, gd, "丙" if name == "静" else "庚", "戌" if name == "静" else "申",
                                      mga, mza, "庚" if name == "静" else "辛", "申" if name == "静" else "亥",
                                      "己" if name == "静" else "辛", "卯",
-                                     yy, mm, dd, None, birth_hour=hh, birth_minute=mmin)
+                                     yy, mm, dd, None, birth_hour=b_dt.hour, birth_minute=b_dt.minute)
         st = o["result"]["sec_17_da_yun_detail"]["list"]
         chk(f"[{name}] pipeline_v5 首运同值",
             (st[0]["gan_zhi"], st[0]["start_age"], st[0]["start_year"]) ==
@@ -93,12 +94,12 @@ def main():
     import json
     pai = json.load(open("/tmp/静_engine.json"))
     qy_line = pai.get("大运", {})
-    a0 = (qy_line.get("大运表") or qy_line.get("列表") or [{}])[0] if isinstance(qy_line, dict) else {}
+    a0 = (qy_line.get("大运表") or qy_line.get("列表") or qy_line.get("list") or [{}])[0] if isinstance(qy_line, dict) else {}
     chk("引擎产物起运年龄=8.72", round(float(qy_line.get("起运年龄", -1)), 2) == 8.72,
         f"实际 {qy_line.get('起运年龄')}")
     if a0:
         chk("引擎产物首运同值",
-            (a0.get("起始年龄"), a0.get("起始年份")) == (8, 2015),
+            (a0.get("起始年龄"), a0.get("起始年份")) == (8, 2014),
             f"实际 {a0.get('起始年龄')}岁 {a0.get('起始年份')}年")
 
     print("\n═══ ④ 实现唯一性 lint（起运公式只准在 engine/qi_yun.py）═══")

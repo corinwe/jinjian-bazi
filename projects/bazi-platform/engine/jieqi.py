@@ -249,3 +249,43 @@ if __name__ == "__main__":
         y, m = year_gan_zhi(dt), month_gan_zhi(dt)
         print(f"{dt}  年柱={y[0]}{y[1]}  月柱={m[0]}{m[1]}  节={prev_jieqi(dt)[0]}@{prev_jieqi(dt)[1]}")
     print("2024立春:", li_chun(2024), "| 2021立春:", li_chun(2021), "| 2026立春:", li_chun(2026))
+
+# ═══════════════════════════════════════════════════════════
+# 真太阳时（唯一实现·2026-09-29 老板令）
+#   真太阳时 = 地方平太阳时 + 均时差(EoT)
+#   地方平太阳时 = 北京时间 + (当地经度 − 120) × 4分钟
+#   ⚠️ 起运对时刻极敏感：1分钟真太阳时差 = 2小时命理时间（3日=1年）
+#      历史上漏算均时差 → 静少算4分 → 起运"时"从10时错成18时
+# ═══════════════════════════════════════════════════════════
+def equation_of_time(dt) -> float:
+    """均时差 EoT（分钟）· 精确式：EoT = 4×(太阳平黄经 − 真赤经)
+
+    用真实太阳视黄经(_sun_longitude_utc)算赤经，比 9.87/7.53/1.5 近似式精确到 0.3 分内。
+    实证（老板2026-09-29定标）：静 用近似式 -4.34分 → 起运"9时"（差1时）；
+    换精确式 -4.08分 → **起运10时，与老板答案完全一致**。
+    """
+    import math
+    from datetime import datetime as _dt, timedelta as _td
+    dt_local = _as_dt(dt)
+    dt_utc = dt_local - _td(hours=8)
+    lam = _sun_longitude_utc(dt_utc)                       # 视黄经(度)
+    jd = (dt_utc.replace(tzinfo=None) - _dt(2000, 1, 1, 12)).total_seconds() / 86400.0 + 2451545.0
+    n = jd - 2451545.0
+    L = (280.4665 + 0.9856474 * n) % 360                   # 太阳平黄经
+    eps = math.radians(23.4393 - 3.563e-7 * n)
+    lamr = math.radians(lam)
+    alpha = math.degrees(math.atan2(math.cos(eps) * math.sin(lamr), math.cos(lamr))) % 360
+    return 4 * ((L - alpha + 180) % 360 - 180)
+
+
+def true_solar_time(dt_local, longitude: float | None = None):
+    """≥北京时间 → 真太阳时。
+    返回 (真太阳时, 总修正分钟, 说明)；出生地未知时 longitude=None → 只算均时差（仍必须算）
+    """
+    from datetime import timedelta
+    dt_local = _as_dt(dt_local)
+    eot = equation_of_time(dt_local)
+    lon_min = 0.0 if longitude is None else (longitude - 120.0) * 4.0
+    total = lon_min + eot
+    label = "未知出生地(经度按120°E)" if longitude is None else f"经度{longitude}°E"
+    return dt_local + timedelta(minutes=total), round(total, 1), f"{label} 经度修正{lon_min:+.1f}分 均时差{eot:+.1f}分"

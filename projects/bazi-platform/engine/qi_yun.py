@@ -14,12 +14,12 @@ R2 节气：一律走 engine/jieqi.py 精确节气（真太阳时口径，精确
         顺排取「下一个节」、逆排取「上一个节」——禁止使用固定日期近似表
 R3 天数：days_diff = |节气时刻 − 出生时刻| 秒级精度 ÷ 86400
 R4 起运年龄（真值）= days_diff / 3.0  （3天折1年）
-R5 展示折算：年=int(d//3) 月=int(余*4) 天=int((余*4−月)*30)  （1天折4个月）
+R5 折算：年=int(d//3)、月=int(余*4)、天=int((余*4−月)*30)、**时=round(小数天*24)**（1天=4月=120命理天·1命理天=24命理时）
 R6 起运年龄基准（大运年龄带用）：<1年→1；≥1年→**int() 向下取整**（8.7岁→8岁起运，不向上取整）
         —— 九龙道长标准·2026-06-25 老板校准，禁止 math.ceil
-R7 大运起始年：起运**实际日期**所在年；若该月 ≥10月（Q4）→ 进位次年
+R7 大运起始年：**出生年 + 年龄基准(int向下取整·<1记1)**（静2006+8=2014·少爷2011+8=2019）
 R8 步长：每步 10 年；默认输出 11 步（覆盖起运年 ~ 起运年+100）
-R9 展示格式（唯一）：`起运8岁8个月18天（8.72岁·约2015年2月起运·阳女逆排）`
+R9 展示格式（唯一）：`起运8年8月19天10时（8.72岁·2014年起运·实际起运日2014-12-20·阳女逆排）`
 """
 
 from __future__ import annotations
@@ -52,7 +52,7 @@ def direction_of(birth_dt: datetime, gender: str) -> tuple[str, str]:
 def compute_qi_yun(birth_dt: datetime, gender: str, *,
                    month_gan: "str | None" = None, month_zhi: "str | None" = None,
                    n_steps: int = 11, direction: "str | None" = None) -> dict:
-    """起运唯一算法。birth_dt = 真太阳时修正后的出生时刻（与排盘同一时点）。
+    """起运唯一算法。birth_dt = **真太阳时**（含均时差EoT，见 jieqi.true_solar_time——1分钟差=2命理小时，必须真太阳时）。
     direction: 已知顺逆时（'顺排'/'逆排'）可直接传入，跳过 R1 推断——供验证脚本复用，禁止另写实现。"""
     direction_label = direction_of(birth_dt, gender)[1]
     direction = direction or direction_of(birth_dt, gender)[0]
@@ -63,19 +63,28 @@ def compute_qi_yun(birth_dt: datetime, gender: str, *,
 
     # R4 起运年龄真值
     age = days_diff / 3.0
-    # R5 年/月/天折算
+    # R5 折算：年/月/天/时（3日=1年 → 1日=4月 → 1月=30命理日 → 1命理日=24命理时）
+    #    🚨 2026-09-29 修复：旧实现只到「天」就截断，丢掉小数天 → 全库报告从无「时」
     y = int(days_diff // 3)
-    rem = days_diff % 3
+    rem = days_diff - y * 3
     m = int(rem * 4)
-    d = int((rem * 4 - m) * 30)
+    rem2 = rem * 4 - m
+    d = int(rem2 * 30)
+    rem3 = rem2 * 30 - d
+    h = round(rem3 * 24)
+    if h >= 24:          # 进位保护
+        h -= 24; d += 1
 
     # R6 年龄基准（向下取整·九龙2026-06-25校准）
     age_base = 1 if age < 1 else int(age)
 
-    # R7 起始年（实际起运日期，Q4进位）
+    # R7 起始年 = 出生年 + 年龄基准（int向下取整，<1岁记1）
+    #    🚨 2026-09-29 修复：旧实现用「起运实际日期 + Q4(10-12月)进位次年」→ 静错成2015年；
+    #    老板口径：静 2006+8=2014 ✅ / 少爷 2011+8=2019 ✅，两个数都精确吻合本条。
+    start_dt = birth_dt  # 保留原字段名，实际起运日另见「起运日期」
     from datetime import timedelta
-    start_dt = birth_dt + timedelta(days=age * 365.25)
-    start_year = start_dt.year + (1 if start_dt.month >= 10 else 0)
+    start_dt_calc = birth_dt + timedelta(days=age * 365.25)
+    start_year = birth_dt.year + age_base
 
     out = {
         "顺逆": direction, "顺逆标签": direction_label,
@@ -83,8 +92,8 @@ def compute_qi_yun(birth_dt: datetime, gender: str, *,
         "出生时刻": birth_dt.strftime("%Y-%m-%d %H:%M"),
         "天数": round(days_diff, 4),
         "起运年龄": round(age, 2), "年龄基准": age_base,
-        "岁": y, "个月": m, "天": d,
-        "起运日期": start_dt.strftime("%Y-%m-%d"), "起始年": start_year,
+        "岁": y, "个月": m, "天": d, "时": h,
+        "起运日期": start_dt_calc.strftime("%Y-%m-%d"), "起始年": start_year,
     }
     if month_gan and month_zhi:
         gi, zi = TIAN_GAN.index(month_gan), DI_ZHI.index(month_zhi)
@@ -106,11 +115,11 @@ def da_yun_series(bazi, birth_dt: datetime, n_steps: int = 11) -> dict:
 
 def format_qi_yun(qy: dict) -> str:
     """R9 唯一展示格式"""
-    return (f"起运{qy['岁']}岁{qy['个月']}个月{qy['天']}天"
-            f"（{qy['起运年龄']}岁·约{qy['起始年']}年{qy['起运日期'][5:7].lstrip('0')}月起运·{qy['顺逆标签']}）")
+    return (f"起运{qy['岁']}年{qy['个月']}月{qy['天']}天{qy['时']}时"
+            f"（{qy['起运年龄']}岁·{qy['起始年']}年起运·实际起运日{qy['起运日期']}·{qy['顺逆标签']}）")
 
 
-CANONICAL_RULES = "R1顺逆·R2精确节气·R3秒级天数·R4年龄=d/3·R5折算·R6向下取整·R7实际起运年Q4进位·R8每步10年11步·R9统一展示格式"
+CANONICAL_RULES = "R1顺逆·R2精确节气·R3秒级天数·R4年龄=d/3·R5折算含时·R6向下取整·R7出生年+年龄基准·R8每步10年11步·R9统一展示格式"
 
 if __name__ == "__main__":
     import json
