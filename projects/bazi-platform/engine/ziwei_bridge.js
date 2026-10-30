@@ -23,13 +23,15 @@ function loadIztro() {
 }
 
 const { astro } = loadIztro();
-const [dateStr, timeIdx, gender] = process.argv.slice(2);
+const [dateStr, timeIdx, gender, fixLeapArg] = process.argv.slice(2);
 if (!dateStr || timeIdx === undefined || !gender) {
   console.error('用法: node ziwei_bridge.js <公历YYYY-M-D> <时辰索引0-12> <男|女>');
   process.exit(1);
 }
 
-const a = astro.bySolar(dateStr, Number(timeIdx), gender, true, 'zh-CN');
+// 闰月口径由 Python 侧决定：true=闰月归下月 / false=按本月（split 口径按农历日切换）
+const fixLeap = fixLeapArg === undefined ? true : String(fixLeapArg).toLowerCase() === 'true';
+const a = astro.bySolar(dateStr, Number(timeIdx), gender, fixLeap, 'zh-CN');
 
 const palaces = a.palaces.map((p) => ({
   name: p.name,

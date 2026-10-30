@@ -31,7 +31,7 @@ from datetime import datetime
 PROJ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CLI = os.path.join(PROJ, '..', '..', 'skills', 'bazi', 'bazi-ziwei', 'scripts', 'bazi_ziwei_cli.js')
 CLI = os.path.abspath(CLI)
-ENGINE_VERSION = 'ziwei-v1.1'
+ENGINE_VERSION = 'ziwei-v1.2'
 # v1.1 (2026-09-11): 四柱交叉校验口径归一化 —— 紫微侧 iztro 月柱按【农历月】口径、
 #   八字侧 jieqi.py 按【节气】口径，两者在「农历月≠节气月」时必然不等（旧版误判不一致→阻断出报告）。
 #   新规则：年/日/时柱严格比对；月柱不等时用农历月口径反算归一化，能解释=放行并标注，不能解释=仍拦截。
@@ -72,6 +72,67 @@ def _shichen_idx(hour: int, minute: int = 0) -> int:
     if hour == 0:
         return 0
     return ((hour + 1) // 2) % 12
+
+
+# ─────────────────────────────────────────────────────────────
+# v1.2 新增：闰月口径 / 自化飞星（2026-10-06）
+# ─────────────────────────────────────────────────────────────
+# 十天干四化（中州派通行表）。庚干存在流派分歧（另有"天同/天相"说），
+# 本引擎默认采用下表，如需切换在调用方显式传 sihua_school。
+SIHUA_BY_STEM = {
+    '甲': {'禄': '廉贞', '权': '破军', '科': '武曲', '忌': '太阳'},
+    '乙': {'禄': '天机', '权': '天梁', '科': '紫微', '忌': '太阴'},
+    '丙': {'禄': '天同', '权': '天机', '科': '文昌', '忌': '廉贞'},
+    '丁': {'禄': '太阴', '权': '天同', '科': '天机', '忌': '巨门'},
+    '戊': {'禄': '贪狼', '权': '太阴', '科': '右弼', '忌': '天机'},
+    '己': {'禄': '武曲', '权': '贪狼', '科': '天梁', '忌': '文曲'},
+    '庚': {'禄': '太阳', '权': '武曲', '科': '太阴', '忌': '天同'},
+    '辛': {'禄': '巨门', '权': '太阳', '科': '文曲', '忌': '文昌'},
+    '壬': {'禄': '天梁', '权': '紫微', '科': '左辅', '忌': '武曲'},
+    '癸': {'禄': '破军', '权': '巨门', '科': '太阴', '忌': '贪狼'},
+}
+
+# 闰月口径（对齐主流排盘默认「月中分界」）
+LEAP_POLICIES = ('split', 'next', 'prev', 'origin')
+
+
+def _lunar_leap_info(y: int, m: int, d: int):
+    """返回 (是否闰月, 农历日)。lunar-python 用负数月份表示闰月。"""
+    try:
+        from lunar_python import Solar
+        lu = Solar.fromYmd(y, m, d).getLunar()
+        return (lu.getMonth() < 0, lu.getDay())
+    except Exception:
+        return (False, 0)
+
+
+def _fix_leap_for(policy: str, y: int, m: int, d: int) -> bool:
+    """把闰月口径翻译成 iztro 的 fixLeap 开关。
+
+    split  = 月中分界：农历日 ≤15 归本月(fixLeap=false)，>15 归下月(true)  ← 默认
+    next   = 整月归下月(true)
+    prev / origin = 按本月 / 不调整(false)
+    """
+    if policy not in LEAP_POLICIES:
+        raise ValueError(f'未知闰月口径 {policy!r}，可选 {LEAP_POLICIES}')
+    is_leap, lday = _lunar_leap_info(y, m, d)
+    if not is_leap:
+        return True  # 非闰月，开关无影响
+    if policy == 'next':
+        return True
+    if policy in ('prev', 'origin'):
+        return False
+    return lday > 15  # split
+
+
+def _zihua(palace_stem: str, star_names) -> list:
+    """自化：本宫宫干四化，化到的星若就在本宫 → 该宫自化。"""
+    table = SIHUA_BY_STEM.get(palace_stem)
+    if not table:
+        return []
+    names = set(star_names)
+    return [f'{star}化{hua}' for hua, star in table.items() if star in names]
+
 
 
 # ─────────────────────────────────────────────────────────────
@@ -126,12 +187,13 @@ def _cross_check(zi_pillars: str, ours: str, y, m, d, hh, mm):
                    f"八字={os_[1]}"), zi_pillars
 
 
-def _run_bridge(name, gender, date_str, time_str) -> dict:
+def _run_bridge(name, gender, date_str, time_str, fix_leap=True) -> dict:
     """主路径：engine/ziwei_bridge.js（iztro直连，字段完整）"""
     bridge = os.path.join(PROJ, 'engine', 'ziwei_bridge.js')
     y, m, d = [int(x) for x in date_str.replace('/', '-').split('-')]
     hh = int(time_str.split(':')[0])
-    r = subprocess.run(['node', bridge, f'{y}-{m}-{d}', str(_shichen_idx(hh)), gender],
+    r = subprocess.run(['node', bridge, f'{y}-{m}-{d}', str(_shichen_idx(hh)), gender,
+                        'true' if fix_leap else 'false'],
                        capture_output=True, text=True, timeout=120)
     if r.returncode != 0:
         raise RuntimeError(f"ziwei_bridge 失败: {(r.stderr or r.stdout)[-300:]}")
@@ -139,7 +201,7 @@ def _run_bridge(name, gender, date_str, time_str) -> dict:
 
 
 def build(name, gender, date_str, time_str, location=None, longitude=None,
-          bazi_calib=True, ziwei_calib=True, birthplace='') -> dict:
+          bazi_calib=True, ziwei_calib=True, birthplace='', leap_policy: str = 'split') -> dict:
     # ① 真太阳时校准 + 农历：走三方CLI（含经度差/均时差）
     cli_raw = {}
     try:
@@ -151,7 +213,10 @@ def build(name, gender, date_str, time_str, location=None, longitude=None,
     b = cli_raw.get('bazi', {})
 
     # ② 紫微命盘：走自建桥接层（iztro直连，命主/身主/12宫完整）
-    zw = _run_bridge(name, gender, date_str, time_str)
+    _y0, _m0, _d0 = [int(x) for x in date_str.replace('/', '-').split('-')]
+    _is_leap, _lday = _lunar_leap_info(_y0, _m0, _d0)
+    _fix_leap = _fix_leap_for(leap_policy, _y0, _m0, _d0)
+    zw = _run_bridge(name, gender, date_str, time_str, fix_leap=_fix_leap)
     zi_pillars = (zw.get('chineseDate') or '').replace(' ', '')
 
     y, m, d = [int(x) for x in date_str.replace('/', '-').split('-')]
@@ -163,7 +228,7 @@ def build(name, gender, date_str, time_str, location=None, longitude=None,
     for pal in zw.get('palaces', []):
         def _st(s):
             if isinstance(s, dict):
-                return {'名': s.get('name'), '庙旺': s.get('brightness'), '四化': s.get('mutagen')}
+                return {'名': s.get('name'), '庙旺': (s.get('brightness') or None), '四化': s.get('mutagen')}
             return {'名': str(s), '庙旺': None, '四化': None}
         palaces.append({
             '宫位': pal.get('name'),
@@ -176,6 +241,12 @@ def build(name, gender, date_str, time_str, location=None, longitude=None,
             '流年年龄': pal.get('ages'),
             '长生12神': pal.get('changsheng12'),
             '博士12神': pal.get('boshi12'),
+            '将前12神': pal.get('jiangqian12'),
+            '岁前12神': pal.get('suiqian12'),
+            '自化': _zihua((pal.get('heavenlyStem') or ''),
+                            [x['名'] for x in
+                             [_st(s) for s in (pal.get('majorStars') or [])] +
+                             [_st(s) for s in (pal.get('minorStars') or [])]]),
             '身宫': bool(pal.get('isBodyPalace')),
         })
 
@@ -188,6 +259,15 @@ def build(name, gender, date_str, time_str, location=None, longitude=None,
         '农历': zw.get('lunarDate') or b.get('lunarDate') or '',
         '出生地': location or (f'经度{longitude}' if longitude else '未指定'),
         '真太阳时校准': meta.get('calibration', {}),
+        '夏令时': _dst_check(_y0, _m0, _d0, int(time_str.split(':')[0]), int(time_str.split(':')[1])),
+        '闰月口径': {
+            '是否闰月': _is_leap,
+            '农历日': _lday,
+            '口径': leap_policy,
+            'fixLeap': _fix_leap,
+            '说明': ('月中分界：农历日≤15归本月、>15归下月' if leap_policy == 'split'
+                     else {'next': '整月归下月', 'prev': '整月按本月', 'origin': '不调整'}[leap_policy]),
+        },
         '四柱交叉校验': {
             '紫微引擎': zi_label,
             '八字引擎': ours,
@@ -210,6 +290,16 @@ def build(name, gender, date_str, time_str, location=None, longitude=None,
         },
     }
     return out
+
+
+def _dst_check(y, m, d, hh, mm):
+    """夏令时检查（只提示，不改时间）"""
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from dst_cn import check as _c
+        return _c(y, m, d, hh, mm)
+    except Exception as e:
+        return {'是否夏令时': False, '区间': None, '提示': f'夏令时模块不可用: {e}'}
 
 
 def _merge_sihua(cli_list, bridge_list) -> list:

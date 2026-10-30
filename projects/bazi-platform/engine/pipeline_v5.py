@@ -132,8 +132,19 @@ def _get_kong_wang(gan: str, zhi: str) -> str:
     return ["戌亥", "申酉", "午未", "辰巳", "寅卯", "子丑"][xun]
 
 
+def _dst_info(y, m, d, hh, mm):
+    """夏令时检查（只提示，不修改任何时间）"""
+    try:
+        import sys as _sys, os as _os
+        _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+        from dst_cn import check as _c
+        return _c(y, m, d, hh, mm)
+    except Exception as e:
+        return {'是否夏令时': False, '区间': None, '提示': f'夏令时模块不可用: {e}'}
+
+
 def run_v5(bazi: BaZi, birth_year=1980, birth_month=1, birth_day=1, qi_yun_days=None, current_year=None,
-           birth_hour: int = 12, birth_minute: int = 0):
+           birth_hour: int = 12, birth_minute: int = 0, birth_second: int = 0):
     """v5.0 确定性pipeline主入口"""
     if current_year is None:
         current_year = datetime.now().year
@@ -177,7 +188,16 @@ def run_v5(bazi: BaZi, birth_year=1980, birth_month=1, birth_day=1, qi_yun_days=
 
     # 大运
     dy_list, qy_age, qy_year = compute_da_yun(bazi, birth_year, birth_month, birth_day, qi_yun_days,
-                                               birth_hour=birth_hour, birth_minute=birth_minute)
+                                               birth_hour=birth_hour, birth_minute=birth_minute, birth_second=birth_second)
+    # 🚨 2026-09-29：起运折算（年/月/天/时）+ 顺逆标签，供报告展示唯一口径
+    from qi_yun import compute_qi_yun, format_qi_yun
+    from datetime import datetime as _dt
+    _qy = compute_qi_yun(_dt(birth_year, birth_month, birth_day, birth_hour, birth_minute, birth_second), bazi.gender,
+                         month_gan=bazi.month.gan, month_zhi=bazi.month.zhi)
+    _qy_detail = {"岁": _qy["岁"], "个月": _qy["个月"], "天": _qy["天"], "时": _qy["时"],
+                  "起运日期": _qy["起运日期"], "起始年": _qy["起始年"], "顺逆标签": _qy["顺逆标签"],
+                  "折算": f'{_qy["岁"]}年{_qy["个月"]}月{_qy["天"]}天{_qy["时"]}时',
+                  "唯一口径": format_qi_yun(_qy)}
     dy_classified = classify_da_yun(bazi, dy_list)
 
     # 最佳/最差大运（基于原始理论定性分类）
@@ -330,6 +350,9 @@ def run_v5(bazi: BaZi, birth_year=1980, birth_month=1, birth_day=1, qi_yun_days=
             "worst_da_yun": f"{dy_list[worst_idx].gan_zhi}" if worst_idx >= 0 else "",
             "worst_da_yun_label": dy_classified[worst_idx]["label"] if worst_idx >= 0 else "",
             "qi_yun_age": round(qy_age, 2),
+            "qi_yun_detail": _qy_detail,
+            # 🚨 v5.2（2026-10-06）：夏令时只提示、不改时间（1小时=半个时辰，会换时柱）
+            "夏令时": _dst_info(birth_year, birth_month, birth_day, birth_hour, birth_minute),
             "education": edu.get("display", ""),
             # 🚨 v5.1新增：缺失字段补充
             "kong_wang": "、".join(_get_kong_wang(ri_zhu, bazi.day.zhi)),
@@ -627,6 +650,7 @@ def run_pipeline(
     qi_yun_days: float | None = None,
     birth_hour: int = 12,
     birth_minute: int = 0,
+    birth_second: int = 0,
 ) -> dict:
     """外部调用入口"""
     ri_zhu = day_gan
@@ -639,7 +663,7 @@ def run_pipeline(
     )
 
     result = run_v5(bazi, birth_year, birth_month, birth_day, qi_yun_days,
-                    birth_hour=birth_hour, birth_minute=birth_minute)
+                    birth_hour=birth_hour, birth_minute=birth_minute, birth_second=birth_second)
 
     # 🆕 为所有21个§附加详细规则分析文本
     result = attach_detail_analysis(result)

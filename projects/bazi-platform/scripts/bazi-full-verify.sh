@@ -70,7 +70,7 @@ echo ""
 # ═══════════════════════════════════════════════════════════════
 # Step 1: 文件基本检查
 # ═══════════════════════════════════════════════════════════════
-echo "【Step 1/6 — 文件基本检查】"
+echo "【Step 1/7 — 文件基本检查】"
 
 check "文件存在" "true"
 check "文件大小 > 10KB" "$( [ $REPORT_SIZE -gt 10240 ] && echo true || echo false )"
@@ -81,7 +81,7 @@ check "报告行数 ≥ 1,700行（最佳）" "$( [ $REPORT_LINES -ge 1700 ] && 
 # Step 2: §1 格式验证
 # ═══════════════════════════════════════════════════════════════
 echo ""
-echo "【Step 2/6 — §1 格式验证】"
+echo "【Step 2/7 — §1 格式验证】"
 
 if [ -f "$FORMAT_CHECKER" ]; then
     FORMAT_RESULT=$(python3 "$FORMAT_CHECKER" "$REPORT" 2>&1 || true)
@@ -101,7 +101,7 @@ fi
 # Step 3: 数据一致性验证
 # ═══════════════════════════════════════════════════════════════
 echo ""
-echo "【Step 3/6 — 数据一致性验证】"
+echo "【Step 3/7 — 数据一致性验证】"
 
 if [ -f "$VALIDATOR" ] && [ -n "$NAME" ]; then
     VALIDATE_RESULT=$(python3 "$VALIDATOR" "$REPORT" "$NAME" 2>&1 || true)
@@ -119,7 +119,7 @@ fi
 # Step 4: 板块完整性检查（§编号扫描，模糊匹配名称）
 # ═══════════════════════════════════════════════════════════════
 echo ""
-echo "【Step 4/6 — 板块完整性检查】"
+echo "【Step 4/7 — 板块完整性检查】"
 
 # 检查§1~§21每个编号是否出现（不检查具体名称，支持灵活命名）
 SECTION_OK=0
@@ -146,7 +146,7 @@ echo "  现有§板块: $SECTION_OK/21"
 # Step 5: 关键内容检查（强制项目）
 # ═══════════════════════════════════════════════════════════════
 echo ""
-echo "【Step 5/6 — 关键内容强制项目检查】"
+echo "【Step 5/7 — 关键内容强制项目检查】"
 
 # §16事件表行数
 EVENT_LINES=$(grep -c "^|" "$REPORT" || echo 0)
@@ -185,7 +185,7 @@ check "大运精析≥10步" "$(grep -c "## §17\|17\.\|大运.*（" "$REPORT" |
 # Step 6: 逻辑一致性检查
 # ═══════════════════════════════════════════════════════════════
 echo ""
-echo "【Step 6/6 — 逻辑一致性检查】"
+echo "【Step 6/7 — 逻辑一致性检查】"
 
 # 最佳大运不能都是忌神（关键词检查）
 BEST_DAYUN=$(grep -A2 "最佳大运" "$REPORT" | head -3 || echo "")
@@ -201,6 +201,17 @@ check "品牌统一(无残留'九龙道长')" "$( [ "$JL_COUNT" -eq 0 ] 2>/dev/n
 
 echo ""
 echo "════════════════════════════════════════════════════════"
+# Step 7: 紫微斗数回归门禁（快速模式）
+echo ""
+echo "【Step 7/7 — 紫微斗数回归门禁】"
+if python3 /root/.hermes/profiles/jinjian-zhenren/projects/bazi-platform/engine/ziwei_gates.py --fast >/tmp/ziwei_gate_fast.log 2>&1; then
+    echo -e "  ${GREEN}✅${NC} 紫微门禁 12 条全过"
+    PASS=$((PASS+1))
+else
+    echo -e "  ${RED}❌${NC} 紫微门禁失败（详见 /tmp/ziwei_gate_fast.log）"
+    FAIL=$((FAIL+1))
+fi
+
 echo -e "${GREEN}通过: ${PASS}${NC} / ${RED}失败: ${FAIL}${NC} / 总计: ${TOTAL}"
 echo "════════════════════════════════════════════════════════"
 

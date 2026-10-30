@@ -82,6 +82,13 @@ if [ "$ENGINE_BAZI" = "提取失败" ] || [ "$ENGINE_BAZI" = "? ? ? ?" ]; then
     exit 1
 fi
 
+# ===== 第1.5步：夏令时检查（只提示，不改时间）=====
+echo ""
+echo "▶ 第1.5步：夏令时检查..."
+DST_OUT=$(python3 /root/.hermes/profiles/jinjian-zhenren/projects/bazi-platform/engine/dst_cn.py "$YEAR-$MONTH-$DAY" "$HOUR:$MIN" 2>/dev/null)
+DST_HIT=$(echo "$DST_OUT" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('提示') or '')" 2>/dev/null)
+if [ -n "$DST_HIT" ]; then echo "  $DST_HIT"; else echo "  ✅ 不在中国夏令时区间"; fi
+
 # ===== 第2步：官网验证 =====
 echo ""
 echo "▶ 第2步：官网验证..."

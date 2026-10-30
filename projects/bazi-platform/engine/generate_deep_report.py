@@ -213,6 +213,10 @@ def generate_deep_report(engine_json: dict, name: str = "", gender: str = "", ve
     lines.append(f"| 17 | **最佳大运** | 🏆 {_s(best_dy, 'gan_zhi', '')}（{_s(best_dy, 'score', '')}/10） |")
     qy = _s(s17, "qi_yun_age", _s(s1, "qi_yun_age", ""))
     lines.append(f"| 18 | **起运年龄** | **{qy}** |")
+    # 2026-10-06：夏令时只提示、不改时间（1小时=半个时辰，会换时柱）
+    _dst = (s1 or {}).get("夏令时") or {}
+    if _dst.get("是否夏令时"):
+        lines.append(f"| — | **夏令时** | {_dst.get('提示', '')} |")
     lines.append(f"| 19 | **次佳大运** | 🥇 {_s(second_dy, 'gan_zhi', '')}（{_s(second_dy, 'score', '')}/10） |")
     lines.append(f"| 20 | **最差大运** | ⚠️ {_s(worst_dy, 'gan_zhi', '')}（{_s(worst_dy, 'score', '')}/10） |")
     lines.append(f"| 21 | **现行大运** | {current_dy_str or '—'} |")
