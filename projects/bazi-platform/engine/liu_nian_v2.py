@@ -126,6 +126,26 @@ SHEN_SHA_BOUNDARY_NOTE = "（天乙贵人不能解十神系统恶神，仅解神
 
 
 # ── 流月映射表（R26） ──
+# 五虎遁：年干 → 正月(寅月)月干。2026-10-30 修复：原表写死甲年起月，非甲年月干全错
+WU_HU_DUN = {
+    '甲': '丙', '己': '丙', '乙': '戊', '庚': '戊',
+    '丙': '庚', '辛': '庚', '丁': '壬', '壬': '壬',
+    '戊': '甲', '癸': '甲',
+}
+_GAN = list('甲乙丙丁戊己庚辛壬癸')
+_ZHI = list('子丑寅卯辰巳午未申酉戌亥')
+
+
+def month_gan_zhi(year_gan: str, month_num: int) -> str:
+    """按五虎遁排某年农历月干支（month_num: 1=寅月 … 12=丑月）"""
+    start = WU_HU_DUN.get(year_gan)
+    if not start:
+        return MONTH_GAN_ZHI.get(month_num, '')
+    gi = (_GAN.index(start) + month_num - 1) % 10
+    zi = (month_num + 1) % 12
+    return _GAN[gi] + _ZHI[zi]
+
+
 MONTH_GAN_ZHI = {
     1: "甲寅", 2: "乙卯", 3: "丙辰", 4: "丁巳", 5: "戊午", 6: "己未",
     7: "庚申", 8: "辛酉", 9: "壬戌", 10: "癸亥", 11: "甲子", 12: "乙丑",
@@ -167,12 +187,13 @@ def check_fan_tai_sui(year_zhi: str, liu_nian_zhi: str) -> tuple[str, float] | N
     return None
 
 
-def _get_key_months(liu_nian_wx_gan: str, liu_nian_wx_zhi: str, xi_yong: list[str], ji_shen: list[str]) -> str:
-    """R26: 根据流年干支五行和喜忌，标注关键应事月份"""
+def _get_key_months(liu_nian_wx_gan: str, liu_nian_wx_zhi: str, xi_yong: list[str], ji_shen: list[str], liu_nian_gan: str = '') -> str:
+    """R26: 流月与流年五行共振 → 标注应事月份（注意：共振≠吉凶，吉凶另看十神喜忌+冲合）"""
     from constants import TIAN_GAN_WU_XING, DI_ZHI_WU_XING
 
     key_months = []
-    for month_num, month_gz in MONTH_GAN_ZHI.items():
+    months = {m: month_gan_zhi(liu_nian_gan, m) for m in range(1, 13)} if liu_nian_gan else MONTH_GAN_ZHI
+    for month_num, month_gz in months.items():
         mg = month_gz[0]  # 月天干
         mz = month_gz[1]  # 月地支
         mg_wx = TIAN_GAN_WU_XING[mg]
@@ -895,7 +916,7 @@ def analyze_liu_nian_v2(
     he_ban_combined = " | ".join(he_ban_tiao_lv) if he_ban_tiao_lv else ""
 
     # ── R26: 流月重点月份 ──
-    key_months_str = _get_key_months(liu_nian_wx_gan, liu_nian_wx_zhi, xi_yong, ji_shen)
+    key_months_str = _get_key_months(liu_nian_wx_gan, liu_nian_wx_zhi, xi_yong, ji_shen, liu_nian_gan)
 
     # ── R43: 大运定性双维度描述 ──
     da_yun_dual_desc = _da_yun_dual_dimension(
