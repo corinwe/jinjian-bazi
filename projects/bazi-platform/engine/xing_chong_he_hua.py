@@ -201,11 +201,15 @@ def check_xing(zhi_list: list[str]) -> list[tuple[str, float]]:
     if "子" in zhi_list and "卯" in zhi_list:
         results.append(("子卯刑", NENG_LIANG["二刑"]))
 
-    # 辰午酉亥自刑 — 自刑四字中任意2个及以上即构成自刑（含跨字组合）
-    zi_xing_zhis = ["辰", "午", "酉", "亥"]
-    present_zi_xing = [z for z in zi_xing_zhis if z in zhi_list]
-    if len(present_zi_xing) >= 2:
-        results.append((f"{''.join(present_zi_xing)}自刑", NENG_LIANG["自刑"]))
+    # 辰午酉亥自刑 — 必须**同支相见**（辰辰/午午/酉酉/亥亥）才成立
+    # 🚨 2026-10-30 修复：旧逻辑把「辰午酉亥中任意两字」当自刑，导致
+    #    午亥、辰酉、辰午等跨字组合被误判为自刑（家族合参父×母组合实测误报）。
+    #    依据：自刑仅指同一地支重复出现，跨字组合不是自刑。
+    from collections import Counter as _Counter
+    _cnt = _Counter(zhi_list)
+    for _z in ("辰", "午", "酉", "亥"):
+        if _cnt.get(_z, 0) >= 2:
+            results.append((f"{_z}{_z}自刑", NENG_LIANG["自刑"]))
 
     return results
 
