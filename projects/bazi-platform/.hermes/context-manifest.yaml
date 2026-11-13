@@ -1,0 +1,57 @@
+version: 1
+updated: "2026-10-30"
+purpose: "上下文压缩后不可丢失的钉住事实（P0-3）"
+
+pinned_facts:
+  - key: 家主四柱
+    value: "庚申 癸未 辛亥 辛卯"
+    source: "/tmp/魏启令_engine.json"
+    path: "paipan.bazi"
+    required_source: false
+
+  - key: 主母四柱
+    value: "丁卯 丁未 庚午 壬午"
+    source: "/tmp/主母_engine.json"
+    path: "paipan.bazi"
+    required_source: false
+    note: "农历1987年六月廿五午时 = 公历1987-07-20 12:00（2026-10-30 老板确认；旧『闰六月初六=辛巳日』已作废）"
+
+  - key: 少爷四柱
+    value: "辛卯 癸巳 丙戌 癸巳"
+    source: "/tmp/少爷_engine.json"
+    path: "paipan.bazi"
+    required_source: false
+
+  - key: 主母生日口径
+    value: "农历1987六月廿五午时=公历1987-07-20 12:00"
+    source: "/root/weiwuji-knowledge-base/07-国学哲学/勘误-主母出生日期与四柱更正_20261030.md"
+    path: null
+    contains: "1987-07-20"
+    required_source: false
+
+  - key: 家庭共同调候
+    value: "水"
+    source: "/tmp/主母_engine.json"
+    path: "analysis.xi_yong_shen.tiao_hou"
+    contains: "水"
+    required_source: false
+
+  - key: 三人家族文档目录
+    value: "07-国学哲学/八字命格/07-家族合参"
+    source: null
+    path: null
+
+compaction:
+  pin_keys:
+    - 家主四柱
+    - 主母四柱
+    - 少爷四柱
+    - 主母生日口径
+    - 家庭共同调候
+  post_compaction_check: "压缩后逐条核对；任一缺失→重建上下文，不得继续任务"
+
+token_policy:
+  max_context_chars: 120000
+  large_output_rule: "超过 8000 字符的引擎输出/报告一律落文件，上下文只保留摘要+绝对路径"
+  artifacts_dir: "/tmp"
+  report_rule: "写报告前必须从 BAZI_DATASOURCE / {名}_engine.json 取值，不凭记忆"

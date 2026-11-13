@@ -633,6 +633,12 @@ def format_21_section_report(result: dict) -> str:
     return "\n".join(lines)
 
 
+def _trace_on() -> bool:
+    """P0-2：轨迹默认开启；BAZI_TRACE=0 可关闭（不影响任何计算结果）。"""
+    import os
+    return os.environ.get("BAZI_TRACE", "1") not in ("0", "false", "False", "")
+
+
 def run_pipeline(
     name: str,
     gender: str,
@@ -654,6 +660,11 @@ def run_pipeline(
 ) -> dict:
     """外部调用入口"""
     ri_zhu = day_gan
+    _tracer = None
+    if _trace_on():
+        import time as _time
+        from bazi_trace import Tracer as _Tracer
+        _tracer = _Tracer(f"{name}_{_time.strftime('%Y%m%d_%H%M%S')}", meta={"name": name, "gender": gender})
     bazi = BaZi(
         year=Pillar(year_gan, year_zhi),
         month=Pillar(month_gan, month_zhi),
@@ -661,6 +672,13 @@ def run_pipeline(
         hour=Pillar(hour_gan, hour_zhi),
         gender=gender,
     )
+
+    if _tracer:
+        _tracer.log(
+            "paipan",
+            input={"name": name, "gender": gender, "birth": f"{birth_year}-{birth_month:02d}-{birth_day:02d} {birth_hour:02d}:{birth_minute:02d}"},
+            result={"四柱": f"{year_gan}{year_zhi} {month_gan}{month_zhi} {day_gan}{day_zhi} {hour_gan}{hour_zhi}"},
+        )
 
     result = run_v5(bazi, birth_year, birth_month, birth_day, qi_yun_days,
                     birth_hour=birth_hour, birth_minute=birth_minute, birth_second=birth_second)
@@ -783,6 +801,16 @@ def run_pipeline(
         "result": result,
         "text": text_report,
     }
+
+    if _tracer:
+        _a = output["analysis"]
+        _tracer.log("shen_qiang_ruo", result={"score": _a["shen_qiang_ruo"].get("score"), "label": _a["shen_qiang_ruo"].get("label")})
+        _tracer.log("ge_ju", result={"main": _a["ge_ju"].get("main"), "detail": _a["ge_ju"].get("detail")})
+        _tracer.log("xi_yong_shen", result={"xi": _a["xi_yong_shen"].get("xi"), "ji": _a["xi_yong_shen"].get("ji"), "tiao_hou": _a["xi_yong_shen"].get("tiao_hou")})
+        _tracer.log("cai_xing", result={"total": _a["cai_xing"].get("total"), "level": _a["cai_xing"].get("wealth_level")})
+        _tracer.log("da_yun", result=[{"gz": d.get("gan_zhi"), "start": d.get("start_year"), "score": d.get("score")} for d in _a["da_yun"].get("list", [])[:6]])
+        _tracer.log("report_text", result={"chars": len(output.get("text") or "")}, artifact=str(_tracer.path))
+        _tracer.close(summary={"name": name, "ok": True})
 
     return output
 
