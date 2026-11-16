@@ -122,7 +122,7 @@ def evaluate_day(ri_gan: str, natal: list[str], year_zhi: str, month_zhi: str,
             notes.append(f"{label}{ss}({wx}·忌)-1")
 
     # 2) 关系：只计 流年/流月/流日 参与的组合
-    flow = [("流年", year_zhi), ("流月", month_zhi), ("流日", day_zhi)]
+    flow = [(n, z) for n, z in [("流年", year_zhi), ("流月", month_zhi), ("流日", day_zhi)] if z]
     all_b = natal + [z for _, z in flow]
     for name, z in flow:
         for nz in natal:
@@ -196,7 +196,7 @@ def main() -> int:
     ap.add_argument("--sizhu", required=True)
     ap.add_argument("--start", required=True)
     ap.add_argument("--end", required=True)
-    ap.add_argument("--weekday", default="sat", choices=["sat", "all"])
+    ap.add_argument("--weekday", default="sat", help="sat / sun / sat,sun / all")
     ap.add_argument("--xi", required=True)
     ap.add_argument("--ji", required=True)
     a = ap.parse_args()
@@ -212,7 +212,9 @@ def main() -> int:
     rows = []
     d = d0
     while d <= d1:
-        if a.weekday == "all" or d.weekday() == 5:
+        _want = {"sat": 5, "sun": 6}
+        _sel = a.weekday.split(",")
+        if a.weekday == "all" or d.weekday() in ({_want[k] for k in _sel if k in _want} or {5, 6}):
             ec = Solar.fromYmd(d.year, d.month, d.day).getLunar().getEightChar()
             r = evaluate_day(ri_gan, natal, ec.getYear()[1], ec.getMonth()[1], ec.getDay()[0], ec.getDay()[1], xi, ji)
             rows.append((d, ec.getMonth(), r))
