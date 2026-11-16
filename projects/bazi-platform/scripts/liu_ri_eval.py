@@ -191,17 +191,64 @@ def evaluate_day(ri_gan: str, natal: list[str], year_zhi: str, month_zhi: str,
             "shi_shen": f"{ss_g}/{ss_z}", "notes": notes}
 
 
+
+WU_SHU_DUN = {
+    "甲": "甲", "己": "甲", "乙": "丙", "庚": "丙", "丙": "戊", "辛": "戊",
+    "丁": "庚", "壬": "庚", "戊": "壬", "癸": "壬",
+}
+ZHI_ORDER = list("子丑寅卯辰巳午未申酉戌亥")
+
+
+def hour_pillar(day_gan: str, hour_zhi: str) -> tuple[str, str]:
+    """五鼠遁：由日干推时辰天干。"""
+    start = WU_SHU_DUN[day_gan]
+    idx = ZHI_ORDER.index(hour_zhi)
+    gans = list("甲乙丙丁戊己庚辛壬癸")
+    gi = gans.index(start)
+    return gans[(gi + idx) % 10], hour_zhi
+
+
+def hours_table(sizhu: str, date_str: str, xi: list[str], ji: list[str]) -> None:
+    import datetime as dt
+    from lunar_python import Solar
+    d = dt.date.fromisoformat(date_str)
+    ec = Solar.fromYmd(d.year, d.month, d.day).getLunar().getEightChar()
+    pillars = sizhu.split()
+    ri_gan = pillars[2][0]
+    natal = [p[1] for p in pillars] + [ec.getDay()[1]]  # 原局 + 流日支
+    print(f"{date_str} | 年{ec.getYear()} 月{ec.getMonth()} 日{ec.getDay()} | 命主 {sizhu}")
+    print(f"{'时辰':<6}{'时间':<10}{'时柱':<5}{'评分':<5}明细")
+    print("─" * 100)
+    rows = []
+    for z in ZHI_ORDER:
+        hg = hour_pillar(ec.getDay()[0], z)
+        r = evaluate_day(ri_gan, natal, ec.getYear()[1], ec.getMonth()[1], hg[0], hg[1], xi, ji)
+        notes = "; ".join(r["notes"]).replace("流日", "流时")
+        rows.append((z, r["score"], f"{hg[0]}{hg[1]}", notes))
+    spans = {"子": "23-01", "丑": "01-03", "寅": "03-05", "卯": "05-07", "辰": "07-09", "巳": "09-11",
+             "午": "11-13", "未": "13-15", "申": "15-17", "酉": "17-19", "戌": "19-21", "亥": "21-23"}
+    for z, sc, gz, notes in sorted(rows, key=lambda x: -x[1]):
+        print(f"{z}时{'':<3}{spans[z]:<10}{gz:<5}{sc:<5}{notes}")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--sizhu", required=True)
-    ap.add_argument("--start", required=True)
-    ap.add_argument("--end", required=True)
+    ap.add_argument("--start", default=None)
+    ap.add_argument("--end", default=None)
     ap.add_argument("--weekday", default="sat", help="sat / sun / sat,sun / all")
+    ap.add_argument("--date", default=None, help="时辰模式：指定日期 YYYY-MM-DD")
     ap.add_argument("--xi", required=True)
     ap.add_argument("--ji", required=True)
     a = ap.parse_args()
 
     from lunar_python import Solar
+    if a.date:
+        hours_table(a.sizhu, a.date, a.xi.split(","), a.ji.split(","))
+        return 0
+    if not (a.start and a.end):
+        print("⛔ 需要 --date（时辰模式）或 --start/--end（日期区间模式）")
+        return 2
     pillars = a.sizhu.split()
     ri_gan = pillars[2][0]
     natal = [p[1] for p in pillars]
