@@ -55,11 +55,12 @@ def level(s: float) -> str:
 def build_section(name: str) -> str:
     c = CONFIG[name]
     # 大运真实起止年（以引擎 JSON 为准，避免与门禁校验冲突）
-    dy_range = {}
+    dy_range, dy_score = {}, {}
     try:
         eng = json.load(open(f"/tmp/{name}_engine.json", encoding="utf-8"))
         for d in eng["analysis"]["da_yun"]["list"]:
             dy_range[d["gan_zhi"]] = (d["start_year"], d["end_year"])
+            dy_score[d["gan_zhi"]] = d.get("score", "—")
     except Exception:
         pass
     rows = []
@@ -82,7 +83,7 @@ def build_section(name: str) -> str:
 
     # 大运分段
     L.append("### 24.1 大运分段总览\n")
-    L.append("| 大运 | 起始年 | 十神 | 评分 | 一句话判读 |")
+    L.append("| 大运 | 起止年 | 十神 | 大运分｜流年均 | 一句话判读 |")
     L.append("|:---|:---:|:---|:---:|:---|")
     dygroups = {}
     for y in range(2026, 2046):
@@ -93,7 +94,8 @@ def build_section(name: str) -> str:
         avg = sum(x[4] for x in rows if x[2] == d[0] + d[1]) / max(1, len(ys))
         y0, y1 = dy_range.get(d[0] + d[1], (ys[0], ys[-1]))
         L.append(f"| **{d[0]}{d[1]}** | {y0}–{y1} | {ss}（{hint}） | "
-                 f"均 {avg:.1f} | {'顺' if avg >= 7 else ('平' if avg >= 5.5 else '逆')} |")
+                 f"**{dy_score.get(d[0]+d[1], '—')}/10** ｜ {avg:.1f} | "
+                 f"{'顺' if avg >= 7 else ('平' if avg >= 5.5 else '逆')} |")
     L.append("")
 
     # 逐年表
