@@ -15,7 +15,7 @@ MODULE_CHECKS = {
     "shi_shen": ["get_shi_shen_for_gan", "get_shi_shen_for_cang_gan"],
     "cai_xing": ["compute_cai_xing", "cai_xing_explain"],
     "ge_ju": ["determine_ge_ju"],
-    "da_yun": ["compute_da_yun", "compute_da_yun_scores"],
+    "da_yun": ["compute_da_yun", "classify_da_yun"],
     "shen_sha": ["get_tian_yi", "get_wen_chang", "get_yi_ma"],
     "energy": ["compute_wu_xing_energy", "compute_energy_profile"],
     "xing_chong_he_hua": ["check_chong", "check_xing", "check_hai"],
