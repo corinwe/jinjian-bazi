@@ -269,6 +269,53 @@ def detect_geju(z) -> list:
     return list(dict.fromkeys(hits))
 
 
+# ── 格局三层判定：条件成立 → 见煞/化忌 → 破格 ──────────────
+PO_GE_SHA = {"擎羊", "陀罗", "火星", "铃星", "地空", "地劫"}
+# 凶格：本身以「凶」立格，见吉化/禄存/天梁反为「反解」
+PO_GE_FAN = {"日月反背格", "刑忌夹印格"}
+
+
+def geju_status(z) -> dict:
+    """对已匹配格局做「成格／破格」判定。
+
+    口径（2026-11-22 新增，参考 ziwei-doushu patterns.ts 三层结构）：
+      · 吉格：三方四正见四煞/空劫 ≥1 或化忌 ≥1 → 「条件成·有瑕」；
+              煞与忌同时出现，或煞 ≥2 → 「破格」。
+      · 凶格（日月反背／刑忌夹印）：见禄存/化禄/天梁 → 「反解成吉」。
+    返回：{格局名: {'状态': str, '依据': [..]}}
+    """
+    zmap = _palace_map(z)
+    ming = zmap.get("命宫")
+    if not ming:
+        return {}
+    sf = _san_fang(ming, zmap)
+    sha_ming, sha_other, hua_ji, good = [], [], [], []
+    for g in sf:
+        p = zmap.get(g) or {}
+        for s in list(p.get("主星", [])) + list(p.get("辅星", [])):
+            nm, hua = s.get("名"), s.get("四化")
+            if nm in PO_GE_SHA:
+                (sha_ming if g == "命宫" else sha_other).append(f"{g}·{nm}")
+            if hua == "忌":
+                hua_ji.append(f"{g}·{nm}化忌")
+            if nm in ("禄存", "天梁") or hua == "禄":
+                good.append(f"{g}·{nm}" + (f"化{hua}" if hua else ""))
+    out = {}
+    for name in detect_geju(z):
+        if name in PO_GE_FAN:
+            out[name] = ({"状态": "反解成吉", "依据": good[:3]} if good
+                         else {"状态": "成格（凶格）", "依据": []})
+            continue
+        # 破格以「命宫见煞」或「他宫煞+化忌同现」为准；仅他宫见煞 → 有瑕
+        if sha_ming or (sha_other and hua_ji):
+            out[name] = {"状态": "破格", "依据": (sha_ming + hua_ji + sha_other)[:3]}
+        elif sha_other or hua_ji:
+            out[name] = {"状态": "条件成·有瑕", "依据": (sha_other + hua_ji)[:3]}
+        else:
+            out[name] = {"状态": "成格", "依据": []}
+    return out
+
+
 def ziwei_detail_section(name, ds, zw) -> str:
     z = zw["紫微"]
     zmap = _palace_map(z)
@@ -369,13 +416,22 @@ def ziwei_detail_section(name, ds, zw) -> str:
     # 22.5 格局
     L.append("### 22.5 格局识别（本盘实配）\n")
     matched = detect_geju(z)
+    status = geju_status(z)
     if matched:
-        L.append("| 格局 | 成立条件 | 白话解读 | 怎么做 |")
-        L.append("|:---|:---|:---|:---|")
+        L.append("| 格局 | 状态 | 成立条件 | 破格条件（何时打折） | 出处 | 白话解读 | 怎么做 |")
+        L.append("|:---|:---|:---|:---|:---|:---|:---|")
         for g in GEJU:
             if g["名"] in matched or g["名"].replace("/", "/") in matched or any(g["名"] in m for m in matched):
-                L.append(f"| **{g['名']}** | {g['条件']} | {g['白话']} | {g['提示']} |")
+                st = status.get(g["名"], {})
+                stt = st.get("状态", "—")
+                if st.get("依据"):
+                    stt += f"（{('；'.join(st['依据']))}）"
+                L.append(f"| **{g['名']}** | {stt} | {g['条件']} | {g.get('破格','—')} | {g.get('出处','—')} | {g['白话']} | {g['提示']} |")
         L.append(f"\n**本盘实配格局：** {'、'.join(matched)}")
+        _broken = [k for k, v in status.items() if v.get("状态") in ("破格", "条件成·有瑕")]
+        if _broken:
+            L.append(f"\n> ⚠️ **破格提示**：{'、'.join(_broken)} 见煞/化忌冲破 → "
+                     f"**断语要打折**，按「七分格」论，不可照满分格断。")
     else:
         L.append("- 本盘未匹配到库内典型格局（三方四正未见成套组合）→ 以单宫细断为准。")
     L.append("")
